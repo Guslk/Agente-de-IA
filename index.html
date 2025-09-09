@@ -6,206 +6,11 @@
     <title>StockEx - Gestão de Estoque</title>
     
     <link rel="stylesheet" href="style.css">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
-    <style>
-        /* ================== */
-        /* CSS COMPLETO       */
-        /* ================== */
-
-        /* 1. Variáveis de Cor e Reset Básico */
-        :root {
-            --primary-color: #3e4e88;    
-            --background-color: #F4F7FA;
-            --sidebar-bg: #FFFFFF;
-            --card-bg: #FFFFFF; 
-            --text-color: #333333;
-            --text-light: #777777;
-            --border-color: #EAEAEA;
-            --shadow-color: rgba(0, 0, 0, 0.05);
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --danger: #F44336;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', sans-serif; background-color: var(--background-color); color: var(--text-color); }
-
-        /* 2. Estrutura e Layout */
-        .container { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 70px 1fr; height: 100vh; grid-template-areas: "sidebar header" "sidebar main"; }
-        .sidebar { grid-area: sidebar; background-color: var(--sidebar-bg); padding: 20px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; }
-        .header { grid-area: header; background-color: var(--card-bg); padding: 0 30px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
-        .main-content { grid-area: main; padding: 30px; overflow-y: auto; }
-        
-        /* 3. Componentes da UI */
-        .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 40px; }
-        .logo i { margin-right: 10px; }
-        .nav-menu ul { list-style: none; }
-        .nav-menu li a { display: block; padding: 15px; border-radius: 8px; text-decoration: none; color: var(--text-light); font-weight: 500; margin-bottom: 10px; transition: all 0.3s ease; }
-        .nav-menu li a i { margin-right: 15px; font-size: 1.2rem; }
-        .nav-menu li a:hover, .nav-menu li a.active { background-color: var(--primary-color); color: white; }
-        .header-title { font-size: 1.8rem; font-weight: 600; }
-        .user-profile { display: flex; align-items: center; }
-        .user-profile span { margin-right: 10px; font-weight: 500; }
-        .user-profile img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        
-        .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .main-header h2 { font-size: 1.5rem; }
-        .action-buttons button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .action-buttons .btn-entrada { background-color: var(--success); color: white; }
-        .action-buttons .btn-saida { background-color: var(--danger); color: white; margin-left: 10px; }
-        .action-buttons button:hover { opacity: 0.9; }
-
-        /* Tabela */
-        .inventory-table { background-color: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px var(--shadow-color); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
-        th { font-weight: 600; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase; }
-        td { font-weight: 500; }
-        
-        /* Pílulas de Status */
-        .status-pill { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: white; text-align: center; }
-        .status-ok { background-color: var(--success); }
-        .status-low { background-color: var(--warning); }
-        .status-empty { background-color: var(--danger); }
-        
-        /* 4. Estilos do Modal */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: none; /* Inicia oculto */ justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background-color: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 800px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
-        .modal-header h3 { font-size: 1.5rem; }
-        .modal-header .close-button { font-size: 1.8rem; cursor: pointer; border: none; background: none; color: var(--text-light); }
-        .modal-body .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .form-group { display: flex; flex-direction: column; }
-        .form-group label { margin-bottom: 8px; font-weight: 600; }
-        .form-group input, .form-group select { padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; font-family: 'Poppins', sans-serif; }
-        .items-section h4 { margin-bottom: 15px; }
-        .items-entry-form { display: grid; grid-template-columns: 3fr 1fr 1fr auto; gap: 15px; align-items: flex-end; }
-        .items-entry-form button { padding: 12px; background-color: var(--primary-color); color: white; }
-        #added-items-table { margin-top: 20px; }
-        .modal-footer { border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 30px; text-align: right; }
-        .btn-primary { background-color: var(--primary-color); color: white; padding: 12px 25px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
-
-        /* ===================================== */
-        /* 5. ESTILOS DO WIDGET DE CHAT IA       */
-        /* ===================================== */
-
-        #chat-fab {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background-color: var(--primary-color); /* << COR ATUALIZADA */
-            border-radius: 50%;
-            border: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 990; /* Abaixo do modal */
-            transition: transform 0.2s ease-in-out;
-        }
-
-        #chat-fab:hover {
-            transform: scale(1.1);
-        }
-
-        #chat-fab svg {
-            width: 32px;
-            height: 32px;
-            fill: white;
-        }
-
-        #chat-widget-container {
-            position: fixed;
-            bottom: 110px;
-            right: 30px;
-            width: 90%;
-            max-width: 400px;
-            height: 60vh;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            border-radius: 15px;
-            overflow: hidden;
-            z-index: 989; /* Abaixo do FAB e do modal */
-            opacity: 1;
-            transform: translateY(0);
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        }
-
-        #chat-widget-container.hidden {
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-        }
-
-        .chat-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            background-color: var(--card-bg);
-        }
-        .chat-header {
-            background-color: var(--primary-color); /* << COR ATUALIZADA */
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .chat-box {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background-color: var(--background-color);
-            display: flex;
-            flex-direction: column;
-        }
-        .message {
-            padding: 10px 15px;
-            border-radius: 18px;
-            margin-bottom: 10px;
-            max-width: 80%;
-            line-height: 1.4;
-        }
-        .user-message {
-            background-color: var(--primary-color); /* << COR ATUALIZADA */
-            color: white;
-            align-self: flex-end;
-        }
-        .ai-message {
-            background-color: var(--border-color);
-            color: var(--text-color);
-            align-self: flex-start;
-        }
-        .input-area {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid var(--border-color);
-            background-color: var(--card-bg);
-        }
-        #userInput {
-            flex-grow: 1;
-            border: 1px solid var(--border-color);
-            border-radius: 18px;
-            padding: 10px;
-            font-size: 14px;
-        }
-        #sendButton {
-            background-color: var(--primary-color); /* << COR ATUALIZADA */
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 18px;
-            margin-left: 10px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-    </style>
 </head>
 <body>
 
@@ -304,7 +109,7 @@
                              <button type="button" class="btn-primary" id="btn-add-item"><i class="bi bi-plus"></i> Add</button>
                         </div>
                         <table id="added-items-table">
-                            </table>
+                        </table>
                     </div>
                 </form>
             </div>
@@ -330,7 +135,7 @@
     </div>
 
     <button id="chat-fab">
-        <svg xmlns="    " viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <path d="M0 0h24v24H0V0z" fill="none"/>
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
         </svg>
@@ -338,9 +143,7 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
-        // ===========================================
         // 1. DADOS MOCK (Simulando o Banco de Dados)
-        // ===========================================
         const items = [
             { id_item: 1, nome: 'SSD NVMe 256GB', descricao: 'SSD de alta velocidade', codigo_barras: '7890123456789', unidade_medida: 'unidade', quantidade_minima: 20, quantidade_atual: 52 },
             { id_item: 2, nome: 'Memória RAM DDR4 8GB', descricao: 'Corsair Vengeance', codigo_barras: '7890123456790', unidade_medida: 'unidade', quantidade_minima: 15, quantidade_atual: 14 },
@@ -357,10 +160,8 @@
             { id_funcionario: 1, nome: 'João da Silva', cargo: 'Almoxarife Chefe' },
             { id_funcionario: 2, nome: 'Maria Oliveira', cargo: 'Assistente de Logística' },
         ];
-        
-        // =============================================================
+    
         // 2. LÓGICA PARA POPULAR A TABELA PRINCIPAL DE INVENTÁRIO
-        // =============================================================
         const tableBody = document.getElementById('inventory-tbody');
 
         function getItemStatus(item) {
@@ -391,9 +192,7 @@
             });
         }
         
-        // ===========================================
         // 3. LÓGICA PARA O MODAL DE ENTRADA
-        // ===========================================
         const modal = document.getElementById('entrada-modal');
         const btnShowModal = document.getElementById('btn-show-entrada-modal');
         const btnCloseModal = document.getElementById('btn-close-modal');
@@ -426,9 +225,9 @@
             });
         }
 
-        // ===========================================
+
         // 4. LÓGICA DO WIDGET DE CHAT IA
-        // ===========================================
+
         const chatFab = document.getElementById('chat-fab');
         const chatWidgetContainer = document.getElementById('chat-widget-container');
 
@@ -440,7 +239,6 @@
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
         
-        // IMPORTANTE: URL do seu servidor back-end
         const BACKEND_URL = 'http://localhost:3000/ask-ia';
 
         sendButton.addEventListener('click', sendMessage);
@@ -490,10 +288,7 @@
                 console.error('Erro:', error);
             }
         }
-        
-        // ===========================================
         // 5. INICIALIZAÇÃO
-        // ===========================================
         populateInventoryTable();
         populateSelects();
 

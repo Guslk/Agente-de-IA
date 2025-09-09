@@ -5,144 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro | StockEx</title>
 
+    <link rel="stylesheet" href="style.css">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
-    <style>
-        /* ================================== */
-        /* CSS DA PÁGINA DE CADASTRO          */
-        /* (Reutiliza 99% do CSS do Login)    */
-        /* ================================== */
-
-        /* 1. Variáveis de Cor (Mesma paleta do Dashboard) */
-        :root {
-            --primary-color: #3e4e88;    
-            --background-color: #F4F7FA;
-            --sidebar-bg: #FFFFFF;
-            --card-bg: #FFFFFF; 
-            --text-color: #333333;  
-            --text-light: #777777;
-            --border-color: #EAEAEA;
-            --shadow-color: rgba(62, 78, 136, 0.1);
-            --success: #85d874;
-            --warning: #fb8b24;
-            --danger: #e43f42;
-        }
-
-        /* 2. Estilo Base */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px 0; /* Adiciona um padding para telas menores */
-        }
-
-        /* 3. Card de Cadastro */
-        .register-card {
-            background-color: var(--card-bg);
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px var(--shadow-color);
-            width: 100%;
-            max-width: 450px; /* Um pouco mais largo para caber os campos extras */
-            text-align: center;
-        }
-
-        .register-header {
-            margin-bottom: 30px;
-        }
-
-        .register-header h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .register-header p {
-            color: var(--text-light);
-            font-size: 1rem;
-        }
-
-        /* 4. Formulário */
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            font-family: 'Poppins', sans-serif;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        /* 5. Botão de Cadastro e Link de Login */
-        .btn-register {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            background-color: var(--primary-color);
-            color: white;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.3s ease;
-            margin-top: 10px;
-        }
-
-        .btn-register:hover {
-            opacity: 0.9;
-        }
-        
-        .login-link {
-            text-align: center;
-            margin-top: 30px;
-            font-size: 0.9rem;
-        }
-
-        .login-link a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-    </style>
 </head>
 <body>
-    
+    <div class="auth-page">
     <div class="register-card">
         <div class="register-header">
             <h1><i class="bi bi-archive-fill"></i> StockEx</h1>
@@ -206,5 +77,6 @@
             window.location.href = 'login.html'; 
         });
     </script>
+    </div>
 </body>
 </html>
