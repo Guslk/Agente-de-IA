@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | StockEx</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        /* ================================== */
+        /* CSS DA PÁGINA DE LOGIN             */
+        /* ================================== */
+
+        /* 1. Variáveis de Cor (Mesma paleta do Dashboard) */
+        :root {
+            --primary-color: #3e4e88;    
+            --background-color: #F4F7FA;
+            --sidebar-bg: #FFFFFF;
+            --card-bg: #FFFFFF; 
+            --text-color: #333333;  
+            --text-light: #777777;
+            --border-color: #EAEAEA;
+            --shadow-color: rgba(62, 78, 136, 0.1); /* Sombra um pouco mais forte para destaque */
+            --success: #85d874;
+            --warning: #fb8b24;
+            --danger: #e43f42;
+        }
+
+        /* 2. Estilo Base */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            /* Centraliza o container de login na tela */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 3. Card de Login */
+        .login-card {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px var(--shadow-color);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-header {
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: var(--text-light);
+            font-size: 1rem;
+        }
+
+        /* 4. Formulário */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .form-options .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-light);
+        }
+
+        .form-options a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .form-options a:hover {
+            text-decoration: underline;
+        }
+
+        /* 5. Botão de Login */
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        .btn-login:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="login-card">
+        <div class="login-header">
+            <h1><i class="bi bi-archive-fill"></i> AlmoxControl</h1>
+            <p>Por favor, insira suas credenciais para continuar.</p>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Endereço de E-mail</label>
+                <input type="email" id="email" placeholder="voce@empresa.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            
+            <div class="form-options">
+                <div class="remember-me">
+                    <input type="checkbox" id="remember">
+                    <label for="remember">Lembrar-me</label>
+                </div>
+                <a href="#">Esqueci minha senha</a>
+            </div>
+
+            <button type="submit" class="btn-login">Entrar</button>
+        </form>
+    </div>
+
+    <script>
+        // Adiciona um pouco de interatividade para simular o login
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            // Previne o comportamento padrão do formulário (que é recarregar a página)
+            event.preventDefault();
+
+            // Simula um login bem-sucedido
+            // alert('Login realizado com sucesso! Redirecionando para o Dashboard...');
+            
+            // Em uma aplicação real, aqui você faria uma chamada para a API
+            // e, se o login fosse válido, redirecionaria o usuário.
+            
+            // Redireciona o usuário para a página principal.
+            window.location.href = 'index.html'; 
+        });
+    </script>
+</body>
+</html>
