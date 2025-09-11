@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockEx - Fornecedores</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo"><i class="bi bi-archive-fill"></i> StockEx</div>
+            <nav class="nav-menu">
+                <ul>
+    <li><a href="/"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a></li>
+    <li><a href="/itens"><i class="bi bi-box-seam"></i> Itens</a></li>
+    <li><a href="/movimentacoes"><i class="bi bi-arrow-down-up"></i> Movimentações</a></li>
+    <li><a href="/fornecedores"><i class="bi bi-truck"></i> Fornecedores</a></li>
+    <li><a href="/funcionarios" class="active"><i class="bi bi-people-fill"></i> Funcionários</a></li>
+    <li><a href="/relatorios"><i class="bi bi-bar-chart-fill"></i> Relatórios</a></li>
+</ul>
+            </nav>
+        </aside>
+
+        <header class="header">
+            <h1 class="header-title">Gerenciamento de Fornecedores</h1>
+            <div class="user-profile">
+                <span>Bem-vindo, João</span>
+                <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="main-header">
+                <h2>Todos os Fornecedores Cadastrados</h2>
+                <div class="action-buttons">
+                    <button class="btn-entrada"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Fornecedor</button>
+                </div>
+            </div>
+            <section class="inventory-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Contato</th>
+                            <th>Telefone</th>
+                            <th>Email</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fornecedores-table-body">
+                        </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const fornecedores = [
+        { id_fornecedor: 1, nome_empresa: 'HardDistribuidora', contato: 'Carlos Silva', telefone: '(11) 98765-4321', email: 'carlos@hard.com' },
+        { id_fornecedor: 2, nome_empresa: 'PecasNow', contato: 'Ana Pereira', telefone: '(21) 91234-5678', email: 'ana@pecasnow.com' },
+        { id_fornecedor: 3, nome_empresa: 'InfoMega', contato: 'Ricardo Souza', telefone: '(31) 95555-4444', email: 'ricardo@infomega.br' },
+    ];
+
+    const tableBody = document.getElementById('fornecedores-table-body');
+    tableBody.innerHTML = '';
+    fornecedores.forEach(f => {
+        const row = `
+            <tr>
+                <td><strong>${f.nome_empresa}</strong></td>
+                <td>${f.contato}</td>
+                <td>${f.telefone}</td>
+                <td>${f.email}</td>
+                <td>
+                    <button title="Editar" style="border:none; background:none; cursor:pointer; color: var(--primary-color); font-size: 1.2rem;"><i class="bi bi-pencil-square"></i></button>
+                    <button title="Excluir" style="border:none; background:none; cursor:pointer; color: var(--danger); font-size: 1.2rem;"><i class="bi bi-trash-fill"></i></button>
+                </td>
+            </tr>
+        `;
+        tableBody.innerHTML += row;
+    });
+});
+</script>
+</body>
+</html>
