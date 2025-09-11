@@ -1,7 +1,7 @@
 {
-  "name": "meu-backend-estoque",
+  "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ejs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

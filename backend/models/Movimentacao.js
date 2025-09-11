@@ -1,4 +1,3 @@
-// models/Movimentacao.js
 
 const movimentacoes = [
     { tipo: 'Entrada', data: '02/09/2025', item: 'SSD NVMe 256GB', qtd: 50, funcionario: 'João da Silva', detalhe: 'NF-e 123456' },

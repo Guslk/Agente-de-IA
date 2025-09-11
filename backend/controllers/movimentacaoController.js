@@ -1,4 +1,3 @@
-// controllers/movimentacaoController.js
 
 const Movimentacao = require('../models/Movimentacao');
 
@@ -8,7 +7,7 @@ const movimentacaoController = {
 
         res.render('movimentacoes', {
             movimentacoes: movimentacoes,
-            paginaAtiva: 'movimentacoes' // Para o menu saber qual link marcar como ativo
+            paginaAtiva: 'movimentacoes' 
         });
     }
 };

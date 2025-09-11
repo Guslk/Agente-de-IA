@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
 
-    // IMPORTANTE: Certifique-se de que seu back-end está rodando neste endereço
+
     const BACKEND_URL = 'http://localhost:3000/ask-ia';
 
     // Event listeners para o envio de mensagens
