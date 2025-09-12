@@ -14,19 +14,7 @@
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
-            <div class="logo"><i class="bi bi-archive-fill"></i> StockEx</div>
-            <nav class="nav-menu">
-                <ul>
-    <li><a href="/"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a></li>
-    <li><a href="/itens"><i class="bi bi-box-seam"></i> Itens</a></li>
-    <li><a href="/movimentacoes"><i class="bi bi-arrow-down-up"></i> Movimentações</a></li>
-    <li><a href="/fornecedores"><i class="bi bi-truck"></i> Fornecedores</a></li>
-    <li><a href="/funcionarios" class="active"><i class="bi bi-people-fill"></i> Funcionários</a></li>
-    <li><a href="/relatorios"><i class="bi bi-bar-chart-fill"></i> Relatórios</a></li>
-</ul>
-            </nav>
-        </aside>
+        <%- include('partials/sidebar') %>
 
         <header class="header">
             <h1 class="header-title">Gerenciamento de Fornecedores</h1>

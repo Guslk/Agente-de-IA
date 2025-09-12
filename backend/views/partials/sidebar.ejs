@@ -1,0 +1,37 @@
+<aside class="sidebar">
+    <div class="logo"><i class="bi bi-archive-fill"></i> StockEx</div>
+    <nav class="nav-menu">
+        <ul>
+            <li>
+                <a href="/" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'dashboard') ? 'active' : '' %>">
+                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="/itens" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'itens') ? 'active' : '' %>">
+                    <i class="bi bi-box-seam"></i> Itens
+                </a>
+            </li>
+            <li>
+                <a href="/movimentacoes" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'movimentacoes') ? 'active' : '' %>">
+                    <i class="bi bi-arrow-down-up"></i> Movimentações
+                </a>
+            </li>
+            <li>
+                <a href="/fornecedores" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'fornecedores') ? 'active' : '' %>">
+                    <i class="bi bi-truck"></i> Fornecedores
+                </a>
+            </li>
+            <li>
+                <a href="/funcionarios" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'funcionarios') ? 'active' : '' %>">
+                    <i class="bi bi-people-fill"></i> Funcionários
+                </a>
+            </li>
+            <li>
+                <a href="/relatorios" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'relatorios') ? 'active' : '' %>">
+                    <i class="bi bi-bar-chart-fill"></i> Relatórios
+                </a>
+            </li>
+        </ul>
+    </nav>
+</aside>
