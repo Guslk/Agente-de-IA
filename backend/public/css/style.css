@@ -745,3 +745,12 @@ body.auth-page {
     color: #ccc;
     font-weight: 600;
 }
+/* Estilo para mensagem de erro no login/cadastro */
+.error-message {
+    background-color: #ffebee; /* Fundo vermelho claro */
+    color: var(--danger);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--danger);
+}

@@ -20,14 +20,20 @@
             <p>Por favor, insira suas credenciais para continuar.</p>
         </div>
 
-        <form id="login-form">
+        <%# Bloco para exibir a mensagem de erro vinda do controller %>
+        <% if (typeof error !== 'undefined' && error) { %>
+            <p class="error-message"><%= error %></p>
+        <% } %>
+
+        <%# O formulário agora envia os dados para o back-end (action="/login" method="POST") %>
+        <form id="login-form" action="/login" method="POST">
             <div class="form-group">
                 <label for="email">Endereço de E-mail</label>
-                <input type="email" id="email" placeholder="voce@empresa.com" required>
+                <input type="email" id="email" name="email" placeholder="voce@empresa.com" required>
             </div>
             <div class="form-group">
                 <label for="password">Senha</label>
-                <input type="password" id="password" placeholder="••••••••" required>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
             </div>
             
             <div class="form-options">
@@ -42,15 +48,6 @@
         </form>
     </div>
 
-    <script>
-        // Adiciona um pouco de interatividade para simular o login
-        document.getElementById('login-form').addEventListener('submit', function(event) {
-            // Previne o comportamento padrão do formulário (que é recarregar a página)
-            event.preventDefault();
-
-            // Redireciona o usuário para a página principal.
-            window.location.href = 'index.html'; 
-        });
-    </script>
+    <%# A tag <script> foi removida, pois a lógica agora é do back-end %>
 </body>
 </html>
