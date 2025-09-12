@@ -1,51 +1,42 @@
 // server.js
 
-// Importações
 const express = require('express');
 const path = require('path');
+
+// Importação de todas as rotas em um só lugar
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const itemRoutes = require('./routes/itemRoutes');
+const movimentacaoRoutes = require('./routes/movimentacaoRoutes');
+const fornecedorRoutes = require('./routes/fornecedorRoutes');
+const funcionarioRoutes = require('./routes/funcionarioRoutes');
+const relatorioRoutes = require('./routes/relatorioRoutes');
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Configurar o EJS como o motor de templates
+// Configurar o EJS como o motor de templates
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// 2. Servir arquivos estáticos da pasta "public"
+// Servir arquivos estáticos da pasta "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 3. Middlewares para processar dados de formulário (útil para login/cadastro)
+// Middlewares para processar dados de formulário
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// 4. Rotas 
 
-app.get('/', (req, res) => {
-    // res.render() procura por um arquivo na pasta /views
-    // e o processa com o EJS
-    res.render('index'); // Renderiza o arquivo views/index.ejs
-});
+app.use('/', dashboardRoutes);
+app.use('/itens', itemRoutes);
+app.use('/movimentacoes', movimentacaoRoutes);
+app.use('/fornecedores', fornecedorRoutes);
+app.use('/funcionarios', funcionarioRoutes);
+app.use('/relatorios', relatorioRoutes);
+// Adicione a rota para o agente de IA aqui quando for implementar
 
 
 
-// Iniciar o servidor
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
-
-const itemRoutes = require('./routes/itemRoutes'); 
-
-app.get('/', (req, res) => {
-    res.render('index'); 
-});
-
-app.use('/itens', itemRoutes);
-
-
-const movimentacaoRoutes = require('./routes/movimentacaoRoutes'); 
-
-app.get('/', (req, res) => {
-    res.render('index', { paginaAtiva: 'dashboard' }); 
-});
-
-app.use('/itens', itemRoutes);
-app.use('/movimentacoes', movimentacaoRoutes); 
