@@ -20,14 +20,25 @@ app.use(express.json());
 // 4. Rotas 
 
 app.get('/', (req, res) => {
-    // res.render() procura por um arquivo na pasta /views
-    // e o processa com o EJS
-    res.render('index'); // Renderiza o arquivo views/index.ejs
+
+    res.render('index'); 
 });
 
 
 
-// Iniciar o servidor
+app.post('/api/chat', (req, res) => {
+    const userMessage = req.body.message; 
+    
+    console.log('Mensagem recebida do agente:', userMessage);
+
+
+    const botReply = `Recebi sua mensagem: "${userMessage}". A lógica completa da IA ainda será implementada.`;
+    
+
+    res.json({ reply: botReply });
+});
+
+
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
