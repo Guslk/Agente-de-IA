@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 require('dotenv').config(); // Carrega as variáveis do arquivo .env
 
-// const MONGO_URI = process.env.MASTER_MONGO_URI;
 const MONGO_URI = process.env.MASTER_MONGO_URI;
 
 // Função assíncrona para conectar ao banco de dados
@@ -21,8 +20,6 @@ const connectMasterDB = async () => {
     // Se ocorrer um erro, exibe o erro e encerra a aplicação
     console.error('❌ Erro ao conectar ao Banco de Dados Master:', error.message);
     
-    // É crucial encerrar o processo se não for possível conectar ao banco de dados principal.
-    // A aplicação não pode funcionar sem ele.
     process.exit(1); 
   }
 };
