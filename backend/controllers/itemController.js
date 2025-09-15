@@ -1,12 +1,14 @@
-const Item = require('../models/item');
+// controllers/itemController.js
+
+const Item = require('../models/Item');
 
 const itemController = {
-
     getAllItems: (req, res) => {
         const items = Item.findAll();
         res.render('itens', { 
             items: items,
-            paginaAtiva: 'itens'});
+            paginaAtiva: 'itens'
+        });
     },
 };
 

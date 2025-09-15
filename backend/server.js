@@ -1,17 +1,27 @@
 // server.js
 
+// ===================================================
+// 1. IMPORTAÇÕES
+// ===================================================
 const express = require('express');
 const path = require('path');
+const session = require('express-session');
 
-// Importação de todas as rotas em um só lugar
+// Importação do Middleware
+const isAuthenticated = require('./middleware/authMiddleware');
+
+// Importação de todas as rotas
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const movimentacaoRoutes = require('./routes/movimentacaoRoutes');
 const fornecedorRoutes = require('./routes/fornecedorRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
+const authRoutes = require('./routes/authRoutes');
 
-
+// ===================================================
+// 2. CONFIGURAÇÃO DO APP
+// ===================================================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -26,6 +36,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Configuração da Sessão
+app.use(session({
+    secret: 'seu-segredo-super-secreto', 
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false, maxAge: 3600000 } 
+}));
+
+
+app.use('/', authRoutes);
+
+
+app.use(isAuthenticated);
+
 
 app.use('/', dashboardRoutes);
 app.use('/itens', itemRoutes);
@@ -33,8 +57,6 @@ app.use('/movimentacoes', movimentacaoRoutes);
 app.use('/fornecedores', fornecedorRoutes);
 app.use('/funcionarios', funcionarioRoutes);
 app.use('/relatorios', relatorioRoutes);
-// Adicione a rota para o agente de IA aqui quando for implementar
-
 
 
 app.listen(PORT, () => {

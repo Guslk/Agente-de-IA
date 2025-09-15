@@ -1,8 +1,7 @@
 // controllers/dashboardController.js
 
 const dashboardController = {
-    showDashboard: (req, res) => {
-        // A lógica que estava no server.js agora fica aqui
+    showDashboard: (req, res) => {       
         res.render('index', { paginaAtiva: 'dashboard' });
     }
 };

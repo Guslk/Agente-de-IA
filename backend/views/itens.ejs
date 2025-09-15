@@ -14,6 +14,7 @@
 </head>
 <body>
     <div class="container">
+
         <%- include('partials/sidebar') %>
 
         <header class="header">
@@ -43,30 +44,36 @@
                         </tr>
                     </thead>
                     <tbody id="items-table-body">
-    <% if (items && items.length > 0) { %>
-        <% items.forEach(item => { %>
-            <tr>
-                <td><strong><%= item.nome %></strong></td>
-                <td><%= item.codigo_barras %></td>
-                <td><%= item.quantidade_atual %></td>
-                <td><%= item.unidade_medida %></td>
-                <td>
-                    <button title="Editar" style="border:none; background:none; cursor:pointer; color: var(--primary-color); font-size: 1.2rem;"><i class="bi bi-pencil-square"></i></button>
-                    <button title="Excluir" style="border:none; background:none; cursor:pointer; color: var(--danger); font-size: 1.2rem;"><i class="bi bi-trash-fill"></i></button>
-                </td>
-            </tr>
-        <% }); %>
-    <% } else { %>
-        <tr>
-            <td colspan="5" style="text-align: center;">Nenhum item encontrado.</td>
-        </tr>
-    <% } %>
-</tbody>
+                        <%# Este bloco EJS verifica se a variável 'items' foi enviada e não está vazia %>
+                        <% if (typeof items !== 'undefined' && items.length > 0) { %>
+                            <%# Faz um loop em cada item e cria uma linha na tabela %>
+                            <% items.forEach(item => { %>
+                                <tr>
+                                    <td><strong><%= item.nome %></strong></td>
+                                    <td><%= item.codigo_barras %></td>
+                                    <td><%= item.quantidade_atual %></td>
+                                    <td><%= item.unidade_medida %></td>
+                                    <td>
+                                        <button title="Editar" class="action-btn">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button title="Excluir" class="action-btn danger">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <%# Caso não haja itens, exibe uma mensagem amigável %>
+                            <tr>
+                                <td colspan="5" style="text-align: center;">Nenhum item encontrado.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
                 </table>
             </section>
         </main>
     </div>
-
-
-</body>
+    
+    </body>
 </html>
