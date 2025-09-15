@@ -3,45 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | StockEx</title>
+    <title>StockEx - Itens</title>
+
     <link rel="stylesheet" href="/css/style.css">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
-<body class="auth-page">
-    <div class="login-card">
-        <div class="login-header">
-            <h1><i class="bi bi-archive-fill"></i> StockEx</h1>
-            <p>Por favor, insira suas credenciais para continuar.</p>
-        </div>
+<body>
+    <div class="container">
 
-        <%# Bloco para exibir a mensagem de erro %>
-        <% if (typeof error !== 'undefined' && error) { %>
-            <p class="error-message"><%= error %></p>
-        <% } %>
+        <%- include('partials/sidebar') %>
 
-        <form id="login-form" action="/login" method="POST">
-            <div class="form-group">
-                <label for="email">Endereço de E-mail</label>
-                <input type="email" id="email" name="email" placeholder="voce@empresa.com" required>
+        <header class="header">
+            <h1 class="header-title">Gerenciamento de Itens</h1>
+            <div class="user-profile">
+                <span>Bem-vindo, João</span>
+                <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
             </div>
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required>
-            </div>
-            
-            <div class="form-options">
-                <div class="remember-me">
-                    <input type="checkbox" id="remember">
-                    <label for="remember">Lembrar-me</label>
+        </header>
+
+        <main class="main-content">
+            <div class="main-header">
+                <h2>Todos os Itens Cadastrados</h2>
+                <div class="action-buttons">
+                    <button class="btn-entrada"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
                 </div>
-                <a href="#">Esqueci minha senha</a>
             </div>
-
-            <button type="submit" class="btn-login">Entrar</button>
-        </form>
+            <section class="inventory-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome do Item</th>
+                            <th>Código de Barras</th>
+                            <th>Qtd. Atual</th>
+                            <th>Unidade</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-table-body">
+                        <%# Este bloco EJS verifica se a variável 'items' foi enviada e não está vazia %>
+                        <% if (typeof items !== 'undefined' && items.length > 0) { %>
+                            <%# Faz um loop em cada item e cria uma linha na tabela %>
+                            <% items.forEach(item => { %>
+                                <tr>
+                                    <td><strong><%= item.nome %></strong></td>
+                                    <td><%= item.codigo_barras %></td>
+                                    <td><%= item.quantidade_atual %></td>
+                                    <td><%= item.unidade_medida %></td>
+                                    <td>
+                                        <button title="Editar" class="action-btn">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button title="Excluir" class="action-btn danger">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <%# Caso não haja itens, exibe uma mensagem amigável %>
+                            <tr>
+                                <td colspan="5" style="text-align: center;">Nenhum item encontrado.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </section>
+        </main>
     </div>
+    
     </body>
 </html>
