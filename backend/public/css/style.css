@@ -754,3 +754,29 @@ body.auth-page {
     margin-bottom: 20px;
     border: 1px solid var(--danger);
 }
+/* Estilos para botões de Retirada e Devolução */
+.btn-retirar, .btn-devolver {
+    padding: 8px 15px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    color: white;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.3s ease;
+}
+
+.btn-retirar {
+    background-color: var(--primary-color);
+}
+
+.btn-devolver {
+    background-color: var(--success);
+}
+
+.btn-retirar:hover, .btn-devolver:hover {
+    opacity: 0.85;
+}
