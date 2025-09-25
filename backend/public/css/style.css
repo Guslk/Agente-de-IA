@@ -780,3 +780,9 @@ body.auth-page {
 .btn-retirar:hover, .btn-devolver:hover {
     opacity: 0.85;
 }
+/* Estilo para o link de Sair na sidebar */
+.logout-link {
+    margin-top: auto; 
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
