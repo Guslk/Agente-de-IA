@@ -786,3 +786,20 @@ body.auth-page {
     padding-top: 20px;
     border-top: 1px solid var(--border-color);
 }
+.btn-secondary {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #6c757d;
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-secondary:hover {
+    opacity: 0.9;
+}

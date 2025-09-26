@@ -19,6 +19,7 @@ const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
 const authRoutes = require('./routes/authRoutes');
 const manualRoutes = require('./routes/manualRoutes');
+const historicoRoutes = require('./routes/historicoRoutes');
 
 // ===================================================
 // 2. CONFIGURAÇÃO DO APP
@@ -59,6 +60,7 @@ app.use('/fornecedores', fornecedorRoutes);
 app.use('/funcionarios', funcionarioRoutes);
 app.use('/relatorios', relatorioRoutes);
 app.use('/manual', manualRoutes);
+app.use('/historico', isAuthenticated, historicoRoutes);
 
 
 app.listen(PORT, () => {
