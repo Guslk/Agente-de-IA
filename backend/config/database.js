@@ -48,9 +48,6 @@ const getTenantDB = async (tenantId) => {
     // -- NOVO BLOCO DE VERIFICAÇÃO --
     // Mostra o resultado completo da consulta ao MongoDB
     console.log(`[MONGO-QUERY] Documento completo do inquilino '${tenantId}' encontrado:`);
-    // Usar JSON.stringify para formatar a saída e mostrar todos os níveis do objeto
-    console.log(JSON.stringify(tenant, null, 2)); 
-    // -- FIM DO NOVO BLOCO --
 
 
     console.log(`[INFO] Tentando criar pool de conexões MySQL...`);
