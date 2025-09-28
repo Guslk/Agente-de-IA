@@ -1,0 +1,80 @@
+</div> <div id="chat-widget-container" class="hidden">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h3>Assistente Virtual</h3>
+            </div>
+            <div class="chat-box" id="chatBox">
+                <div class="message ai-message">Olá! Como posso ajudar hoje?</div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="userInput" placeholder="Digite sua pergunta...">
+                <button id="sendButton">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="chat-fab">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="32px" height="32px">
+            <path d="M0 0h24v24H0V0z" fill="none"/>
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+        </svg>
+    </button>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // LÓGICA DO WIDGET DE CHAT IA
+        const chatFab = document.getElementById('chat-fab');
+        const chatWidgetContainer = document.getElementById('chat-widget-container');
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+
+        if (chatFab) {
+            chatFab.addEventListener('click', () => {
+                chatWidgetContainer.classList.toggle('hidden');
+            });
+        }
+
+        if (sendButton) {
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') sendMessage();
+            });
+        }
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerText = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const userText = userInput.value.trim();
+            if (!userText) return;
+
+            addMessage(userText, 'user');
+            userInput.value = '';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userText }),
+                });
+
+                if (!response.ok) throw new Error('Erro na resposta do servidor.');
+
+                const data = await response.json();
+                addMessage(data.reply, 'ai');
+
+            } catch (error) {
+                console.error('Erro ao contatar o agente de IA:', error);
+                addMessage('Desculpe, estou com problemas para me conectar. Tente novamente mais tarde.', 'ai');
+            }
+        }
+    });
+    </script>
+</body>
+</html>

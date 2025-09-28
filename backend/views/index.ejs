@@ -1,287 +1,138 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockEx - Gestão de Estoque</title>
-    
-    <link rel="stylesheet" href="/css/style.css">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-</head>
-<body>
+<%- include('partials/header', { title: 'Ferramentas', paginaAtiva: 'dashboard' }) %>
 
-    <div class="container">
-       <%- include('partials/sidebar') %>
+<header class="header">
+    <h1 class="header-title">Controle de Ferramentas</h1>
+    <div class="user-profile">
+        <span>Bem-vindo, João</span>
+        <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar do Usuário">
+    </div>
+</header>
 
-        <header class="header">
-            <h1 class="header-title">Dashboard</h1>
-            <div class="user-profile">
-                <span>Bem-vindo, João</span>
-                <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar do Usuário">
-            </div>
-        </header>
+<main class="main-content">
+    <div class="main-header">
+        <h2>Ferramentas Disponíveis para Retirada</h2>
+        <a href="/historico" class="btn-secondary">
+            <i class="bi bi-clock-history"></i> Ver Histórico
+        </a>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Ferramenta</th>
+                    <th style="width: 150px; text-align: center;">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (disponiveis.length > 0) { %>
+                    <% disponiveis.forEach(ferramenta => { %>
+                        <tr>
+                            <td><strong><%= ferramenta.nome %></strong></td>
+                            <td style="text-align: center;">
+                                <button class="btn-retirar" data-id="<%= ferramenta.id %>" data-nome="<%= ferramenta.nome %>">
+                                    <i class="bi bi-box-arrow-up-right"></i> Retirar
+                                </button>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="2" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
-        <main class="main-content">
-            <div class="main-header">
-                <h2>Visão Geral do Inventário</h2>
-                <div class="action-buttons">
-                    <button class="btn-entrada" id="btn-show-entrada-modal"><i class="bi bi-plus-circle-fill"></i> Registrar Entrada</button>
-                    <button class="btn-saida"><i class="bi bi-dash-circle-fill"></i> Registrar Saída</button>
+    <div class="main-header" style="margin-top: 40px;">
+        <h2>Ferramentas em Uso (Retiradas)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Ferramenta</th>
+                    <th>Retirado por</th>
+                    <th>Data e Hora da Retirada</th>
+                    <th style="width: 150px; text-align: center;">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                 <% if (retiradas.length > 0) { %>
+                    <% retiradas.forEach(ferramenta => { %>
+                        <tr>
+                            <td><strong><%= ferramenta.nome %></strong></td>
+                            <td><%= ferramenta.retiradoPor %></td>
+                            <td><%= new Date(ferramenta.dataRetirada).toLocaleString('pt-BR') %></td>
+                            <td style="text-align: center;">
+                                <form action="/ferramentas/devolver/<%= ferramenta.id %>" method="POST" style="margin:0;">
+                                    <button type="submit" class="btn-devolver">
+                                        <i class="bi bi-box-arrow-in-down-left"></i> Devolver
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="4" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<div class="modal-overlay" id="retirar-modal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="modal-title">Retirar Ferramenta</h3>
+            <button class="close-button" id="btn-close-modal">&times;</button>
+        </div>
+        <form id="retirar-form" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="nome">Nome do Responsável pela Retirada:</label>
+                    <input type="text" id="nome" name="nome" required autocomplete="off">
                 </div>
             </div>
-            
-            <section class="inventory-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nome do Item</th>
-                            <th>Código de Barras</th>
-                            <th>Qtd. Atual</th>
-                            <th>Qtd. Mínima</th>
-                            <th>Unidade</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventory-tbody"></tbody>
-                </table>
-            </section>
-        </main>
-    </div>
-
-    <div class="modal-overlay" id="entrada-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Registrar Nova Entrada de Itens</h3>
-                <button class="close-button" id="btn-close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="form-entrada">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="data_entrada">Data da Entrada</label>
-                            <input type="date" id="data_entrada" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="nota_fiscal">Nota Fiscal</label>
-                            <input type="text" id="nota_fiscal" placeholder="Ex: NF-e 123456" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="id_fornecedor">Fornecedor</label>
-                            <select id="id_fornecedor" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="id_funcionario">Funcionário Responsável</label>
-                            <select id="id_funcionario" required></select>
-                        </div>
-                    </div>
-
-                    <div class="items-section">
-                        <h4>Adicionar Itens à Entrada</h4>
-                        <div class="items-entry-form">
-                            <div class="form-group">
-                                <label for="select_item">Item</label>
-                                <select id="select_item"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="item_quantidade">Qtd.</label>
-                                <input type="number" id="item_quantidade" min="1" value="1">
-                            </div>
-                            <div class="form-group">
-                                <label for="item_preco">Preço Unit.</label>
-                                <input type="number" id="item_preco" min="0" step="0.01" placeholder="R$">
-                            </div>
-                             <button type="button" class="btn-primary" id="btn-add-item"><i class="bi bi-plus"></i> Add</button>
-                        </div>
-                        <table id="added-items-table">
-                        </table>
-                    </div>
-                </form>
-            </div>
             <div class="modal-footer">
-                <button class="btn-primary">Salvar Entrada</button>
+                <button type="submit" class="btn-primary">Confirmar Retirada</button>
             </div>
-        </div>
+        </form>
     </div>
+</div>
 
-    <div id="chat-widget-container" class="hidden">
-        <div class="chat-container">
-            <div class="chat-header">
-                <h3>Assistente Virtual</h3>
-            </div>
-            <div class="chat-box" id="chatBox">
-                <div class="message ai-message">Olá! Como posso ajudar hoje?</div>
-            </div>
-            <div class="input-area">
-                <input type="text" id="userInput" placeholder="Digite sua pergunta...">
-                <button id="sendButton">Enviar</button>
-            </div>
-        </div>
-    </div>
+<%- include('partials/footer') %>
 
-    <button id="chat-fab">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M0 0h24v24H0V0z" fill="none"/>
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-        </svg>
-    </button>
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('retirar-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const retirarForm = document.getElementById('retirar-form');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnsRetirar = document.querySelectorAll('.btn-retirar');
 
-        // 1. DADOS MOCK (Simulando o Banco de Dados)
-        const items = [
-            { id_item: 1, nome: 'SSD NVMe 256GB', descricao: 'SSD de alta velocidade', codigo_barras: '7890123456789', unidade_medida: 'unidade', quantidade_minima: 20, quantidade_atual: 52 },
-            { id_item: 2, nome: 'Memória RAM DDR4 8GB', descricao: 'Corsair Vengeance', codigo_barras: '7890123456790', unidade_medida: 'unidade', quantidade_minima: 15, quantidade_atual: 14 },
-            { id_item: 3, nome: 'Mouse Gamer Logitech G203', descricao: 'Mouse RGB', codigo_barras: '7890123456791', unidade_medida: 'unidade', quantidade_minima: 10, quantidade_atual: 35 },
-            { id_item: 4, nome: 'Teclado Dell KB216', descricao: 'Teclado ABNT2', codigo_barras: '7890123456792', unidade_medida: 'unidade', quantidade_minima: 5, quantidade_atual: 0 },
-            { id_item: 5, nome: 'Cabo de Rede Cat6 5m', descricao: 'Cabo ethernet azul', codigo_barras: '7890123456793', unidade_medida: 'caixa', quantidade_minima: 50, quantidade_atual: 120 },
-        ];
-        const fornecedores = [
-            { id_fornecedor: 1, nome_empresa: 'HardDistribuidora', contato: 'Carlos Silva', email: 'carlos@hard.com' },
-            { id_fornecedor: 2, nome_empresa: 'PecasNow', contato: 'Ana Pereira', email: 'ana@pecasnow.com' },
-            { id_fornecedor: 3, nome_empresa: 'InfoMega', contato: 'Ricardo Souza', email: 'ricardo@infomega.br' },
-        ];
-        const funcionarios = [
-            { id_funcionario: 1, nome: 'João da Silva', cargo: 'Almoxarife Chefe' },
-            { id_funcionario: 2, nome: 'Maria Oliveira', cargo: 'Assistente de Logística' },
-        ];
-    
-        // 2. LÓGICA PARA POPULAR A TABELA PRINCIPAL DE INVENTÁRIO
-        const tableBody = document.getElementById('inventory-tbody');
+    btnsRetirar.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ferramentaId = btn.dataset.id;
+            const ferramentaNome = btn.dataset.nome;
 
-        function getItemStatus(item) {
-            if (item.quantidade_atual === 0) {
-                return { text: 'Esgotado', class: 'status-empty' };
-            } else if (item.quantidade_atual < item.quantidade_minima) {
-                return { text: 'Estoque Baixo', class: 'status-low' };
-            } else {
-                return { text: 'OK', class: 'status-ok' };
-            }
-        }
-
-        function populateInventoryTable() {
-            tableBody.innerHTML = '';
-            items.forEach(item => {
-                const status = getItemStatus(item);
-                const row = `
-                    <tr>
-                        <td><strong>${item.nome}</strong></td>
-                        <td>${item.codigo_barras}</td>
-                        <td><strong>${item.quantidade_atual}</strong></td>
-                        <td>${item.quantidade_minima}</td>
-                        <td>${item.unidade_medida}</td>
-                        <td><span class="status-pill ${status.class}">${status.text}</span></td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        }
-        
-        // 3. LÓGICA PARA O MODAL DE ENTRADA
-        const modal = document.getElementById('entrada-modal');
-        const btnShowModal = document.getElementById('btn-show-entrada-modal');
-        const btnCloseModal = document.getElementById('btn-close-modal');
-        const selectFornecedor = document.getElementById('id_fornecedor');
-        const selectFuncionario = document.getElementById('id_funcionario');
-        const selectItem = document.getElementById('select_item');
-
-        btnShowModal.addEventListener('click', () => { modal.style.display = 'flex'; });
-        btnCloseModal.addEventListener('click', () => { modal.style.display = 'none'; });
-        window.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-
-        function populateSelects() {
-            // Limpa selects para evitar duplicação
-            selectFornecedor.innerHTML = '';
-            selectFuncionario.innerHTML = '';
-            selectItem.innerHTML = '';
-
-            fornecedores.forEach(f => {
-                selectFornecedor.innerHTML += `<option value="${f.id_fornecedor}">${f.nome_empresa}</option>`;
-            });
-            funcionarios.forEach(f => {
-                selectFuncionario.innerHTML += `<option value="${f.id_funcionario}">${f.nome}</option>`;
-            });
-            items.forEach(i => {
-                selectItem.innerHTML += `<option value="${i.id_item}">${i.nome} (Cód: ${i.codigo_barras})</option>`;
-            });
-        }
-
-
-        // 4. LÓGICA DO WIDGET DE CHAT IA
-
-        const chatFab = document.getElementById('chat-fab');
-        const chatWidgetContainer = document.getElementById('chat-widget-container');
-
-        chatFab.addEventListener('click', () => {
-            chatWidgetContainer.classList.toggle('hidden');
-        });
-
-        const chatBox = document.getElementById('chatBox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        
-        const BACKEND_URL = 'http://localhost:3000/ask-ia';
-
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') sendMessage();
-        });
-
-        function addMessage(text, sender) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}-message`;
-            messageDiv.innerText = text;
-            chatBox.appendChild(messageDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        async function sendMessage() {
-            const userText = userInput.value.trim();
-            if (!userText) return;
-
-            addMessage(userText, 'user');
-            userInput.value = '';
-
-            const thinkingMessage = document.createElement('div');
-            thinkingMessage.className = 'message ai-message';
-            thinkingMessage.innerText = '...';
-            chatBox.appendChild(thinkingMessage);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            // Atualiza o título e a ação do formulário do modal
+            modalTitle.innerText = `Retirar: ${ferramentaNome}`;
+            retirarForm.action = `/ferramentas/retirar/${ferramentaId}`;
             
-            try {
-                const response = await fetch(BACKEND_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userText }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Erro na comunicação com o servidor.');
-                }
-
-                const data = await response.json();
-                chatBox.removeChild(thinkingMessage);
-                addMessage(data.response, 'ai');
-
-            } catch (error) {
-                chatBox.removeChild(thinkingMessage);
-                addMessage('Desculpe, não consegui processar sua solicitação. Verifique se o servidor está ativo.', 'ai');
-                console.error('Erro:', error);
-            }
-        }
-        // 5. INICIALIZAÇÃO
-        populateInventoryTable();
-        populateSelects();
-
+            // Exibe o modal
+            modal.style.display = 'flex';
+        });
     });
-    </script>
-    
-</body>
-</html>
+
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+</script>

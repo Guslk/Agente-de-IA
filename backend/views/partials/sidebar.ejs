@@ -3,10 +3,10 @@
     <nav class="nav-menu">
         <ul>
             <li>
-                <a href="/" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'dashboard') ? 'active' : '' %>">
-                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
-                </a>
-            </li>
+    <a href="/" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'dashboard') ? 'active' : '' %>">
+        <i class="bi bi-tools"></i> Ferramentas
+    </a>
+</li>
             <li>
                 <a href="/itens" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'itens') ? 'active' : '' %>">
                     <i class="bi bi-box-seam"></i> Itens
@@ -27,11 +27,24 @@
                     <i class="bi bi-people-fill"></i> Funcionários
                 </a>
             </li>
+            
+            <li>
+                <a href="/manual" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'manual') ? 'active' : '' %>">
+                    <i class="bi bi-question-circle-fill"></i> Manual de Uso
+                </a>
+            </li>
+
             <li>
                 <a href="/relatorios" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'relatorios') ? 'active' : '' %>">
                     <i class="bi bi-bar-chart-fill"></i> Relatórios
                 </a>
             </li>
+            <li class="logout-link">
+                <a href="/logout">
+                    <i class="bi bi-box-arrow-left"></i> Sair do Sistema
+                </a>
+            </li>
         </ul>
     </nav>
 </aside>
+           

@@ -1,0 +1,47 @@
+<%- include('partials/header', { title: 'Histórico', paginaAtiva: '' }) %> <header class="header">
+    <h1 class="header-title">Histórico de Movimentações</h1>
+    <div class="user-profile">
+        <span>Bem-vindo, João</span>
+        <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Todas as Retiradas e Devoluções</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data e Hora</th>
+                    <th>Ferramenta</th>
+                    <th>Ação</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (historico.length > 0) { %>
+                    <% historico.forEach(reg => { %>
+                        <tr>
+                            <td><%= new Date(reg.data).toLocaleString('pt-BR') %></td>
+                            <td><strong><%= reg.ferramentaNome %></strong></td>
+                            <td>
+                                <% if (reg.tipo === 'Retirada') { %>
+                                    <span class="status-pill" style="background-color: var(--warning);"><%= reg.tipo %></span>
+                                <% } else { %>
+                                    <span class="status-pill" style="background-color: var(--success);"><%= reg.tipo %></span>
+                                <% } %>
+                            </td>
+                            <td><%= reg.responsavel %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="4" style="text-align: center;">Nenhum registro no histórico.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<%- include('partials/footer') %>

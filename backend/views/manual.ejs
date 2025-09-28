@@ -1,0 +1,30 @@
+<%- include('partials/header', { title: 'Manual de Uso', paginaAtiva: 'manual' }) %>
+
+<header class="header">
+    <h1 class="header-title">Manual de Uso</h1>
+    <div class="user-profile">
+        <span>Bem-vindo, João</span>
+        <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Como Utilizar o Sistema StockEx</h2>
+    </div>
+    <section class="inventory-table"> 
+        <p style="font-size: 1.1rem;">Olá! Esta página conterá o manual de uso completo da aplicação.</p>
+        <p style="margin-top: 15px;">Aqui você poderá adicionar textos, imagens e vídeos explicando cada funcionalidade do sistema, desde o cadastro de itens até a geração de relatórios.</p>
+        
+        <h3 style="margin-top: 30px; color: var(--primary-color);">Tópicos Futuros:</h3>
+        <ul style="margin-top: 10px; padding-left: 20px;">
+            <li>Como cadastrar um novo item</li>
+            <li>Como registrar entradas e saídas de estoque</li>
+            <li>Como gerenciar fornecedores e funcionários</li>
+            <li>Como interpretar os gráficos da página de relatórios</li>
+            <li>Como usar o assistente de IA para consultas rápidas</li>
+        </ul>
+    </section>
+</main>
+
+<%- include('partials/footer') %>   
