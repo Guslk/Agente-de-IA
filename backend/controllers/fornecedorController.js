@@ -1,5 +1,4 @@
 
-
 const Fornecedor = require('../models/Fornecedor');
 
 const fornecedorController = {
