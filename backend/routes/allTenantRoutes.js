@@ -6,34 +6,31 @@ const express = require('express');
 const router = express.Router();
 
 // --- IMPORTAÇÃO DAS ROTAS PROTEGIDAS ---
-// Este bloco estava em falta no seu ficheiro local.
 const dashboardRoutes = require('./dashboardRoutes');
 const itemRoutes = require('./itemRoutes');
 const fornecedorRoutes = require('./fornecedorRoutes');
 const funcionarioRoutes = require('./funcionarioRoutes');
 const movimentacaoRoutes = require('./movimentacaoRoutes');
 const relatorioRoutes = require('./relatorioRoutes');
+const historicoRoutes = require('./historicoRoutes'); // Adicionado
+const manualRoutes = require('./manualRoutes');     // Adicionado
 
 // --- REGISTO DAS ROTAS COM PREFIXOS ---
 
-// A rota base '/' é gerida pelo dashboard ou redireciona para ele.
+// A rota base '/' é gerida pelo dashboard.
 router.use('/', dashboardRoutes);
 
-// Todas as rotas em 'itemRoutes' serão acedidas com o prefixo '/itens'.
-// Exemplo: GET /itens/
+// Todas as rotas estão ativadas. Se o erro "argument handler must be a function"
+// voltar a aparecer, significa que um dos ficheiros de rotas ou controladores
+// importados acima contém um erro de exportação ou de sintaxe.
 router.use('/itens', itemRoutes);
-
-// Exemplo: GET /fornecedores/
 router.use('/fornecedores', fornecedorRoutes);
-
-// Exemplo: GET /funcionarios/
 router.use('/funcionarios', funcionarioRoutes);
-
-// Exemplo: GET /movimentacoes/
 router.use('/movimentacoes', movimentacaoRoutes);
-
-// Exemplo: GET /relatorios/
 router.use('/relatorios', relatorioRoutes);
+router.use('/historico', historicoRoutes); // Adicionado
+router.use('/manual', manualRoutes);     // Adicionado
+
 
 // Rota de fallback: Se um utilizador autenticado aceder à raiz ('/'),
 // redireciona-o para o dashboard para uma melhor experiência.
