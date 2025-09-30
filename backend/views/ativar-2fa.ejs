@@ -1,0 +1,28 @@
+<%- include('partials/header', { title: 'Ativar 2FA', paginaAtiva: '' }) %>
+
+<header class="header"></header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Ativar Verificação em Duas Etapas</h2>
+    </div>
+    <section class="inventory-table">
+        <p>1. Escaneie o QR Code abaixo com seu aplicativo (Google Authenticator, Authy, etc.).</p>
+        <img src="<%= qrCodeUrl %>" alt="QR Code para 2FA" style="border: 5px solid #fff; margin: 20px 0;">
+        <p style="margin-top: 20px;">2. Para confirmar, digite o código de 6 dígitos gerado pelo aplicativo.</p>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+            <p class="error-message"><%= error %></p>
+        <% } %>
+
+        <form action="/ativacao/verificar-2fa" method="POST" style="margin-top: 20px;">
+            <div class="form-group" style="max-width: 300px;">
+                <label for="token">Código de Verificação</label>
+                <input type="text" name="token" id="token" pattern="\d{6}" title="Digite um código de 6 dígitos" required>
+            </div>
+            <button type="submit" class="btn-primary">Ativar e Salvar</button>
+        </form>
+    </section>
+</main>
+
+<%- include('partials/footer') %>

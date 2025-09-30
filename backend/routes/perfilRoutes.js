@@ -1,0 +1,1 @@
+router.get('/ativar-2fa', perfilController.setup2FA);

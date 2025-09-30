@@ -61,6 +61,10 @@ app.use('/funcionarios', funcionarioRoutes);
 app.use('/relatorios', relatorioRoutes);
 app.use('/manual', manualRoutes);
 app.use('/historico', isAuthenticated, historicoRoutes);
+// server.js
+const ativacaoRoutes = require('./routes/ativacaoRoutes');
+// ...
+app.use('/ativacao', isAuthenticated, ativacaoRoutes);
 
 
 app.listen(PORT, () => {
