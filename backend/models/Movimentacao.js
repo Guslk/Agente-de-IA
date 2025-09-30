@@ -1,15 +1,47 @@
+// models/Movimentacao.js
 
+// Simulação do nosso banco de dados de movimentações
 const movimentacoes = [
-    { tipo: 'Entrada', data: '02/09/2025', item: 'SSD NVMe 256GB', qtd: 50, funcionario: 'João da Silva', detalhe: 'NF-e 123456' },
-    { tipo: 'Saída', data: '01/09/2025', item: 'Mouse Gamer Logitech G203', qtd: 5, funcionario: 'Maria Oliveira', detalhe: 'Setor de TI' },
-    { tipo: 'Entrada', data: '31/08/2025', item: 'Memória RAM DDR4 8GB', qtd: 20, funcionario: 'João da Silva', detalhe: 'NF-e 123123' },
-    { tipo: 'Saída', data: '30/08/2025', item: 'Teclado Dell KB216', qtd: 10, funcionario: 'Maria Oliveira', detalhe: 'Setor Administrativo' }
+    { id: 1, data: '2025-09-28T10:00:00', itemNome: 'Serra Circular Makita (Exemplo)', tipo: 'Saída', quantidade: 1, responsavel: 'Maria Oliveira' },
+    { id: 2, data: '2025-09-27T14:30:00', itemNome: 'Furadeira de Impacto (Exemplo)', tipo: 'Entrada', quantidade: 5, responsavel: 'João da Silva' },
 ];
+
+let proximoId = 3;
 
 const Movimentacao = {
     findAll: () => {
-        return movimentacoes;
-    }
+        // Retorna ordenado do mais recente para o mais antigo
+        return movimentacoes.sort((a, b) => new Date(b.data) - new Date(a.data));
+    },
+
+    // Função para registrar uma nova entrada de item
+    registrarEntrada: (item, dadosFormulario) => {
+        const novoRegistro = {
+            id: proximoId++,
+            data: new Date().toISOString(),
+            itemNome: item.nome,
+            tipo: 'Entrada',
+            quantidade: item.quantidade_atual,
+            responsavel: 'Sistema', // Futuramente, pegaremos o nome do usuário logado
+            detalhe: `NF: ${dadosFormulario.nota_fiscal_codigo || 'N/A'}`
+        };
+        movimentacoes.push(novoRegistro);
+        console.log("Nova movimentação de ENTRADA registrada:", novoRegistro);
+    },
+    registrarSaida: (item, quantidade, responsavel) => {
+    const novoRegistro = {
+        id: proximoId++,
+        data: new Date().toISOString(),
+        itemNome: item.nome,
+        tipo: 'Saída',
+        quantidade: quantidade,
+        responsavel: responsavel,
+        detalhe: 'Baixa de material'
+    };
+    movimentacoes.push(novoRegistro);
+    console.log("Nova movimentação de SAÍDA registrada:", novoRegistro);
+}
 };
+
 
 module.exports = Movimentacao;
