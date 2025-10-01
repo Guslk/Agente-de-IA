@@ -115,6 +115,11 @@ const Item = {
         
         console.error("Tentativa de retirada maior que o estoque atual.");
         return null; 
+    },
+    
+     getLowStockCount: () => {
+        const lowStockItems = items.filter(item => item.quantidade_atual < item.quantidade_minima);
+        return lowStockItems.length;
     }
 };
 

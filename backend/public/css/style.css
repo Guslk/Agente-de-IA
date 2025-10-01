@@ -818,3 +818,44 @@ body.auth-page {
 .filter-form .form-group {
     flex-grow: 1;
 }
+/* Estilos para a parte direita do header e notificações */
+.header {
+    /* Garante que o justify-content funcione */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.notification-icon {
+    position: relative;
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    background-color: var(--danger);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+}
+/* Estilos para destacar linhas da tabela de itens */
+.low-stock-row {
+    background-color: #fffbe6; /* Amarelo bem claro */
+    border-left: 4px solid var(--warning);
+}
+.out-of-stock-row {
+    background-color: #fff1f2; /* Vermelho bem claro */
+    border-left: 4px solid var(--danger);
+}

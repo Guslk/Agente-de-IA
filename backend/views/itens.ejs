@@ -1,10 +1,19 @@
 <%- include('partials/header', { title: 'Itens', paginaAtiva: 'itens' }) %>
 
 <header class="header">
-    <h1 class="header-title">Gerenciamento de Itens</h1>
-    <div class="user-profile">
-        <span>Bem-vindo, João</span>
-        <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+    <h1 class="header-title">Itens Cadastrados</h1>
+    
+    <div class="header-right">
+        <div class="notification-icon">
+            <i class="bi bi-bell-fill"></i>
+            <% if (lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
+        </div>
+        <div class="user-profile">
+            <span>Bem-vindo, João</span>
+            <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+        </div>
     </div>
 </header>
 
@@ -43,25 +52,41 @@
                 </tr>
             </thead>
             <tbody>
-                <% if (typeof items !== 'undefined' && items.length > 0) { %>
-                    <% items.forEach(item => { %>
-                        <tr>
-                            <td><strong><%= item.nome %></strong></td>
-                            <td><%= item.codigo_barras %></td>
-                            <td><%= item.quantidade_atual %></td>
-                            <td><%= item.unidade_medida %></td>
-                            <td>
-                                <button title="Registrar Saída" class="action-btn btn-saida-material" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-box-arrow-up"></i></button>
-                                <button title="Editar" class="action-btn btn-edit" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
-                                <form action="/itens/excluir/<%= item.id_item %>" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
-                                    <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
-                <% } %>
+                <tbody id="items-table-body">
+    <% if (typeof items !== 'undefined' && items.length > 0) { %>
+        <% items.forEach(item => { %>
+
+            <%# ======================================================= %>
+            <%# == LÓGICA FALTANTE ADICIONADA AQUI                   == %>
+            <%# == Define a classe da linha com base no status do estoque == %>
+            <%# ======================================================= %>
+            <%
+                let rowClass = '';
+                if (item.quantidade_atual === 0) {
+                    rowClass = 'out-of-stock-row';
+                } else if (item.quantidade_atual < item.quantidade_minima) {
+                    rowClass = 'low-stock-row';
+                }
+            %>
+
+            <tr class="<%= rowClass %>">
+                <td><strong><%= item.nome %></strong></td>
+                <td><%= item.codigo_barras %></td>
+                <td><%= item.quantidade_atual %></td>
+                <td><%= item.unidade_medida %></td>
+                <td>
+                    <button title="Registrar Saída" class="action-btn btn-saida-material" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-box-arrow-up"></i></button>
+                    <button title="Editar" class="action-btn btn-edit" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
+                    <form action="/itens/excluir/<%= item.id_item %>" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
+                        <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                    </form>
+                </td>
+            </tr>
+        <% }); %>
+    <% } else { %>
+        <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
+    <% } %>
+</tbody>
             </tbody>
         </table>
     </section>

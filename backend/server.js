@@ -7,8 +7,9 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 
-// Importação do Middleware
+// Importação dos Middlewares
 const isAuthenticated = require('./middleware/authMiddleware');
+const checkNotifications = require('./middleware/notificationMiddleware'); // << GARANTA QUE ESTA LINHA EXISTE
 
 // Importação de todas as rotas
 const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -19,7 +20,7 @@ const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
 const authRoutes = require('./routes/authRoutes');
 const manualRoutes = require('./routes/manualRoutes');
-const historicoRoutes = require('./routes/historicoRoutes');
+// ... e outras rotas que você tenha criado
 
 // ===================================================
 // 2. CONFIGURAÇÃO DO APP
@@ -40,19 +41,24 @@ app.use(express.json());
 
 // Configuração da Sessão
 app.use(session({
-    secret: 'seu-segredo-super-secreto', 
+    secret: 'seu-segredo-super-secreto',
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false, maxAge: 3600000 } 
+    cookie: { secure: false, maxAge: 3600000 }
 }));
 
+// ===================================================
+// 3. USO DAS ROTAS (ORDEM CORRETA)
+// ===================================================
 
+// PRIMEIRO: Rotas PÚBLICAS (não precisam de login)
 app.use('/', authRoutes);
 
-
+// SEGUNDO: A PARTIR DAQUI, TUDO É PROTEGIDO E TERÁ NOTIFICAÇÕES
 app.use(isAuthenticated);
+app.use(checkNotifications); // << GARANTA QUE ESTA LINHA EXISTE E ESTÁ AQUI
 
-
+// TERCEIRO: Rotas PROTEGIDAS (agora exigem login e terão acesso à variável de notificação)
 app.use('/', dashboardRoutes);
 app.use('/itens', itemRoutes);
 app.use('/movimentacoes', movimentacaoRoutes);
@@ -60,13 +66,11 @@ app.use('/fornecedores', fornecedorRoutes);
 app.use('/funcionarios', funcionarioRoutes);
 app.use('/relatorios', relatorioRoutes);
 app.use('/manual', manualRoutes);
-app.use('/historico', isAuthenticated, historicoRoutes);
-// server.js
-const ativacaoRoutes = require('./routes/ativacaoRoutes');
-// ...
-app.use('/ativacao', isAuthenticated, ativacaoRoutes);
+// ... e outras rotas protegidas
 
-
+// ===================================================
+// 4. INICIAR O SERVIDOR
+// ===================================================
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
