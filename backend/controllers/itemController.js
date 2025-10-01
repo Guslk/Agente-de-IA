@@ -4,19 +4,27 @@
 const Item = require('../models/item');
 
 const itemController = {
-    getAllItems: (req, res) => {    
+    getAllItems: (req, res) => {
         try {
-            const items = Item.findAll();
+            // 1. Pega os parâmetros da URL (ex: /itens?busca=ssd&filtroStatus=todos)
+            const { busca, filtroStatus } = req.query;
+
+            // 2. Passa os filtros para o Model
+            const items = Item.findAll({ busca, filtroStatus });
+            
+            // 3. Renderiza a view, passando a lista filtrada e também os termos da busca
+            //    para que os campos do formulário permaneçam preenchidos.
             res.render('itens', { 
                 items: items,
-                paginaAtiva: 'itens'
+                paginaAtiva: 'itens',
+                busca: busca || '',
+                filtroStatus: filtroStatus || 'todos'
             });
         } catch (error) {
             console.error("Erro ao buscar itens:", error);
             res.status(500).send("Ocorreu um erro ao buscar os itens.");
         }
     },
-
     createItem: (req, res) => {
         try {
             Item.create(req.body);

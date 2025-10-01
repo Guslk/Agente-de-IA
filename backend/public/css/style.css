@@ -803,3 +803,18 @@ body.auth-page {
 .btn-secondary:hover {
     opacity: 0.9;
 }
+.filter-section {
+    background-color: var(--card-bg);
+    padding: 20px 25px 10px 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    margin-bottom: 20px;
+}
+.filter-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+}
+.filter-form .form-group {
+    flex-grow: 1;
+}

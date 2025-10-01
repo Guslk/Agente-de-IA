@@ -15,6 +15,22 @@
             <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
         </div>
     </div>
+    <section class="filter-section">
+        <form action="/itens" method="GET" class="filter-form">
+            <div class="form-group">
+                <input type="text" name="busca" placeholder="Buscar por nome do item..." value="<%= typeof busca !== 'undefined' ? busca : '' %>">
+            </div>
+            <div class="form-group">
+                <select name="filtroStatus">
+                    <option value="todos" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'todos') ? 'selected' : '' %>>Todos os Status</option>
+                    <option value="normal" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'normal') ? 'selected' : '' %>>Estoque Normal</option>
+                    <option value="baixo" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'baixo') ? 'selected' : '' %>>Estoque Baixo</option>
+                    <option value="esgotado" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'esgotado') ? 'selected' : '' %>>Esgotado</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+        </form>
+    </section>
     <section class="inventory-table">
         <table>
             <thead>

@@ -10,8 +10,38 @@ const items = [
 ];
 
 const Item = {
-    findAll: () => {
-        return items;
+    findAll: (options = {}) => {
+        let itemsFiltrados = [...items]; // Começa com uma cópia de todos os itens
+
+        // 1. Aplica o filtro de BUSCA POR NOME, se existir
+        if (options.busca) {
+            itemsFiltrados = itemsFiltrados.filter(item => 
+                item.nome.toLowerCase().includes(options.busca.toLowerCase())
+            );
+        }
+
+        // 2. Aplica o filtro de STATUS DE ESTOQUE, se existir e não for 'todos'
+        if (options.filtroStatus && options.filtroStatus !== 'todos') {
+            switch (options.filtroStatus) {
+                case 'normal':
+                    itemsFiltrados = itemsFiltrados.filter(item => 
+                        item.quantidade_atual >= item.quantidade_minima && item.quantidade_atual > 0
+                    );
+                    break;
+                case 'baixo':
+                    itemsFiltrados = itemsFiltrados.filter(item => 
+                        item.quantidade_atual < item.quantidade_minima && item.quantidade_atual > 0
+                    );
+                    break;
+                case 'esgotado':
+                    itemsFiltrados = itemsFiltrados.filter(item => 
+                        item.quantidade_atual === 0
+                    );
+                    break;
+            }
+        }
+
+        return itemsFiltrados; // Retorna a lista já filtrada
     },
     
     // FUNÇÃO CORRIGIDA: Encontra um item pelo seu ID
