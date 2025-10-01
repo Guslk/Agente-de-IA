@@ -1,0 +1,35 @@
+<%- include('partials/header', { title: '2FA Ativado', paginaAtiva: '' }) %>
+
+<header class="header">
+    <h1 class="header-title">Segurança da Conta</h1>
+    <div class="header-right">
+        <div class="notification-icon">
+            <i class="bi bi-bell-fill"></i>
+            <% if (lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
+        </div>
+        <div class="user-profile">
+            <span>Bem-vindo, <%= user.nome %></span>
+            <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Ativação Concluída</h2>
+    </div>
+    <section class="inventory-table" style="text-align: center; padding: 40px;"> 
+        <i class="bi bi-check-circle-fill" style="font-size: 4rem; color: var(--success);"></i>
+        <h3 style="margin-top: 20px;">Verificação em Duas Etapas Ativada com Sucesso!</h3>
+        <p style="margin-top: 15px; max-width: 500px; margin-left: auto; margin-right: auto;">
+            Sua conta agora está protegida. A partir do próximo login, será necessário fornecer o código gerado pelo seu aplicativo autenticador.
+        </p>
+        <a href="/" class="btn-primary" style="margin-top: 30px; text-decoration: none;">
+            Voltar para o Dashboard
+        </a>
+    </section>
+</main>
+
+<%- include('partials/footer') %>

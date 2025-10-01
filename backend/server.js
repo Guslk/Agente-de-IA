@@ -20,6 +20,8 @@ const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
 const authRoutes = require('./routes/authRoutes');
 const manualRoutes = require('./routes/manualRoutes');
+const ativacaoRoutes = require('./routes/ativacaoRoutes');
+const historicoRoutes = require('./routes/historicoRoutes');
 // ... e outras rotas que você tenha criado
 
 // ===================================================
@@ -66,6 +68,8 @@ app.use('/fornecedores', fornecedorRoutes);
 app.use('/funcionarios', funcionarioRoutes);
 app.use('/relatorios', relatorioRoutes);
 app.use('/manual', manualRoutes);
+app.use('/ativacao', ativacaoRoutes);
+app.use('/historico', historicoRoutes);
 // ... e outras rotas protegidas
 
 // ===================================================
