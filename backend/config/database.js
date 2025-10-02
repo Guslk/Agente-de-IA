@@ -29,6 +29,27 @@ const connectMasterDB = async () => {
   }
 };
 
+
+const decrypt = (encryptedText) => {
+  // Divide o texto cifrado para extrair o IV e o texto cifrado.
+  const parts = encryptedText.split('.');
+  if (parts.length !== 2) {
+    throw new Error('Formato de texto criptografado inválido. Esperado "IV.textoCifrado".');
+  }
+
+  const iv = Buffer.from(parts[0], 'hex');
+  const encrypted = parts[1];
+
+  // Cria o objeto de descriptografia.
+  const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+
+  // Descriptografa o texto.
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+};
+
 // --- 2. FUNÇÃO PARA OBTER A CONEXÃO DO BANCO DE DADOS DO INQUILINO (MYSQL) ---
 const getTenantDB = async (tenantId) => {
   // Se já existir um pool para este inquilino no cache, retorna-o imediatamente.
@@ -51,7 +72,6 @@ const getTenantDB = async (tenantId) => {
 
 
     console.log(`[INFO] Tentando criar pool de conexões MySQL...`);
-
     // Monta a configuração com as credenciais MySQL obtidas do objeto `database`.
     const tenantConfig = {
       host: tenant.database.host,
@@ -61,12 +81,12 @@ const getTenantDB = async (tenantId) => {
       database: tenant.database.db_name,
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
     };
 
     // Cria um novo pool de conexões MySQL
     const pool = mysql.createPool(tenantConfig);
-    
+
     // Testa a conexão para garantir que as credenciais estão corretas
     const connection = await pool.getConnection();
     connection.release();
@@ -81,8 +101,8 @@ const getTenantDB = async (tenantId) => {
     console.error(`❌ Falha crítica ao obter a conexão do banco de dados para o inquilino '${tenantId}'.`);
     // Usando as credenciais do 'tenant' se o erro ocorrer após a busca
     if (error.config) {
-        const { host, database, user } = error.config;
-        console.error(`[DEBUG] Configuração utilizada (parcial):`, { host, database, user });
+      const { host, database, user } = error.config;
+      console.error(`[DEBUG] Configuração utilizada (parcial):`, { host, database, user });
     }
     console.error(`[DEBUG] Mensagem de erro do MySQL:`, error.message);
     throw error;

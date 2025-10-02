@@ -10,14 +10,14 @@ const MONGO_URI = process.env.MASTER_MONGO_URI;
 // Array com os dados dos clientes que você quer inserir
 const tenantsToSeed = [
   {
-    name: 'tecnotooling',
-    subdomain: 'tecnotooling',
-    database: {
-      host: 'shortline.proxy.rlwy.net',
-      port: 17027,
-      db_name: 'tecnotooling',
-      db_user: 'root',
-      db_password: 'KSAyIzcTgeVgxgUHgDFmThnpOrWafzpE',
+    name: '***',
+    subdomain: '****',
+    database: { 
+      host: '****',
+      port: 1111,
+      db_name: '**',
+      db_user: '***',
+      db_password: '**',
     },
   },
 ];
