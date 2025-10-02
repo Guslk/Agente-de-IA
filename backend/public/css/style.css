@@ -859,3 +859,37 @@ body.auth-page {
     background-color: #fff1f2; /* Vermelho bem claro */
     border-left: 4px solid var(--danger);
 }
+/* Estilos para a grade de KPIs */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.kpi-card {
+    background-color: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+}
+
+.kpi-card h3 {
+    font-size: 1rem;
+    color: var(--text-light);
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.kpi-card .kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.kpi-card .kpi-value.warning {
+    color: var(--warning);
+}
+
+.kpi-card .kpi-value.danger {
+    color: var(--danger);
+}

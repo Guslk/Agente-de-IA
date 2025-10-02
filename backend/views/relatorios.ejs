@@ -1,59 +1,89 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockEx - Relatórios</title>
+<%- include('partials/header', { title: 'Relatórios', paginaAtiva: 'relatorios' }) %>
 
-    <link rel="stylesheet" href="/css/style.css">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-</head>
-<body>
-    <div class="container">
-        <%- include('partials/sidebar') %>
-
-        <header class="header">
-    <h1 class="header-title">Relatórios</h1>
-    
+<header class="header">
+    <h1 class="header-title">Relatórios e Análises</h1>
     <div class="header-right">
         <div class="notification-icon">
             <i class="bi bi-bell-fill"></i>
-            <% if (lowStockCount > 0) { %>
-                <span class="notification-badge"><%= lowStockCount %></span>
-            <% } %>
+            <% if (lowStockCount > 0) { %><span class="notification-badge"><%= lowStockCount %></span><% } %>
         </div>
         <div class="user-profile">
-            <span>Bem-vindo, João</span>
-            <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+            <span>Bem-vindo, <%= user.nome %></span>
+            <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
         </div>
     </div>
 </header>
 
-        <main class="main-content">
-            <div class="reports-grid">
-                <div class="report-card">
-                    <h3>Movimentações por Mês</h3>
-                    <div class="placeholder-chart">Gráfico de Barras (Chart.js)</div>
-                </div>
-                <div class="report-card">
-                    <h3>Itens por Categoria</h3>
-                    <div class="placeholder-chart">Gráfico de Pizza (Chart.js)</div>
-                </div>
-                <div class="report-card">
-                    <h3>Valor do Estoque (Histórico)</h3>
-                    <div class="placeholder-chart">Gráfico de Linha (Chart.js)</div>
-                </div>
-                 <div class="report-card">
-                    <h3>Curva ABC de Itens</h3>
-                    <div class="placeholder-chart">Gráfico de Pareto (Chart.js)</div>
-                </div>
-            </div>
-        </main>
+<main class="main-content">
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <h3>Valor Total do Estoque</h3>
+            <span class="kpi-value"><%= kpis.valorTotalEstoque %></span>
+        </div>
+        <div class="kpi-card">
+            <h3>Itens Únicos (SKUs)</h3>
+            <span class="kpi-value"><%= kpis.totalItemsUnicos %></span>
+        </div>
+        <div class="kpi-card">
+            <h3>Itens com Estoque Baixo</h3>
+            <span class="kpi-value warning"><%= kpis.itensEstoqueBaixo %></span>
+        </div>
+        <div class="kpi-card">
+            <h3>Itens Esgotados</h3>
+            <span class="kpi-value danger"><%= kpis.itensEsgotados %></span>
+        </div>
     </div>
-</body>
-</html>
+
+    <div class="reports-grid" style="margin-top: 30px;">
+        <div class="report-card">
+            <h3>Itens por Categoria</h3>
+            <canvas id="itensPorCategoriaChart"></canvas>
+        </div>
+        <div class="report-card">
+            <h3>Outro Relatório</h3>
+            <div class="placeholder-chart">Espaço para um futuro gráfico</div>
+        </div>
+    </div>
+</main>
+
 <%- include('partials/footer') %>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 2. Pega os dados que o controller enviou e os transforma em um objeto JavaScript
+    const categoriaData = JSON.parse('<%- JSON.stringify(itensPorCategoriaData) %>');
+
+    // 3. Configura e desenha o gráfico de pizza
+    const ctx = document.getElementById('itensPorCategoriaChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut', // Tipo do gráfico: 'doughnut' (rosquinha) ou 'pie' (pizza)
+            data: {
+                labels: categoriaData.labels, // Ex: ['Hardware', 'Periféricos']
+                datasets: [{
+                    label: 'Nº de Itens',
+                    data: categoriaData.data, // Ex: [2, 2]
+                    backgroundColor: [
+                        '#3e4e88',
+                        '#fb8b24',
+                        '#85d874',
+                        '#e43f42',
+                        '#6c757d'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
