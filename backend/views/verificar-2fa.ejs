@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação | StockEx</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+</head>
+<body class="auth-page">
+    
+    <div class="login-card">
+        <div class="login-header">
+            <h1><i class="bi bi-shield-lock-fill"></i> Verificação</h1>
+            <p>Abra seu aplicativo autenticador e insira o código de 6 dígitos.</p>
+        </div>
+
+        <%# Bloco para exibir a mensagem de erro vinda do controller %>
+        <% if (typeof error !== 'undefined' && error) { %>
+            <p class="error-message"><%= error %></p>
+        <% } %>
+
+        <form action="/login/verificar-2fa" method="POST">
+            <div class="form-group">
+                <label for="token">Código de 6 Dígitos</label>
+                <input type="text" id="token" name="token" required 
+                       pattern="\d{6}" maxlength="6" 
+                       title="Digite o código de 6 números gerado pelo seu aplicativo."
+                       autocomplete="off"
+                       style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+            </div>
+            
+            <button type="submit" class="btn-login">Verificar</button>
+        </form>
+        
+        <div class="login-link">
+            <p><a href="/logout">Voltar para o login</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

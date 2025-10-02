@@ -1,13 +1,14 @@
+// controllers/movimentacaoController.js
 
 const Movimentacao = require('../models/Movimentacao');
 
 const movimentacaoController = {
     getAllMovimentacoes: (req, res) => {
-        const movimentacoes = Movimentacao.findAll();
+        const todasMovimentacoes = Movimentacao.findAll();
 
         res.render('movimentacoes', {
-            movimentacoes: movimentacoes,
-            paginaAtiva: 'movimentacoes' 
+            movimentacoes: todasMovimentacoes,
+            paginaAtiva: 'movimentacoes'
         });
     }
 };

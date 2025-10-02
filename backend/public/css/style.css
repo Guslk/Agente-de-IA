@@ -803,3 +803,93 @@ body.auth-page {
 .btn-secondary:hover {
     opacity: 0.9;
 }
+.filter-section {
+    background-color: var(--card-bg);
+    padding: 20px 25px 10px 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+    margin-bottom: 20px;
+}
+.filter-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+}
+.filter-form .form-group {
+    flex-grow: 1;
+}
+/* Estilos para a parte direita do header e notificações */
+.header {
+    /* Garante que o justify-content funcione */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.notification-icon {
+    position: relative;
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    background-color: var(--danger);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+}
+/* Estilos para destacar linhas da tabela de itens */
+.low-stock-row {
+    background-color: #fffbe6; /* Amarelo bem claro */
+    border-left: 4px solid var(--warning);
+}
+.out-of-stock-row {
+    background-color: #fff1f2; /* Vermelho bem claro */
+    border-left: 4px solid var(--danger);
+}
+/* Estilos para a grade de KPIs */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.kpi-card {
+    background-color: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--shadow-color);
+}
+
+.kpi-card h3 {
+    font-size: 1rem;
+    color: var(--text-light);
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.kpi-card .kpi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.kpi-card .kpi-value.warning {
+    color: var(--warning);
+}
+
+.kpi-card .kpi-value.danger {
+    color: var(--danger);
+}

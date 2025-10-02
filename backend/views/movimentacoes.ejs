@@ -1,81 +1,64 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockEx - Movimentações</title>
+<%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
 
-    <link rel="stylesheet" href="/css/style.css">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-</head>
-<body>
-    <div class="container">
-        <%- include('partials/sidebar') %>
-
-        <header class="header">
-            <h1 class="header-title">Histórico de Movimentações</h1>
-            <div class="user-profile">
-                <span>Bem-vindo, João</span>
-                <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
-            </div>
-        </header>
-
-        <main class="main-content">
-            <div class="main-header">
-                <h2>Entradas e Saídas</h2>
-                </div>
-            <section class="inventory-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Tipo</th>
-                            <th>Data</th>
-                            <th>Item</th>
-                            <th>Quantidade</th>
-                            <th>Funcionário</th>
-                            <th>Detalhes</th>
-                        </tr>
-                    </thead>
-                    <tbody id="movimentacoes-table-body">
-                        </tbody>
-                </table>
-            </section>
-        </main>
+<header class="header">
+    <h1 class="header-title">Entradas e Saídas de Itens</h1>
+    
+    <div class="header-right">
+        <div class="notification-icon">
+            <i class="bi bi-bell-fill"></i>
+            <% if (lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
+        </div>
+        <div class="user-profile">
+            <span>Bem-vindo, João</span>
+            <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+        </div>
     </div>
+</header>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const movimentacoes = [
-        { tipo: 'Entrada', data: '02/09/2025', item: 'SSD NVMe 256GB', qtd: 50, funcionario: 'João da Silva', detalhe: 'NF-e 123456' },
-        { tipo: 'Saída', data: '01/09/2025', item: 'Mouse Gamer Logitech G203', qtd: 5, funcionario: 'Maria Oliveira', detalhe: 'Setor de TI' },
-        { tipo: 'Entrada', data: '31/08/2025', item: 'Memória RAM DDR4 8GB', qtd: 20, funcionario: 'João da Silva', detalhe: 'NF-e 123123' },
-        { tipo: 'Saída', data: '30/08/2025', item: 'Teclado Dell KB216', qtd: 10, funcionario: 'Maria Oliveira', detalhe: 'Setor Administrativo' }
-    ];
+<main class="main-content">
+    <div class="main-header">
+        <h2>Todas as Entradas e Saídas de Itens</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Data e Hora</th>
+                    <th>Item</th>
+                    <th>Tipo</th>
+                    <th>Quantidade</th>
+                    <th>Responsável</th>
+                    <th>Detalhe</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (movimentacoes.length > 0) { %>
+                    <% movimentacoes.forEach(mov => { %>
+                        <tr>
+                            <td><%= new Date(mov.data).toLocaleString('pt-BR') %></td>
+                            <td><strong><%= mov.itemNome %></strong></td>
+                            <td>
+                                <% if (mov.tipo === 'Entrada') { %>
+                                    <span class="status-pill status-ok"><%= mov.tipo %></span>
+                                <% } else { %>
+                                    <span class="status-pill status-empty"><%= mov.tipo %></span>
+                                <% } %>
+                            </td>
+                            <td><%= mov.quantidade %></td>
+                            <td><%= mov.responsavel %></td>
+                            <td><%= mov.detalhe || 'N/A' %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" style="text-align: center;">Nenhuma movimentação registrada.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
 
-    const tableBody = document.getElementById('movimentacoes-table-body');
-    tableBody.innerHTML = '';
-    movimentacoes.forEach(m => {
-        const tipoClass = m.tipo === 'Entrada' ? 'color: var(--success);' : 'color: var(--danger);';
-        const tipoIcon = m.tipo === 'Entrada' ? 'bi-arrow-down-circle-fill' : 'bi-arrow-up-circle-fill';
-
-        const row = `
-            <tr>
-                <td><strong style="${tipoClass}"><i class="bi ${tipoIcon}"></i> ${m.tipo}</strong></td>
-                <td>${m.data}</td>
-                <td><strong>${m.item}</strong></td>
-                <td>${m.qtd}</td>
-                <td>${m.funcionario}</td>
-                <td>${m.detalhe}</td>
-            </tr>
-        `;
-        tableBody.innerHTML += row;
-    });
-});
-</script>
-</body>
-</html>
 <%- include('partials/footer') %>
