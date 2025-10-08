@@ -3,12 +3,7 @@
 <header class="header">
     <h1 class="header-title">Itens Cadastrados</h1>
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
-                <span class="notification-badge"><%= lowStockCount %></span>
-            <% } %>
-        </div>
+
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.nome %></span>
@@ -128,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
     const editForm = document.getElementById('edit-form');
     const btnsEdit = document.querySelectorAll('.btn-edit');
+    
 
     btnsEdit.forEach(btn => {
         btn.addEventListener('click', () => {

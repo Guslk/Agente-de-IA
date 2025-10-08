@@ -12,4 +12,8 @@ router.post('/login', authController.loginUser);
 
 router.get('/logout', authController.logoutUser);
 
+router.get('/login/verificar-2fa', authController.show2FAPage);
+router.post('/login/verificar-2fa', authController.verifyLogin2FA);
+
+
 module.exports = router;

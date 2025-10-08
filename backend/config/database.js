@@ -30,26 +30,6 @@ const connectMasterDB = async () => {
 };
 
 
-const decrypt = (encryptedText) => {
-  // Divide o texto cifrado para extrair o IV e o texto cifrado.
-  const parts = encryptedText.split('.');
-  if (parts.length !== 2) {
-    throw new Error('Formato de texto criptografado inválido. Esperado "IV.textoCifrado".');
-  }
-
-  const iv = Buffer.from(parts[0], 'hex');
-  const encrypted = parts[1];
-
-  // Cria o objeto de descriptografia.
-  const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
-
-  // Descriptografa o texto.
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-
-  return decrypted;
-};
-
 // --- 2. FUNÇÃO PARA OBTER A CONEXÃO DO BANCO DE DADOS DO INQUILINO (MYSQL) ---
 const getTenantDB = async (tenantId) => {
   // Se já existir um pool para este inquilino no cache, retorna-o imediatamente.

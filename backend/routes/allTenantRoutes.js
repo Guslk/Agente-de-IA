@@ -13,6 +13,7 @@ const funcionarioRoutes = require('./funcionarioRoutes');
 const movimentacaoRoutes = require('./movimentacaoRoutes');
 const relatorioRoutes = require('./relatorioRoutes');
 const historicoRoutes = require('./historicoRoutes'); // Adicionado
+const ativacaoRoutes = require('./ativacaoRoutes');
 const manualRoutes = require('./manualRoutes');     // Adicionado
 
 // --- REGISTO DAS ROTAS COM PREFIXOS ---
@@ -29,6 +30,7 @@ router.use('/funcionarios', funcionarioRoutes);
 router.use('/movimentacoes', movimentacaoRoutes);
 router.use('/relatorios', relatorioRoutes);
 router.use('/historico', historicoRoutes); // Adicionado
+router.use('/ativacao', ativacaoRoutes);
 router.use('/manual', manualRoutes);     // Adicionado
 
 

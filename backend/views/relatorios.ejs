@@ -3,10 +3,6 @@
 <header class="header">
     <h1 class="header-title">Relatórios e Análises</h1>
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (lowStockCount > 0) { %><span class="notification-badge"><%= lowStockCount %></span><% } %>
-        </div>
         <div class="user-profile">
             <span>Bem-vindo, <%= user.nome %></span>
             <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">

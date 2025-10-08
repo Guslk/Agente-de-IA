@@ -5,7 +5,7 @@
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const helmet = require('helmet');
+// const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
@@ -33,15 +33,15 @@ const startServer = async () => {
   // 1. Conecta-se à base de dados mestre antes de iniciar o servidor
   await connectMasterDB();
 
-  // --- MIDDLEWARES DE SEGURANÇA (devem vir primeiro) ---
-  app.use(helmet());
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 150, // Aumentado ligeiramente o limite
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use(limiter);
+//   // --- MIDDLEWARES DE SEGURANÇA (devem vir primeiro) ---
+//   app.use(helmet());
+//   const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000, // 15 minutos
+//     max: 150, // Aumentado ligeiramente o limite
+//     standardHeaders: true,
+//     legacyHeaders: false,
+//   });
+//   app.use(limiter);
 
   // --- MIDDLEWARES DE DESEMPENHO E UTILIDADE ---
   app.use(compression());

@@ -66,7 +66,46 @@ const authController = {
       // Após destruir a sessão com sucesso, redireciona o utilizador para a página de login
       res.redirect('/login');
     });
-  }
+  },
+
+  show2FAPage: (req, res) => {
+        if (!req.session.two_factor_pending) {
+            return res.redirect('/login');
+        }
+        res.render('verificar-2fa', { error: null });
+    },
+
+    verifyLogin2FA: (req, res) => {
+        if (!req.session.two_factor_pending) {
+            return res.redirect('/login');
+        }
+
+        const { token } = req.body;
+        const email = req.session.two_factor_user_email;
+        const user = Funcionario.findByEmail(email);
+
+        if (!user || !user.two_factor_secret) {
+            return res.render('verificar-2fa', { error: 'Usuário não encontrado ou 2FA não configurado.' });
+        }
+
+        const secret = user.two_factor_secret;
+        const verified = speakeasy.totp.verify({
+            secret: secret,
+            encoding: 'base32',
+            token: token,
+            window: 1
+        });
+
+        if (verified) {
+            req.session.loggedIn = true;
+            req.session.user = { email: email, nome: user.nome };
+            delete req.session.two_factor_pending;
+            delete req.session.two_factor_user_email;
+            res.redirect('/');
+        } else {
+            res.render('verificar-2fa', { error: 'Código inválido.' });
+        }
+    }
 };
 
 module.exports = authController;
