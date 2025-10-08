@@ -10,6 +10,10 @@ const dashboardController = require('../controllers/dashboardController');
 // pela função 'showDashboard' do controlador.
 router.get('/dashboard', dashboardController.showDashboard);
 
-// Exporta o router configurado para ser usado na aplicação principal.
+// NOVAS ROTAS para as ações de retirar e devolver
+router.post('/ferramentas/retirar/:id', dashboardController.retirarFerramenta);
+router.post('/ferramentas/devolver/:id', dashboardController.devolverFerramenta);
+router.post('/ferramentas/nova', dashboardController.createFerramenta);
+
 module.exports = router;
 

@@ -1,6 +1,6 @@
 // controllers/itemController.js
 
-const Item = require('../models/item');
+const Item = require('../models/Item');
 
 const itemController = {
     getAllItems: (req, res) => {
@@ -53,16 +53,7 @@ const itemController = {
         }
     },
 
-    registrarSaida: (req, res) => {
-        try {   
-            const { id } = req.params;
-            Item.darSaida(id, req.body);
-            res.redirect('/itens');
-        } catch (error) {
-            console.error("Erro ao registrar saída de item:", error);
-            res.status(500).send("Ocorreu um erro ao registrar a saída.");
-        }
-    }
+    
 };
 
 module.exports = itemController;
