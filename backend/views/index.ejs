@@ -1,4 +1,4 @@
-<%- include('partials/header', { title: 'Ferramentas', paginaAtiva: 'dashboard' }) %>
+<%- include('partials/header', { title: 'Ferramentas', paginaAtiva: 'ferramentas' }) %>
 
 <header class="header">
     <h1 class="header-title">Controle de Ferramentas</h1>
@@ -6,36 +6,43 @@
     <div class="header-right">
         <div class="notification-icon">
             <i class="bi bi-bell-fill"></i>
-            <% if (lowStockCount > 0) { %>
+            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
                 <span class="notification-badge"><%= lowStockCount %></span>
             <% } %>
         </div>
         <div class="user-profile">
-            <span>Bem-vindo, João</span>
-            <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
         </div>
     </div>
 </header>
 
 <main class="main-content">
     <div class="main-header">
-        <h2>Ferramentas Disponíveis para Retirada</h2>
-        <a href="/historico" class="btn-secondary">
-            <i class="bi bi-clock-history"></i> Ver Histórico
-        </a>
+        <h2>Ferramentas Disponíveis</h2>
+        <div class="action-buttons">
+            <button class="btn-entrada" id="btn-show-add-ferramenta-modal"><i class="bi bi-plus-circle-fill"></i> Nova Ferramenta</button>
+            <a href="/historico" class="btn-secondary">
+                <i class="bi bi-clock-history"></i> Ver Histórico
+            </a>
+        </div>
     </div>
     <section class="inventory-table">
         <table>
             <thead>
                 <tr>
+                    <th>Código</th>
                     <th>Nome da Ferramenta</th>
                     <th style="width: 150px; text-align: center;">Ação</th>
                 </tr>
             </thead>
             <tbody>
-                <% if (disponiveis.length > 0) { %>
+                <% if (typeof disponiveis !== 'undefined' && disponiveis.length > 0) { %>
                     <% disponiveis.forEach(ferramenta => { %>
                         <tr>
+                            <td><code><%= ferramenta.codigo %></code></td>
                             <td><strong><%= ferramenta.nome %></strong></td>
                             <td style="text-align: center;">
                                 <button class="btn-retirar" data-id="<%= ferramenta.id %>" data-nome="<%= ferramenta.nome %>">
@@ -45,7 +52,7 @@
                         </tr>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="2" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
+                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
                 <% } %>
             </tbody>
         </table>
@@ -58,6 +65,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>Código</th>
                     <th>Ferramenta</th>
                     <th>Retirado por</th>
                     <th>Data e Hora da Retirada</th>
@@ -65,9 +73,10 @@
                 </tr>
             </thead>
             <tbody>
-                 <% if (retiradas.length > 0) { %>
+                 <% if (typeof retiradas !== 'undefined' && retiradas.length > 0) { %>
                     <% retiradas.forEach(ferramenta => { %>
                         <tr>
+                            <td><code><%= ferramenta.codigo %></code></td>
                             <td><strong><%= ferramenta.nome %></strong></td>
                             <td><%= ferramenta.retiradoPor %></td>
                             <td><%= new Date(ferramenta.dataRetirada).toLocaleString('pt-BR') %></td>
@@ -81,7 +90,7 @@
                         </tr>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="4" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
+                    <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
                 <% } %>
             </tbody>
         </table>
@@ -97,8 +106,15 @@
         <form id="retirar-form" method="POST">
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="nome">Nome do Responsável pela Retirada:</label>
-                    <input type="text" id="nome" name="nome" required autocomplete="off">
+                    <label for="retirar-responsavel">Responsável pela Retirada</label>
+                    <select id="retirar-responsavel" name="nome" required>
+                        <option value="" disabled selected>Selecione um funcionário...</option>
+                        <% if (typeof funcionarios !== 'undefined' && funcionarios.length > 0) { %>
+                            <% funcionarios.forEach(func => { %>
+                                <option value="<%= func.nome %>"><%= func.nome %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
@@ -108,40 +124,60 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="add-ferramenta-modal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Ferramenta</h3>
+            <button class="close-button" id="btn-close-add-ferramenta-modal">&times;</button>
+        </div>
+        <form action="/ferramentas/nova" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="ferramenta-codigo">Código da Ferramenta</label>
+                    <input type="text" id="ferramenta-codigo" name="codigo" required placeholder="Ex: FUR-BOS-01">
+                </div>
+                <div class="form-group">
+                    <label for="ferramenta-nome">Nome da Ferramenta</label>
+                    <input type="text" id="ferramenta-nome" name="nome" required placeholder="Ex: Furadeira de Impacto Bosch">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Ferramenta</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <%- include('partials/footer') %>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('retirar-modal');
+    // Lógica do modal de RETIRADA
+    const retirarModal = document.getElementById('retirar-modal');
     const modalTitle = document.getElementById('modal-title');
     const retirarForm = document.getElementById('retirar-form');
     const btnCloseModal = document.getElementById('btn-close-modal');
     const btnsRetirar = document.querySelectorAll('.btn-retirar');
-
+    
     btnsRetirar.forEach(btn => {
         btn.addEventListener('click', () => {
             const ferramentaId = btn.dataset.id;
             const ferramentaNome = btn.dataset.nome;
-
-            // Atualiza o título e a ação do formulário do modal
             modalTitle.innerText = `Retirar: ${ferramentaNome}`;
             retirarForm.action = `/ferramentas/retirar/${ferramentaId}`;
-            
-            // Exibe o modal
-            modal.style.display = 'flex';
+            retirarModal.style.display = 'flex';
         });
     });
+    if (btnCloseModal) btnCloseModal.addEventListener('click', () => retirarModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === retirarModal) retirarModal.style.display = 'none'; });
 
-    if (btnCloseModal) {
-        btnCloseModal.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
+    // Lógica do modal de CADASTRO
+    const addFerramentaModal = document.getElementById('add-ferramenta-modal');
+    const btnShowAddFerramentaModal = document.getElementById('btn-show-add-ferramenta-modal');
+    const btnCloseAddFerramentaModal = document.getElementById('btn-close-add-ferramenta-modal');
 
-    window.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
+    if(btnShowAddFerramentaModal) btnShowAddFerramentaModal.addEventListener('click', () => addFerramentaModal.style.display = 'flex');
+    if(btnCloseAddFerramentaModal) btnCloseAddFerramentaModal.addEventListener('click', () => addFerramentaModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === addFerramentaModal) addFerramentaModal.style.display = 'none'; });
 });
 </script>

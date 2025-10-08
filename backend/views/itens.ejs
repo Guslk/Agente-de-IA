@@ -20,7 +20,7 @@
 
 <main class="main-content">
     <div class="main-header">
-        <h2>Todos os Itens Cadastrados</h2>
+        <h2>Catálogo de Itens</h2>
         <div class="action-buttons">
             <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
         </div>
@@ -46,9 +46,9 @@
             <thead>
                 <tr>
                     <th>Nome do Item</th>
-                    <th>Código de Barras</th>
                     <th>Qtd. Atual</th>
-                    <th>Unidade</th>
+                    <th>Departamento</th>
+                    <th>Localização</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -65,11 +65,10 @@
                         %>
                         <tr class="<%= rowClass %>">
                             <td><strong><%= item.nome %></strong></td>
-                            <td><%= item.codigo_barras %></td>
                             <td><%= item.quantidade_atual %></td>
-                            <td><%= item.unidade_medida %></td>
+                            <td><%= item.departamento %></td>
+                            <td><%= `${item.loc_corredor}-${item.loc_prateleira}-${item.loc_posicao}` %></td>
                             <td>
-                                <button title="Registrar Saída" class="action-btn btn-saida-material" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-box-arrow-up"></i></button>
                                 <button title="Editar" class="action-btn btn-edit" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
                                 <form action="/itens/excluir/<%= item.id_item %>" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
                                     <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
@@ -93,7 +92,30 @@
         </div>
         <form action="/itens/novo" method="POST">
             <div class="modal-body">
-                <div class="form-grid"><div class="form-group"><label for="nome">Nome do Item</label><input type="text" id="nome" name="nome" required></div><div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div><div class="form-group"><label for="quantidade_atual">Quantidade Inicial</label><input type="number" id="quantidade_atual" name="quantidade_atual" value="0" min="0" required></div><div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div><div class="form-group"><label for="preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="preco_unitario" name="preco_unitario" value="0.00" required></div><div class="form-group"><label for="categoria">Categoria</label><input type="text" id="categoria" name="categoria" placeholder="Ex: Hardware, Periféricos" required></div><div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div><div class="form-group"><label for="descricao">Descrição (Opcional)</label><input type="text" id="descricao" name="descricao"></div></div><hr style="margin: 20px 0;"><h4>Informações da Entrada</h4><div class="form-grid"><div class="form-group"><label for="nota_fiscal_codigo">Código da Nota Fiscal</label><input type="text" id="nota_fiscal_codigo" name="nota_fiscal_codigo"></div><div class="form-group"><label for="nota_fiscal_link">Link do PDF da Nota (Drive)</label><input type="url" id="nota_fiscal_link" name="nota_fiscal_link" placeholder="https://drive.google.com/..."></div></div>
+                <div class="form-grid">
+                    <div class="form-group"><label for="nome">Nome do Item</label><input type="text" id="nome" name="nome" required></div>
+                    <div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div>
+                    <div class="form-group"><label for="quantidade_atual">Quantidade Inicial</label><input type="number" id="quantidade_atual" name="quantidade_atual" value="0" min="0" required></div>
+                    <div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div>
+                    <div class="form-group"><label for="preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="preco_unitario" name="preco_unitario" value="0.00" required></div>
+                    <div class="form-group"><label for="categoria">Categoria</label><input type="text" id="categoria" name="categoria" placeholder="Ex: Hardware" required></div>
+                    <div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
+                    <div class="form-group"><label for="descricao">Descrição (Opcional)</label><input type="text" id="descricao" name="descricao"></div>
+                </div>
+                <hr style="margin: 20px 0;">
+                <h4>Finalidade e Localização</h4>
+                <div class="form-grid">
+                    <div class="form-group"><label for="departamento">Departamento</label><select id="departamento" name="departamento"><option value="Produção">Produção</option><option value="Serviços Gerais">Serviços Gerais</option><option value="Administrativo">Administrativo</option></select></div>
+                    <div class="form-group"><label for="loc_corredor">Corredor</label><input type="text" id="loc_corredor" name="loc_corredor" placeholder="Ex: A"></div>
+                    <div class="form-group"><label for="loc_prateleira">Prateleira</label><input type="text" id="loc_prateleira" name="loc_prateleira" placeholder="Ex: 04"></div>
+                    <div class="form-group"><label for="loc_posicao">Posição</label><input type="text" id="loc_posicao" name="loc_posicao" placeholder="Ex: 15"></div>
+                </div>
+                <hr style="margin: 20px 0;">
+                <h4>Informações da Entrada</h4>
+                <div class="form-grid">
+                    <div class="form-group"><label for="nota_fiscal_codigo">Código da Nota Fiscal</label><input type="text" id="nota_fiscal_codigo" name="nota_fiscal_codigo"></div>
+                    <div class="form-group"><label for="nota_fiscal_link">Link do PDF da Nota (Drive)</label><input type="url" id="nota_fiscal_link" name="nota_fiscal_link" placeholder="https://drive.google.com/..."></div>
+                </div>
             </div>
             <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Item</button></div>
         </form>
@@ -103,12 +125,30 @@
 <div class="modal-overlay" id="edit-item-modal">
     <div class="modal">
         <div class="modal-header"><h3>Editar Item</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST"><div class="modal-body"><div class="form-grid"><div class="form-group"><label for="edit-nome">Nome do Item</label><input type="text" id="edit-nome" name="nome" required></div><div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div><div class="form-group"><label for="edit-quantidade_atual">Quantidade Atual</label><input type="number" id="edit-quantidade_atual" name="quantidade_atual" min="0" required></div><div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div><div class="form-group"><label for="edit-preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="edit-preco_unitario" name="preco_unitario" required></div><div class="form-group"><label for="edit-categoria">Categoria</label><input type="text" id="edit-categoria" name="categoria" required></div><div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div><div class="form-group"><label for="edit-descricao">Descrição</label><input type="text" id="edit-descricao" name="descricao"></div></div></div><div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div></form>
+        <form id="edit-form" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label for="edit-nome">Nome do Item</label><input type="text" id="edit-nome" name="nome" required></div>
+                    <div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div>
+                    <div class="form-group"><label for="edit-quantidade_atual">Quantidade Atual</label><input type="number" id="edit-quantidade_atual" name="quantidade_atual" min="0" required></div>
+                    <div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div>
+                    <div class="form-group"><label for="edit-preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="edit-preco_unitario" name="preco_unitario" required></div>
+                    <div class="form-group"><label for="edit-categoria">Categoria</label><input type="text" id="edit-categoria" name="categoria" required></div>
+                    <div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
+                    <div class="form-group"><label for="edit-descricao">Descrição</label><input type="text" id="edit-descricao" name="descricao"></div>
+                </div>
+                <hr style="margin: 20px 0;">
+                <h4>Finalidade e Localização</h4>
+                <div class="form-grid">
+                    <div class="form-group"><label for="edit-departamento">Departamento</label><select id="edit-departamento" name="departamento"><option value="Produção">Produção</option><option value="Serviços Gerais">Serviços Gerais</option><option value="Administrativo">Administrativo</option></select></div>
+                    <div class="form-group"><label for="edit-loc_corredor">Corredor</label><input type="text" id="edit-loc_corredor" name="loc_corredor"></div>
+                    <div class="form-group"><label for="edit-loc_prateleira">Prateleira</label><input type="text" id="edit-loc_prateleira" name="loc_prateleira"></div>
+                    <div class="form-group"><label for="edit-loc_posicao">Posição</label><input type="text" id="edit-loc_posicao" name="loc_posicao"></div>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
+        </form>
     </div>
-</div>
-
-<div class="modal-overlay" id="saida-item-modal">
-    <div class="modal" style="max-width: 500px;"><div class="modal-header"><h3 id="saida-modal-title">Registrar Saída de Item</h3><button class="close-button" id="btn-close-saida-modal">&times;</button></div><form id="saida-form" method="POST"><div class="modal-body"><p>Item: <strong id="saida-item-nome"></strong></p><p style="margin-bottom: 20px;">Estoque Atual: <strong id="saida-item-estoque"></strong></p><div class="form-grid"><div class="form-group"><label for="saida-quantidade">Quantidade a Retirar</label><input type="number" id="saida-quantidade" name="quantidade" min="1" required></div><div class="form-group"><label for="saida-responsavel">Nome do Responsável</label><input type="text" id="saida-responsavel" name="responsavel" required></div></div></div><div class="modal-footer"><button type="submit" class="btn-primary">Confirmar Saída</button></div></form></div>
 </div>
 
 <%- include('partials/footer') %>
@@ -141,31 +181,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('edit-descricao').value = item.descricao;
             document.getElementById('edit-preco_unitario').value = item.preco_unitario;
             document.getElementById('edit-categoria').value = item.categoria;
+            document.getElementById('edit-departamento').value = item.departamento;
+            document.getElementById('edit-loc_corredor').value = item.loc_corredor;
+            document.getElementById('edit-loc_prateleira').value = item.loc_prateleira;
+            document.getElementById('edit-loc_posicao').value = item.loc_posicao;
             editModal.style.display = 'flex';
         });
     });
     if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
     window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
-
-    // Lógica para o modal de SAÍDA
-    const saidaModal = document.getElementById('saida-item-modal');
-    const btnCloseSaidaModal = document.getElementById('btn-close-saida-modal');
-    const saidaForm = document.getElementById('saida-form');
-    const btnsSaida = document.querySelectorAll('.btn-saida-material');
-
-    btnsSaida.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const item = JSON.parse(btn.dataset.item);
-            saidaForm.action = `/itens/saida/${item.id_item}`;
-            document.getElementById('saida-item-nome').innerText = item.nome;
-            document.getElementById('saida-item-estoque').innerText = item.quantidade_atual;
-            const quantidadeInput = document.getElementById('saida-quantidade');
-            quantidadeInput.max = item.quantidade_atual;
-            quantidadeInput.value = 1;
-            saidaModal.style.display = 'flex';
-        });
-    });
-    if(btnCloseSaidaModal) btnCloseSaidaModal.addEventListener('click', () => saidaModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === saidaModal) saidaModal.style.display = 'none'; });
 });
 </script>

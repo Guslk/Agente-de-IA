@@ -1,6 +1,6 @@
 // models/Relatorio.js
 
-const Item = require('./item'); // Importamos o model de Itens para usar seus dados
+const Item = require('./Item'); // Importamos o model de Itens para usar seus dados
 
 const Relatorio = {
     // Função que calcula os principais indicadores (KPIs)

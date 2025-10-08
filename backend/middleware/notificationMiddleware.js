@@ -1,6 +1,6 @@
 // middleware/notificationMiddleware.js
 
-const Item = require('../models/item');
+const Item = require('../models/Item');
 
 const checkNotifications = (req, res, next) => {
     // res.locals é um objeto que passa dados para as views (arquivos .ejs)

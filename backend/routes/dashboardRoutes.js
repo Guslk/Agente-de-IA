@@ -10,5 +10,6 @@ router.get('/', dashboardController.showDashboard);
 // NOVAS ROTAS para as ações de retirar e devolver
 router.post('/ferramentas/retirar/:id', dashboardController.retirarFerramenta);
 router.post('/ferramentas/devolver/:id', dashboardController.devolverFerramenta);
+router.post('/ferramentas/nova', dashboardController.createFerramenta);
 
 module.exports = router;
