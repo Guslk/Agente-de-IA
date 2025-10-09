@@ -1,15 +1,18 @@
 // controllers/itemController.js
 
 const Item = require('../models/Item');
+const Departamento = require('../models/Departamento');
 
 const itemController = {
     getAllItems: (req, res) => {
         try {
             const { busca, filtroStatus } = req.query;
             const items = Item.findAll({ busca, filtroStatus });
+            const departamentos = Departamento.findAll();
             
             res.render('itens', { 
                 items: items,
+                departamentos: departamentos,
                 paginaAtiva: 'itens',
                 busca: busca || '',
                 filtroStatus: filtroStatus || 'todos',

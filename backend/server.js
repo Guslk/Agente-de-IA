@@ -22,7 +22,8 @@ const authRoutes = require('./routes/authRoutes');
 const manualRoutes = require('./routes/manualRoutes');
 const ativacaoRoutes = require('./routes/ativacaoRoutes');
 const historicoRoutes = require('./routes/historicoRoutes');
-// ... e outras rotas que você tenha criado
+const departamentoRoutes = require('./routes/departamentoRoutes');
+
 
 // ===================================================
 // 2. CONFIGURAÇÃO DO APP
@@ -70,7 +71,8 @@ app.use('/relatorios', relatorioRoutes);
 app.use('/manual', manualRoutes);
 app.use('/ativacao', ativacaoRoutes);
 app.use('/historico', historicoRoutes);
-// ... e outras rotas protegidas
+app.use('/departamentos', isAuthenticated, departamentoRoutes);
+
 
 // ===================================================
 // 4. INICIAR O SERVIDOR
