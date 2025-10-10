@@ -23,6 +23,7 @@ const manualRoutes = require('./routes/manualRoutes');
 const ativacaoRoutes = require('./routes/ativacaoRoutes');
 const historicoRoutes = require('./routes/historicoRoutes');
 const departamentoRoutes = require('./routes/departamentoRoutes');
+const materiaPrimaRoutes = require('./routes/materiaPrimaRoutes');
 
 
 // ===================================================
@@ -72,6 +73,7 @@ app.use('/manual', manualRoutes);
 app.use('/ativacao', ativacaoRoutes);
 app.use('/historico', historicoRoutes);
 app.use('/departamentos', isAuthenticated, departamentoRoutes);
+app.use('/materiais', isAuthenticated, materiaPrimaRoutes);
 
 
 // ===================================================

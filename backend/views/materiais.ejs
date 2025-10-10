@@ -1,0 +1,176 @@
+<%- include('partials/header', { title: 'Barras e Chapas', paginaAtiva: 'materiais' }) %>
+
+<header class="header">
+    <h1 class="header-title">Estoque de Barras e Chapas</h1>
+    <div class="header-right">
+        <div class="notification-icon">
+            <i class="bi bi-bell-fill"></i>
+            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
+        </div>
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Estoque de Matéria-Prima</h2>
+        <div class="action-buttons">
+            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Material</button>
+        </div>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Material / Descrição</th>
+                    <th>Dimensões Atuais</th>
+                    <th>Localização</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof materiais !== 'undefined' && materiais.length > 0) { %>
+                    <% materiais.forEach(mp => { %>
+                        <tr>
+                            <td><%= mp.tipo.charAt(0).toUpperCase() + mp.tipo.slice(1) %></td>
+                            <td><strong><%= mp.material %></strong><br><small><%= mp.descricao %></small></td>
+                            <td>
+                                <% if (mp.tipo === 'barra') { %>
+                                    Comprimento: <%= mp.comprimento %> m
+                                <% } else { %>
+                                    <%= mp.comprimento %> m x <%= mp.largura %> m
+                                <% } %>
+                            </td>
+                            <td><%= mp.loc_fisica %></td>
+                            <td>
+                                <button class="btn-retirar btn-consumir" data-material='<%= JSON.stringify(mp) %>'>
+                                    <i class="bi bi-scissors"></i> Consumir
+                                </button>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhum material em estoque.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<div class="modal-overlay" id="add-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Adicionar Novo Material</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
+        <form action="/materiais/novo" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Material</label>
+                        <select id="tipo" name="tipo"><option value="barra">Barra</option><option value="chapa">Chapa</option></select>
+                    </div>
+                    <div class="form-group"><label for="material">Material</label><input type="text" id="material" name="material" placeholder="Ex: Aço 1020" required></div>
+                    <div class="form-group" style="grid-column: 1 / -1;"><label for="descricao">Descrição</label><input type="text" id="descricao" name="descricao" placeholder="Ex: Barra Redonda 1 polegada" required></div>
+                    <div class="form-group"><label for="comprimento">Comprimento (metros)</label><input type="number" step="0.01" id="comprimento" name="comprimento" required></div>
+                    <div class="form-group" id="largura-group" style="display: none;"><label for="largura">Largura (metros)</label><input type="number" step="0.01" id="largura" name="largura"></div>
+                    <div class="form-group"><label for="loc_fisica">Localização Física</label><input type="text" id="loc_fisica" name="loc_fisica" placeholder="Ex: Corredor C-5"></div>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Material</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="consumir-modal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header"><h3 id="consumir-modal-title">Consumir Material</h3><button class="close-button" id="btn-close-consumir-modal">&times;</button></div>
+        <form id="consumir-form" method="POST">
+            <div class="modal-body">
+                <p>Estoque Atual: <strong id="consumir-dimensoes"></strong></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Informe as dimensões da peça que será retirada:</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="consumir-comprimento">Comprimento da Peça</label>
+                        <input type="number" step="0.01" id="consumir-comprimento" name="comprimento" required>
+                    </div>
+                    <div class="form-group" id="consumir-largura-group">
+                        <label for="consumir-largura">Largura da Peça</label>
+                        <input type="number" step="0.01" id="consumir-largura" name="largura">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="consumir-responsavel">Responsável</label>
+                    <select id="consumir-responsavel" name="responsavel" required>
+                        <option value="" disabled selected>Selecione...</option>
+                        <% if(typeof funcionarios !== 'undefined') { %>
+                            <% funcionarios.forEach(func => { %>
+                                <option value="<%= func.nome %>"><%= func.nome %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Confirmar Consumo</button></div>
+        </form>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Lógica para modal de ADICIONAR
+    const addModal = document.getElementById('add-modal');
+    const btnShowAddModal = document.getElementById('btn-show-add-modal');
+    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
+    const tipoSelect = document.getElementById('tipo');
+    const larguraGroup = document.getElementById('largura-group');
+
+    if(tipoSelect) {
+        tipoSelect.addEventListener('change', () => {
+            larguraGroup.style.display = tipoSelect.value === 'chapa' ? 'flex' : 'none';
+        });
+    }
+    if(btnShowAddModal) btnShowAddModal.addEventListener('click', () => {
+        // Garante que o campo de largura esteja oculto ao abrir o modal
+        larguraGroup.style.display = tipoSelect.value === 'chapa' ? 'flex' : 'none';
+        addModal.style.display = 'flex';
+    });
+    if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+
+    // Lógica para modal de CONSUMIR
+    const consumirModal = document.getElementById('consumir-modal');
+    const btnCloseConsumirModal = document.getElementById('btn-close-consumir-modal');
+    const consumirForm = document.getElementById('consumir-form');
+    const btnsConsumir = document.querySelectorAll('.btn-consumir');
+
+    btnsConsumir.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const material = JSON.parse(btn.dataset.material);
+            consumirForm.action = `/materiais/consumir/${material.id}`;
+            document.getElementById('consumir-modal-title').innerText = `Consumir: ${material.descricao}`;
+            let dimensoes = `${material.comprimento} m`;
+            if (material.tipo === 'chapa') {
+                dimensoes += ` x ${material.largura} m`;
+            }
+            document.getElementById('consumir-dimensoes').innerText = dimensoes;
+            document.getElementById('consumir-comprimento').max = material.comprimento;
+            
+            // Mostra ou esconde o campo de largura no modal de consumo
+            const consumirLarguraGroup = document.getElementById('consumir-largura-group');
+            consumirLarguraGroup.style.display = material.tipo === 'chapa' ? 'flex' : 'none';
+            
+            consumirModal.style.display = 'flex';
+        });
+    });
+    if(btnCloseConsumirModal) btnCloseConsumirModal.addEventListener('click', () => consumirModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === consumirModal) consumirModal.style.display = 'none'; });
+});
+</script>
