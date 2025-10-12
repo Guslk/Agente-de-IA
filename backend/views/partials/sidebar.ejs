@@ -3,10 +3,10 @@
     <nav class="nav-menu">
         <ul>
             <li>
-    <a href="/" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'ferramentas') ? 'active' : '' %>">
-        <i class="bi bi-tools"></i> Ferramentas
-    </a>
-</li>
+                <a href="/" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'ferramentas') ? 'active' : '' %>">
+                    <i class="bi bi-tools"></i> Ferramentas
+                </a>
+            </li>
             <li>
                 <a href="/itens" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'itens') ? 'active' : '' %>">
                     <i class="bi bi-box-seam"></i> Itens
@@ -15,6 +15,11 @@
             <li>
                 <a href="/movimentacoes" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'movimentacoes') ? 'active' : '' %>">
                     <i class="bi bi-arrow-down-up"></i> Movimentações
+                </a>
+            </li>
+            <li>
+                <a href="/materiais" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'materiais') ? 'active' : '' %>">
+                    <i class="bi bi-stack"></i> Barras e Chapas
                 </a>
             </li>
             <li>
@@ -27,18 +32,17 @@
                     <i class="bi bi-people-fill"></i> Funcionários
                 </a>
             </li>
-            
             <li>
                 <a href="/manual" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'manual') ? 'active' : '' %>">
                     <i class="bi bi-question-circle-fill"></i> Manual de Uso
                 </a>
             </li>
-
             <li>
                 <a href="/relatorios" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'relatorios') ? 'active' : '' %>">
                     <i class="bi bi-bar-chart-fill"></i> Relatórios
                 </a>
             </li>
+
             <li class="logout-link">
                 <a href="/logout">
                     <i class="bi bi-box-arrow-left"></i> Sair do Sistema
@@ -47,4 +51,3 @@
         </ul>
     </nav>
 </aside>
-           

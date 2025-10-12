@@ -5,10 +5,15 @@
     <div class="header-right">
         <div class="notification-icon">
             <i class="bi bi-bell-fill"></i>
+            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
         </div>
         <div class="user-profile">
-            <span>Bem-vindo, <%= currentUser.nome %></span>
-            <img src="https://i.pravatar.cc/40?u=<%= currentUser.email %>" alt="Avatar">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
         </div>
     </div>
 </header>
@@ -19,57 +24,136 @@
         <div class="main-header" style="margin-bottom: 15px;">
             <h2>Meu Perfil</h2>
         </div>
-        <p><strong>Nome:</strong> <%= currentUser.nome %></p>
-        <p><strong>Email:</strong> <%= currentUser.email %></p>
-        <div style="margin-top: 20px;">
-            <% if (currentUser.two_factor_enabled) { %>
-                <p style="color: var(--success); font-weight: bold;">
-                    <i class="bi bi-shield-check-fill"></i> Verificação em duas etapas está ATIVA.
-                </p>
-            <% } else { %>
-                <p style="margin-bottom: 10px;">A verificação em duas etapas está desativada. Ative para maior segurança.</p>
-                <a href="/ativacao/ativar-2fa" class="btn-primary" style="margin-top: 10px; text-decoration: none;">
-                    <i class="bi bi-shield-lock-fill"></i> Ativar Verificação em Duas Etapas
-                </a>
-            <% } %>
-        </div>
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+            <p><strong>Nome:</strong> <%= currentUser.nome %></p>
+            <p><strong>Email:</strong> <%= currentUser.email %></p>
+            <div style="margin-top: 20px;">
+                <% if (currentUser.two_factor_enabled) { %>
+                    <p style="color: var(--success); font-weight: bold;">
+                        <i class="bi bi-shield-check-fill"></i> Verificação em duas etapas está ATIVA.
+                    </p>
+                <% } else { %>
+                    <p style="margin-bottom: 15px;">A verificação em duas etapas está desativada. Ative para maior segurança.</p>
+                    <a href="/ativacao/ativar-2fa" class="btn-primary" style="margin-top: 10px; text-decoration: none;">
+                        <i class="bi bi-shield-lock-fill"></i> Ativar Verificação em Duas Etapas
+                    </a>
+                <% } %>
+            </div>
+        <% } %>
     </section>
 
     <div class="main-header">
         <h2>Todos os Funcionários Cadastrados</h2>
         <div class="action-buttons">
-            <button class="btn-entrada"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Funcionário</button>
+            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Funcionário</button>
         </div>
     </div>
     <section class="inventory-table">
         <table>
             <thead>
                 <tr>
+                    <th>Foto</th>
                     <th>Nome</th>
                     <th>Cargo</th>
                     <th>Email</th>
+                    <th>Nível de Acesso</th>
                     <th>Ações</th>
                 </tr>
             </thead>
-            <tbody id="funcionarios-table-body">
+            <tbody>
                 <% if (typeof funcionarios !== 'undefined' && funcionarios.length > 0) { %>
                     <% funcionarios.forEach(f => { %>
                         <tr>
+                            <td><img src="<%= f.foto_url %>" alt="Avatar" class="avatar-img"></td>
                             <td><strong><%= f.nome %></strong></td>
                             <td><%= f.cargo %></td>
                             <td><%= f.email %></td>
+                            <td><%= f.nivel_acesso %></td>
                             <td>
-                                <button title="Editar" class="action-btn"><i class="bi bi-pencil-square"></i></button>
-                                <button title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                                <button title="Editar" class="action-btn btn-edit" data-funcionario='<%= JSON.stringify(f) %>'>
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <form action="/funcionarios/excluir/<%= f.id_funcionario %>" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza?');">
+                                    <button type="submit" title="Excluir" class="action-btn danger">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="4" style="text-align: center;">Nenhum funcionário encontrado.</td></tr>
+                    <tr><td colspan="6" style="text-align: center;">Nenhum funcionário encontrado.</td></tr>
                 <% } %>
             </tbody>
         </table>
     </section>
 </main>
 
+<div class="modal-overlay" id="add-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Adicionar Novo Funcionário</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
+        <form action="/funcionarios/novo" method="POST">
+            <div class="modal-body"><div class="form-grid">
+                <div class="form-group"><label for="nome">Nome Completo</label><input type="text" id="nome" name="nome" required></div>
+                <div class="form-group"><label for="cargo">Cargo</label><input type="text" id="cargo" name="cargo" required></div>
+                <div class="form-group"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+                <div class="form-group"><label for="password">Senha</label><input type="password" id="password" name="password" required></div>
+                <div class="form-group"><label for="nivel_acesso">Nível de Acesso</label><select id="nivel_acesso" name="nivel_acesso"><option value="Operador">Operador</option><option value="Admin">Admin</option></select></div>
+                <div class="form-group"><label for="foto_url">URL da Foto</label><input type="url" id="foto_url" name="foto_url" placeholder="https://..."></div>
+            </div></div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Funcionário</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Editar Funcionário</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
+        <form id="edit-form" method="POST">
+            <div class="modal-body"><div class="form-grid">
+                <div class="form-group"><label for="edit-nome">Nome Completo</label><input type="text" id="edit-nome" name="nome" required></div>
+                <div class="form-group"><label for="edit-cargo">Cargo</label><input type="text" id="edit-cargo" name="cargo" required></div>
+                <div class="form-group"><label for="edit-email">Email</label><input type="email" id="edit-email" name="email" required></div>
+                <div class="form-group"><label for="edit-password">Nova Senha</label><input type="password" id="edit-password" name="password" placeholder="Deixe em branco para não alterar"></div>
+                <div class="form-group"><label for="edit-nivel_acesso">Nível de Acesso</label><select id="edit_nivel_acesso" name="nivel_acesso"><option value="Operador">Operador</option><option value="Admin">Admin</option></select></div>
+                <div class="form-group"><label for="edit-foto_url">URL da Foto</label><input type="url" id="edit-foto_url" name="foto_url"></div>
+            </div></div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
+        </form>
+    </div>
+</div>
+
 <%- include('partials/footer') %>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Lógica para o modal de ADICIONAR
+    const addModal = document.getElementById('add-modal');
+    const btnShowAddModal = document.getElementById('btn-show-add-modal');
+    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
+    if(btnShowAddModal) btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
+    if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+
+    // Lógica para o modal de EDITAR
+    const editModal = document.getElementById('edit-modal');
+    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+    const editForm = document.getElementById('edit-form');
+    const btnsEdit = document.querySelectorAll('.btn-edit');
+
+    btnsEdit.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const funcionario = JSON.parse(btn.dataset.funcionario);
+            editForm.action = `/funcionarios/editar/${funcionario.id_funcionario}`;
+            document.getElementById('edit-nome').value = funcionario.nome;
+            document.getElementById('edit-cargo').value = funcionario.cargo;
+            document.getElementById('edit-email').value = funcionario.email;
+            document.getElementById('edit_nivel_acesso').value = funcionario.nivel_acesso;
+            document.getElementById('edit-foto_url').value = funcionario.foto_url;
+            editModal.style.display = 'flex';
+        });
+    });
+    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+});
+</script>

@@ -17,6 +17,7 @@
         <h2>Catálogo de Itens</h2>
         <div class="action-buttons">
             <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
+            <button class="btn-secondary" id="btn-show-dpto-modal"><i class="bi bi-gear-fill"></i> Gerenciar Departamentos</button>
         </div>
     </div>
     
@@ -173,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
     const editForm = document.getElementById('edit-form');
     const btnsEdit = document.querySelectorAll('.btn-edit');
-
     btnsEdit.forEach(btn => {
         btn.addEventListener('click', () => {
             const item = JSON.parse(btn.dataset.item);
@@ -202,5 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
     window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+    
+    // Lógica para o modal de DEPARTAMENTOS
+    const dptoModal = document.getElementById('dpto-modal');
+    const btnShowDptoModal = document.getElementById('btn-show-dpto-modal');
+    const btnCloseDptoModal = document.getElementById('btn-close-dpto-modal');
+    if(btnShowDptoModal) btnShowDptoModal.addEventListener('click', () => dptoModal.style.display = 'flex');
+    if(btnCloseDptoModal) btnCloseDptoModal.addEventListener('click', () => dptoModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === dptoModal) dptoModal.style.display = 'none'; });
 });
 </script>

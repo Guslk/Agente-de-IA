@@ -893,3 +893,9 @@ body.auth-page {
 .kpi-card .kpi-value.danger {
     color: var(--danger);
 }
+.avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
