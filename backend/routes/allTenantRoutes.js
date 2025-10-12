@@ -7,6 +7,7 @@ const router = express.Router();
 
 // --- IMPORTAÇÃO DAS ROTAS PROTEGIDAS ---
 const dashboardRoutes = require('./dashboardRoutes');
+
 const itemRoutes = require('./itemRoutes');
 const fornecedorRoutes = require('./fornecedorRoutes');
 const funcionarioRoutes = require('./funcionarioRoutes');
@@ -24,7 +25,8 @@ router.use('/', dashboardRoutes);
 // Todas as rotas estão ativadas. Se o erro "argument handler must be a function"
 // voltar a aparecer, significa que um dos ficheiros de rotas ou controladores
 // importados acima contém um erro de exportação ou de sintaxe.
-router.use('/itens', itemRoutes);
+router.use(itemRoutes); 
+// router.use('/itens', itemRoutes);
 router.use('/fornecedores', fornecedorRoutes);
 router.use('/funcionarios', funcionarioRoutes);
 router.use('/movimentacoes', movimentacaoRoutes);

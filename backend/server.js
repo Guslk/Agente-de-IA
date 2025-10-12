@@ -15,18 +15,25 @@ require('dotenv').config();
 // Conexão com a base de dados mestre
 const { connectMasterDB } = require('./config/database');
 
-// Middlewares
-const tenantIdentifier = require('./middleware/tenantIdentifier');
-const isAuthenticated = require('./middleware/authMiddleware');
+
+
+
 
 // Roteadores
 const authRoutes = require('./routes/authRoutes');
 // CORREÇÃO: A linha abaixo estava a importar 'authRoutes' por engano.
 const allTenantRoutes = require('./routes/allTenantRoutes');
 
+// Middlewares
+const tenantIdentifier = require('./middleware/tenantIdentifier');
+const isAuthenticated = require('./middleware/authMiddleware');
+
+
+
 // --- CONFIGURAÇÃO DA APLICAÇÃO ---
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 
 // Função principal assíncrona
 const startServer = async () => {

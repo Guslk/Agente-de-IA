@@ -1,49 +1,65 @@
-// 'use strict';
+// models/index.js (Versão Final e Corrigida)
+'use strict';
 
-// const fs = require('fs');
-// const path = require('path');
-// const Sequelize = require('sequelize');
-// const basename = path.basename(__filename);
-// const env = process.env.NODE_ENV || 'development';
-// const config = require(__dirname + '/../config/config.json')[env]; // <-- Atenção a este caminho
-// const db = {};
+const fs = require('fs');
+const path = require('path');
+const Sequelize = require('sequelize');
+const basename = path.basename(__filename);
 
-// // 1. INICIALIZA A CONEXÃO COM O BANCO DE DADOS
-// let sequelize;
-// if (config.use_env_variable) {
-//   sequelize = new Sequelize(process.env[config.use_env_variable], config);
-// } else {
-//   sequelize = new Sequelize(config.database, config.username, config.password, config);
-// }
+const db = {};
 
-// // 2. CARREGA TODOS OS ARQUIVOS DE MODELO DA PASTA ATUAL
-// fs
-//   .readdirSync(__dirname)
-//   .filter(file => {
-//     return (
-//       file.indexOf('.') !== 0 &&
-//       file !== basename &&
-//       file.slice(-3) === '.js'
-//     );
-//   })
-//   .forEach(file => {
-//     // Para cada arquivo, importa o modelo e o adiciona ao objeto 'db'
-//     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-//     db[model.name] = model;
-//   });
+// Carrega todas as definições de modelo do diretório atual
+fs
+  .readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 &&
+      file !== basename &&
+      file.slice(-3) === '.js' &&
+      file.indexOf('.test.js') === -1
+    );
+  })
+  .forEach(file => {
+    const modelDefinition = require(path.join(__dirname, file));
+    
+    // =================================================================
+    //                       CORREÇÃO APLICADA AQUI
+    // =================================================================
+    // Em vez de usar 'modelDefinition.name' (que é instável),
+    // derivamos o nome do modelo a partir do NOME DO ARQUIVO.
+    // Ex: "item.model.js" se torna "Item"
+    const modelName = path.basename(file, '.js') // Remove a extensão .js
+                        .replace('.model', '')  // Remove o sufixo .model, se houver
+                        .replace(/^\w/, c => c.toUpperCase()); // Capitaliza a primeira letra
+    // =================================================================
 
-// // 3. EXECUTA AS ASSOCIAÇÕES (A MÁGICA ACONTECE AQUI!)
-// // Percorre todos os modelos carregados no objeto 'db'
-// Object.keys(db).forEach(modelName => {
-//   // Se o modelo tiver um método 'associate'
-//   if (db[modelName].associate) {
-//     // Executa esse método para criar as relações
-//     db[modelName].associate(db);
-//   }
-// });
+    db[modelName] = modelDefinition;
+  });
 
-// // 4. EXPORTA TUDO O QUE É NECESSÁRIO PARA A APLICAÇÃO
-// db.sequelize = sequelize; // A instância da conexão
-// db.Sequelize = Sequelize; // A própria classe Sequelize
+// Função que será chamada pelo nosso middleware para inicializar os modelos
+db.initialize = (sequelize) => {
+    const initializedModels = {};
 
-// module.exports = db;
+    // Inicializa cada modelo com a instância do Sequelize do inquilino
+    Object.keys(db).forEach(modelName => {
+        // Pula a própria função 'initialize' para evitar recursão infinita
+        if (modelName === 'initialize') return;
+
+        if (typeof db[modelName] === 'function') {
+            const Model = db[modelName](sequelize, Sequelize.DataTypes);
+            initializedModels[Model.name] = Model;
+        }
+    });
+
+    // Cria as associações entre os modelos inicializados
+    Object.keys(initializedModels).forEach(modelName => {
+        if (initializedModels[modelName].associate) {
+            initializedModels[modelName].associate(initializedModels);
+        }
+    });
+    
+    // Retorna os modelos prontos para uso
+    return initializedModels;
+};
+
+module.exports = db;
