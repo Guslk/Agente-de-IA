@@ -21,13 +21,7 @@ fs
   })
   .forEach(file => {
     const modelDefinition = require(path.join(__dirname, file));
-    
-    // =================================================================
-    //                       CORREÇÃO APLICADA AQUI
-    // =================================================================
-    // Em vez de usar 'modelDefinition.name' (que é instável),
-    // derivamos o nome do modelo a partir do NOME DO ARQUIVO.
-    // Ex: "item.model.js" se torna "Item"
+
     const modelName = path.basename(file, '.js') // Remove a extensão .js
                         .replace('.model', '')  // Remove o sufixo .model, se houver
                         .replace(/^\w/, c => c.toUpperCase()); // Capitaliza a primeira letra

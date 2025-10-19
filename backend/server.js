@@ -84,7 +84,7 @@ const startServer = async () => {
   
   // Passo 3: Rotas principais da aplicação (protegidas).
   // Apenas utilizadores autenticados podem aceder a estas rotas.
-  app.use('/', isAuthenticated, allTenantRoutes);
+  app.use('/', isAuthenticated.isAuthenticated, allTenantRoutes);
 
 
   // --- GESTÃO DE ERROS CENTRALIZADA (deve vir no final) ---

@@ -1,53 +1,20 @@
+// models/entry.model.js (em inglês)
 const { DataTypes, Model } = require('sequelize');
 
 module.exports = (sequelize) => {
-    class StockEntry extends Model {
+    class Entry extends Model {
         static associate(models) {
-            // Define a associação aqui:
-            // Uma entrada de estoque pertence a um item
-            this.belongsTo(models.Item, {
-                foreignKey: 'itemId', // Nome da chave que será criada nesta tabela
-                as: 'item'            // Apelido para a associação (opcional)
-            });
+            this.belongsTo(models.Item, { foreignKey: 'itemId', as: 'item' });
+            this.belongsTo(models.Supplier, { foreignKey: 'supplierId', as: 'supplier' });
         }
     }
-
-    StockEntry.init({
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true
-        },
-        movementDate: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW
-        },
-        invoiceNumber: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        purchaseOrder: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        batch: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        quantity: {
-            type: DataTypes.INTEGER,
-            allowNull: false
-        },
-        unitPrice: {
-            type: DataTypes.DECIMAL(10, 2),
-            allowNull: false
-        }
-    }, {
-        sequelize,
-        modelName: 'StockEntry',
-        // timestamps: false
-    });
-
-    return StockEntry;
+    Entry.init({
+        id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true, field: 'id_entry' },
+        entryDate: { type: DataTypes.DATE, allowNull: false, field: 'entry_date' },
+        invoiceNumber: { type: DataTypes.STRING, allowNull: false, field: 'invoice_number' },
+        quantity: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+        supplierId: { type: DataTypes.INTEGER, allowNull: false, field: 'id_supplier' },
+        itemId: { type: DataTypes.INTEGER, allowNull: false, field: 'id_item' }
+    }, { sequelize, modelName: 'Entry', tableName: 'Entry', timestamps: false });
+    return Entry;
 };

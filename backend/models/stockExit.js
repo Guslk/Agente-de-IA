@@ -1,35 +1,51 @@
-const { DataTypes } = require('sequelize');
+// models/output.model.js
+const { DataTypes, Model } = require('sequelize');
 
 module.exports = (sequelize) => {
-    const StockExit = sequelize.define('StockExit', {
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true
-        },
-        movementDate: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW
-        },
-        productionOrder: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        justification: {
-            type: DataTypes.TEXT,
-            allowNull: true
-        },
-        batch: {
-            type: DataTypes.STRING,
-            allowNull: true
-        },
-        quantity: {
-            type: DataTypes.INTEGER,
-            allowNull: false
+    class Output extends Model {
+        static associate(models) {
+            this.belongsTo(models.Item, { foreignKey: 'itemId', as: 'item' });
         }
-        // Foreign keys: userId, itemId, stockId will be added by associations.
+    }
+    Output.init({
+        id: { 
+            type: DataTypes.INTEGER, 
+            autoIncrement: true, 
+            primaryKey: true, 
+            field: 'id_exit' 
+        },
+        exitDate: { 
+            type: DataTypes.DATE, 
+            allowNull: false, 
+            field: 'exit_date' 
+        },
+        justification: { 
+            type: DataTypes.TEXT 
+        },
+        // ===============================================
+        //             CORREÇÃO APLICADA AQUI 👇
+        // ===============================================
+        quantity: { 
+            type: DataTypes.DECIMAL(10, 0), 
+            allowNull: false,
+            // Maps the 'quantity' property to the 'quantify' column in the database
+            field: 'quantify'
+        },
+        // ===============================================
+        productionOrder: { 
+            type: DataTypes.STRING, 
+            field: 'production_order' 
+        },
+        itemId: { 
+            type: DataTypes.INTEGER, 
+            allowNull: false, 
+            field: 'id_item' 
+        }
+    }, { 
+        sequelize, 
+        modelName: 'Output', 
+        tableName: 'Output', 
+        timestamps: false 
     });
-
-    return StockExit;
+    return Output;
 };

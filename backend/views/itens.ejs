@@ -13,6 +13,21 @@
 </header>
 
 <main class="main-content">
+    
+    <% if (typeof query !== 'undefined' && query.error) { %>
+        <% if (query.error === 'stock_in_use') { %>
+            <div class="alert alert-danger">
+                <strong>Erro!</strong> Não é possível excluir este departamento, pois ele ainda possui itens cadastrados.
+            </div>
+        <% } %>
+    <% } %>
+    
+    <% if (typeof query !== 'undefined' && query.success) { %>
+        <div class="alert alert-success">
+            <strong>Sucesso!</strong> A operação foi realizada com sucesso.
+        </div>
+    <% } %>
+
     <div class="main-header">
         <h2>Catálogo de Itens</h2>
         <div class="action-buttons">
@@ -37,49 +52,49 @@
             <button type="submit" class="btn-primary"><i class="bi bi-search"></i> Filtrar</button>
         </form>
     </section>
-
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome do Item</th>
-                    <th>Qtd. Atual</th>
-                    <th>Departamento</th>
-                    <th>Localização</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="items-table-body">
-                <% if (typeof items !== 'undefined' && items.length > 0) { %>
-                    <% items.forEach(item => { %>
-                        <%
-                            const qtdAtual = Number(item.quantidade_atual) || 0;
-                            let rowClass = '';
-                            if (qtdAtual <= 0) {
-                                rowClass = 'out-of-stock-row';
-                            } else if (qtdAtual < item.minimumQuantity) {
-                                rowClass = 'low-stock-row';
-                            }
-                        %>
-                        <tr class="<%= rowClass %>">
-                            <td><strong><%= item.name %></strong></td>
-                            <td><%= qtdAtual %></td>
-                            <td><%= item.department %></td>
-                            <td><%= item.position %></td>
-                            <td>
-                                <button title="Editar" class="action-btn btn-edit" data-item='<%- JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
-                                <form action="/itens/<%= item.id %>/deletar" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
-                                    <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
+<section class="inventory-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Nome do Item</th>
+                <th>Qtd. Atual</th>
+                <th>Departamento</th>
+                <th>Localização</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="items-table-body">
+            <% if (typeof items !== 'undefined' && items.length > 0) { %>
+                <% items.forEach(item => { %>
+                    <%
+                        // Usa 'item.quantity' diretamente
+                        const qtdAtual = Number(item.quantity) || 0;
+                        let rowClass = '';
+                        if (qtdAtual <= 0) {
+                            rowClass = 'out-of-stock-row';
+                        } else if (qtdAtual < item.minimumQuantity) {
+                            rowClass = 'low-stock-row';
+                        }
+                    %>
+                    <tr class="<%= rowClass %>">
+                        <td><strong><%= item.name %></strong></td>
+                        <td><%= qtdAtual %></td>
+                        <td><%= item.department %></td>
+                        <td><%= item.position %></td>
+                        <td>
+                            <button title="Editar" class="action-btn btn-edit" data-item='<%- JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
+                            <form action="/itens/<%= item.id %>/deletar" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
+                                <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
+            <% } %>
+        </tbody>
+    </table>
+</section>
 </main>
 
 <div class="modal-overlay" id="add-item-modal">
@@ -118,6 +133,36 @@
             </div>
             <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Item</button></div>
         </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dpto-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Gerenciar Departamentos</h3><button class="close-button" id="btn-close-dpto-modal">&times;</button></div>
+        <div class="modal-body">
+            <h4>Departamentos Atuais</h4>
+            <ul class="department-list">
+                <% if(typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                    <% stocks.forEach(stock => { %>
+                        <li>
+                            <span><%= stock.name %></span>
+                            <form action="/stocks/<%= stock.id %>/delete" method="POST" onsubmit="return confirm('Tem certeza?');">
+                                <button type="submit" class="btn-icon danger"><i class="bi bi-trash-fill"></i></button>
+                            </form>
+                        </li>
+                    <% }); %>
+                <% } %>
+            </ul>
+            <hr>
+            <h4>Adicionar Novo Departamento</h4>
+            <form action="/stocks" method="POST">
+                <div class="form-group">
+                    <label for="stock-name">Nome do Departamento</label>
+                    <input type="text" id="stock-name" name="name" required>
+                </div>
+                <button type="submit" class="btn-primary">Adicionar</button>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -169,6 +214,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
     window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
 
+
+// Lógica para o modal de DEPARTAMENTOS (Estoques)
+const stockModal = document.getElementById('stock-modal');
+const btnShowStockModal = document.getElementById('btn-show-dpto-modal'); // Mantém o ID do seu botão
+const btnCloseStockModal = document.getElementById('btn-close-stock-modal');
+
+if (btnShowStockModal) btnShowStockModal.addEventListener('click', () => stockModal.style.display = 'flex');
+if (btnCloseStockModal) btnCloseStockModal.addEventListener('click', () => stockModal.style.display = 'none');
+window.addEventListener('click', (event) => { 
+    if (event.target === stockModal) stockModal.style.display = 'none'; 
+});
     // Lógica para o modal de EDITAR (agora vai funcionar)
     const editModal = document.getElementById('edit-item-modal');
     const btnCloseEditModal = document.getElementById('btn-close-edit-modal');

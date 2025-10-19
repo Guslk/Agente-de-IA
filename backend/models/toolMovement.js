@@ -1,23 +1,95 @@
-const { DataTypes } = require('sequelize');
+// // models/toolMovement.model.js
+// const { DataTypes, Model } = require('sequelize');
+
+// module.exports = (sequelize) => {
+//     class ToolMovement extends Model {
+//         static associate(models) {
+//             this.belongsTo(models.Tool, { foreignKey: 'toolId', as: 'tool' });
+//             this.belongsTo(models.Employee, { foreignKey: 'employeeId', as: 'employee' });
+//         }
+//     }
+//     ToolMovement.init({
+//         id: { 
+//             type: DataTypes.INTEGER, 
+//             autoIncrement: true, 
+//             primaryKey: true, 
+//             field: 'id_movement' 
+//         },
+//         toolId: { 
+//             type: DataTypes.INTEGER, 
+//             allowNull: false, 
+//             field: 'id_tool' 
+//         },
+//         employeeId: { 
+//             type: DataTypes.INTEGER, 
+//             allowNull: false, 
+//             field: 'id_employee' 
+//         },
+//         movementType: { 
+//             type: DataTypes.ENUM('Saída', 'Retorno'), 
+//             allowNull: false, 
+//             field: 'movement_type' 
+//         },
+//         movementDate: { 
+//             type: DataTypes.DATE, 
+//             defaultValue: DataTypes.NOW, 
+//             field: 'movement_date' 
+//         },
+//         notes: { 
+//             type: DataTypes.TEXT 
+//         }
+//     }, { sequelize, modelName: 'ToolMovement', tableName: 'tool_movement', timestamps: false });
+//     return ToolMovement;
+// };
+
+// models/toolMovement.model.js
+const { DataTypes, Model } = require('sequelize');
 
 module.exports = (sequelize) => {
-    const ToolMovement = sequelize.define('ToolMovement', {
-        id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true
-        },
-        movementDate: {
-            type: DataTypes.DATE,
-            allowNull: false,
-            defaultValue: DataTypes.NOW
-        },
-        status: {
-            type: DataTypes.ENUM('Withdrawal', 'Return'),
-            allowNull: false
+    class ToolMovement extends Model {
+        static associate(models) {
+            this.belongsTo(models.Tool, { foreignKey: 'toolId', as: 'tool' });
+            this.belongsTo(models.Employee, { foreignKey: 'employeeId', as: 'employee' });
         }
-        // Foreign keys: toolId, responsibleUserId will be added by associations.
+    }
+    ToolMovement.init({
+        id: { 
+            type: DataTypes.INTEGER, 
+            autoIncrement: true, 
+            primaryKey: true, 
+            field: 'id_movement' 
+        },
+        toolId: { 
+            type: DataTypes.INTEGER, 
+            allowNull: false, 
+            field: 'id_tool' 
+        },
+        employeeId: { 
+            type: DataTypes.INTEGER, 
+            allowNull: false, 
+            field: 'id_employee' 
+        },
+        movementType: { 
+            type: DataTypes.ENUM('Saída', 'Retorno'), 
+            allowNull: false, 
+            field: 'movement_type' 
+        },
+        movementDate: { 
+            type: DataTypes.DATE, 
+            defaultValue: DataTypes.NOW, 
+            field: 'movement_date' 
+        },
+        notes: { 
+            type: DataTypes.TEXT 
+        }
+    }, { 
+        sequelize, 
+        // ===============================================
+        //           ESTA LINHA É A CORREÇÃO 👇
+        // ===============================================
+        modelName: 'ToolMovement', // Deve ser 'ToolMovement' (maiúsculo)
+        tableName: 'tool_movement', 
+        timestamps: false 
     });
-
     return ToolMovement;
 };

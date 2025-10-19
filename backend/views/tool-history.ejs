@@ -1,0 +1,144 @@
+<%- include('partials/header', { title: 'Histórico de Ferramentas', paginaAtiva: 'tool-history' }) %>
+
+<%
+    // --- Lógica EJS para ajudar a construir os links de ordenação ---
+    
+    const sortColumn = (typeof currentSort !== 'undefined') ? currentSort.column : 'date';
+    const sortOrder = (typeof currentSort !== 'undefined') ? currentSort.order : 'DESC';
+
+    const currentFilters = new URLSearchParams(typeof filters !== 'undefined' ? filters : {});
+    currentFilters.delete('sort');
+    currentFilters.delete('order');
+    const filterParams = currentFilters.toString();
+
+    const createSortUrl = (columnName) => {
+        let newOrder = 'ASC';
+        if (columnName === sortColumn) {
+            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC';
+        }
+        return `/tool-history?sort=${columnName}&order=${newOrder}&${filterParams}`;
+    };
+
+    const getSortIcon = (columnName) => {
+        if (columnName === sortColumn) {
+            return (sortOrder === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        }
+        return '';
+    };
+%>
+
+<header class="header">
+    <h1 class="header-title">Histórico de Ferramentas</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Filtrar Histórico</h2>
+         <div class="action-buttons">
+            <a href="/tools" class="btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar para Ferramentas
+            </a>
+        </div>
+    </div>
+
+    <section class="filter-section">
+        <form action="/tool-history" method="GET" class="filter-form" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <div class="form-group">
+                <label for="filter-tool">Ferramenta</label>
+                <select name="toolId" id="filter-tool">
+                    <option value="">Todas</option>
+                    <% if (typeof allTools !== 'undefined' && allTools.length > 0) { %>
+                        <% allTools.forEach(tool => { %>
+                            <option value="<%= tool.id %>" <%= (filters.toolId == tool.id) ? 'selected' : '' %>>
+                                <%= tool.name %> (<%= tool.code %>)
+                            </option>
+                        <% }); %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-employee">Funcionário</label>
+                <select name="employeeId" id="filter-employee">
+                    <option value="">Todos</option>
+                    <% if (typeof allEmployees !== 'undefined' && allEmployees.length > 0) { %>
+                        <% allEmployees.forEach(emp => { %>
+                            <option value="<%= emp.id_employee %>" <%= (filters.employeeId == emp.id) ? 'selected' : '' %>>
+                                <%= emp.name %>
+                            </option>
+                        <% }); %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-type">Tipo de Movimento</label>
+                <select name="movementType" id="filter-type">
+                    <option value="">Todos</option>
+                    <option value="Saída" <%= (filters.movementType == 'Saída') ? 'selected' : '' %>>Saída</option>
+                    <option value="Retorno" <%= (filters.movementType == 'Retorno') ? 'selected' : '' %>>Retorno</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-startDate">Data Início</label>
+                <input type="date" name="startDate" id="filter-startDate" value="<%= filters.startDate || '' %>">
+            </div>
+            <div class="form-group">
+                <label for="filter-endDate">Data Fim</label>
+                <input type="date" name="endDate" id="filter-endDate" value="<%= filters.endDate || '' %>">
+            </div>
+            <button type="submit" class="btn-primary" style="align-self: end;"><i class="bi bi-search"></i> Filtrar</button>
+        </form>
+    </section>
+
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th><a href="<%= createSortUrl('date') %>">Data <%- getSortIcon('date') %></a></th>
+                    <th><a href="<%= createSortUrl('type') %>">Tipo <%- getSortIcon('type') %></a></th>
+                    <th><a href="<%= createSortUrl('item') %>">Ferramenta <%- getSortIcon('item') %></a></th>
+                    <th>Código</th>
+                    <th><a href="<%= createSortUrl('employee') %>">Funcionário <%- getSortIcon('employee') %></a></th>
+                    <th>Notas</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (movements.length > 0) { %>
+                    <% movements.forEach(mov => { %>
+                        <tr class="<%= mov.movementType === 'Retorno' ? 'stock-in' : 'stock-out' %>">
+                            <td><%= new Date(mov.movementDate).toLocaleString('pt-BR') %></td>
+                            <td><%= mov.movementType %></td>
+                            <td><strong><%= mov.tool.name %></strong></td>
+                            <td><code><%= mov.tool.code %></code></td>
+                            <td><%= mov.employee.name %></td>
+                            <td><%= mov.notes || '-' %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="6" style="text-align: center;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<%- include('partials/footer') %>
+
+<style>
+    .inventory-table th a {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+    }
+    .inventory-table th a:hover {
+        color: #007bff;
+    }
+</style>

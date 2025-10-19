@@ -45,139 +45,69 @@ const itemController = {
         }
     },
 
-    // getAll: async (req, res) => {
-    //     const { tenantId } = req;
-    //     if (!tenantId) {
-    //         return res.status(400).send("Erro: Inquilino não identificado.");
-    //     }
-
-    //     try {
-    //         const sequelize = await getTenantDB(tenantId);
-    //         // Garante a importação do objeto Sequelize para usar as funções
-    //         const { Sequelize } = require('sequelize');
-    //         const { Item, Stock } = db.initialize(sequelize);
-
-    //         const items = await Item.findAll({
-    //             attributes: [
-    //                 [Sequelize.col('Item.id_item'), 'id'],
-    //                 'name', 'description', 'position', 'code', 'unitOfMeasure', 'minimumQuantity',
-    //                 // ======================================================
-    //                 //             CORREÇÃO APLICADA AQUI
-    //                 // ======================================================
-    //                 // Pede pela coluna real 'name_stock' da tabela associada 'stock'
-    //                 [Sequelize.col('stock.name_stock'), 'department']
-    //             ],
-    //             include: [
-    //                 // { model: StockEntry, as: 'entries', attributes: [], required: false },
-    //                 { model: Stock, as: 'stock', attributes: [] }
-    //             ],
-    //             group: [
-    //                 'Item.id_item',
-    //                 'Item.name',
-    //                 'Item.description',
-    //                 'Item.position',
-    //                 'Item.code',
-    //                 'Item.unit_of_measure',
-    //                 'Item.minimum_quantity',
-    //                 'stock.name_stock' // Agrupa pela coluna real
-    //                 // ======================================================
-    //             ],
-    //             order: [['name', 'ASC']],
-    //             raw: true
-    //         });
-
-    //         const stocks = await Stock.findAll({ order: [['name_stock', 'ASC']] });
-
-    //         // 5. Chamada de renderização simplificada
-    //         res.render('itens', { items, stocks, query: req.query });
-
-    //     } catch (error) {
-    //         console.error("Erro ao buscar itens:", error);
-    //         res.status(500).send(`Erro ao buscar itens: ${error.message}`);
-    //     }
-    // },
-        getAll: async (req, res) => {
+    getAll: async (req, res) => {
         const { tenantId } = req;
-        // Pega os parâmetros de filtro da URL (ex: /itens?busca=parafuso&filtroStatus=baixo)
         const { busca, filtroStatus } = req.query;
-
-        if (!tenantId) {
-            return res.status(400).send("Erro: Inquilino não identificado.");
-        }
 
         try {
             const sequelize = await getTenantDB(tenantId);
-            const { Item, StockEntry, Stock } = db.initialize(sequelize);
+            const { Item, Stock } = db.initialize(sequelize);
 
-            // ======================================================
-            //      LÓGICA DE FILTRO DINÂMICO ⚙️
-            // ======================================================
             const whereClause = {};
-            const havingClause = {};
-
-            // 1. Filtro por nome do item (LIKE)
             if (busca) {
-                whereClause.name = {
-                    [Op.like]: `%${busca}%`
-                };
+                whereClause.name = { [Op.like]: `%${busca}%` };
             }
-
-            // 2. Filtro por status do estoque (HAVING)
+            if (busca) {
+                whereClause.name = { [Op.like]: `%${busca}%` };
+            }
+            // A lógica de filtro por status agora pode ser feita diretamente no WHERE
             if (filtroStatus && filtroStatus !== 'todos') {
-                // const qtdAtualColumn = Sequelize.fn('SUM', Sequelize.col('entries.quantity'));
-
-                switch (filtroStatus) {
-                    case 'esgotado':
-                        // Considera nulo (sem movimentação) ou soma <= 0
-                        havingClause[Op.or] = [
-                            Sequelize.where(qtdAtualColumn, Op.is, null),
-                            Sequelize.where(qtdAtualColumn, Op.lte, 0)
-                        ];
-                        break;
-                    case 'baixo':
-                        // Quantidade atual é maior que 0, mas menor que a quantidade mínima
-                        havingClause[Op.and] = [
-                            Sequelize.where(qtdAtualColumn, Op.gt, 0),
-                            Sequelize.where(qtdAtualColumn, Op.lt, Sequelize.col('Item.minimumQuantity'))
-                        ];
-                        break;
-                    case 'normal':
-                        // Quantidade atual é maior ou igual à quantidade mínima
-                        havingClause[Op.gte] = Sequelize.where(qtdAtualColumn, Op.gte, Sequelize.col('Item.minimumQuantity'));
-                        break;
+                if (filtroStatus === 'esgotado') {
+                    whereClause.quantity = { [Op.lte]: 0 };
+                } else if (filtroStatus === 'baixo') {
+                    whereClause.quantity = {
+                        [Op.gt]: 0,
+                        [Op.lt]: Sequelize.col('minimum_quantity')
+                    };
+                } else if (filtroStatus === 'normal') {
+                    whereClause.quantity = { [Op.gte]: Sequelize.col('minimum_quantity') };
                 }
             }
-            // ======================================================
 
+            // ✅ CONSULTA CORRIGIDA AQUI
             const items = await Item.findAll({
-                attributes: [
-                    [Sequelize.col('Item.id_item'), 'id'],
-                    'name', 'description', 'position', 'code', 'unitOfMeasure', 'minimumQuantity',
-                    // [Sequelize.fn('SUM', Sequelize.col('entries.quantity')), 'quantidade_atual'],
-                    [Sequelize.col('name_stock'), 'department']
-                ],
-                include: [
-                    { model: Stock, as: 'stock', attributes: [], required: false } // 'required: false' para LEFT JOIN
-                ],
-                where: whereClause,    // Aplica o filtro de nome aqui
-                having: havingClause,  // Aplica o filtro de status aqui
-                // group: ['Item.id_item', 'stock_name'],
+                where: whereClause,
+                include: [{
+                    model: Stock,
+                    as: 'stock',
+                    attributes: [] // Apenas para o JOIN, não traz colunas extras
+                }],
+                attributes: {
+                    // Seleciona todas as colunas de Item e cria a propriedade 'department'
+                    include: [
+                        [Sequelize.col('stock.name_stock'), 'department']
+                    ]
+                },
                 order: [['name', 'ASC']],
-                raw: true,
-                subQuery: false // Importante para que o LEFT JOIN funcione corretamente com o WHERE
+                raw: true, // Importante para o alias funcionar
+                nest: true   // Importante para manter a estrutura do objeto 'item'
             });
-            
+
             const stocks = await Stock.findAll({ order: [['name_stock', 'ASC']] });
 
-            // Envia os filtros de volta para a view para manter os campos preenchidos
-            res.render('itens', { items, stocks, busca, filtroStatus });
+            // res.render('itens', { items, stocks, busca, filtroStatus, user: req.session.user });
+                res.render('itens', { 
+        items, 
+        stocks, 
+        user: req.session.user,
+        query: req.query 
+    });
 
         } catch (error) {
             console.error("Erro ao buscar itens:", error);
             res.status(500).send(`Erro ao buscar itens: ${error.message}`);
         }
     },
-
     showEditForm: async (req, res) => {
         const { tenantId } = req;
         if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
@@ -199,19 +129,19 @@ const itemController = {
     },
 
     update: async (req, res) => {
-        const { tenantId } = req;
+        const { tenantId } = req;
         const { id } = req.params; // Pega o ID do item da URL
 
-        if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
+        if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
 
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Item } = db.initialize(sequelize);
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item } = db.initialize(sequelize);
 
             // 1. Encontra o item que será atualizado
-            const item = await Item.findByPk(id);
+            const item = await Item.findByPk(id);
 
-            if (item) {
+            if (item) {
                 // 2. Monta o objeto com os dados atualizados do formulário
                 const dadosAtualizados = {
                     name: req.body.nome,
@@ -225,18 +155,18 @@ const itemController = {
                 };
 
                 // 3. Salva as alterações no banco de dados
-                await item.update(dadosAtualizados);
-                
+                await item.update(dadosAtualizados);
+
                 // 4. Redireciona de volta para a lista de itens
                 res.redirect('/itens?sucesso=item_atualizado');
-            } else {
-                res.status(404).send('Item não encontrado para atualizar.');
-            }
-        } catch (error) {
-            console.error("Erro ao atualizar item:", error);
-           res.status(500).send(`Erro ao atualizar item: ${error.message}`);
-        }
-    },
+            } else {
+                res.status(404).send('Item não encontrado para atualizar.');
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar item:", error);
+            res.status(500).send(`Erro ao atualizar item: ${error.message}`);
+        }
+    },
 
 
     destroy: async (req, res) => {

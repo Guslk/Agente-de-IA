@@ -1,34 +1,28 @@
+// models/stock.model.js (Versão Final e Corrigida)
 const { DataTypes, Model } = require('sequelize');
 
 module.exports = (sequelize) => {
     class Stock extends Model {
         static associate(models) {
-            // Um estoque (Stock) pode ter muitos itens (Item)
-            this.hasMany(models.Item, {
-                foreignKey: 'id_stock',
-                as: 'items'
-            });
+            this.hasMany(models.Item, { foreignKey: 'stockId', as: 'items' });
         }
     }
-
     Stock.init({
-        id_stock: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true
+        // A propriedade no JS será 'id'
+        id: { 
+            type: DataTypes.INTEGER, 
+            autoIncrement: true, 
+            primaryKey: true, 
+            // Mas no banco de dados, a coluna é 'id_stock'
+            field: 'id_stock' 
         },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-            field: 'name_stock'
+        // A propriedade no JS será 'name'
+        name: { 
+            type: DataTypes.STRING, 
+            allowNull: false, 
+            // Mas no banco de dados, a coluna é 'name_stock'
+            field: 'name_stock' 
         }
-        // Adicione outros campos da sua tabela Stock, se houver (ex: 'location', 'manager')
-    }, {
-        sequelize,
-        modelName: 'Stock',
-        tableName: 'Stock', // Nome exato da tabela no seu banco
-        timestamps: false
-    });
-
+    }, { sequelize, modelName: 'Stock', tableName: 'Stock', timestamps: false });
     return Stock;
 };
