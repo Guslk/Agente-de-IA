@@ -39,45 +39,47 @@ const employeeController = {
      * Cria um novo funcionário.
      */
 
-    // create: async (req, res) => {
-    //     const { tenantId } = req;
-    //     const { name, email, position, role, password } = req.body;
+    create: async (req, res) => {
+        const { tenantId } = req;
+        const { name, email, position, role, password } = req.body;
 
-    //     try {
-    //         const sequelize = await getTenantDB(tenantId);
-    //         const { Employee } = db.initialize(sequelize);
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize);
 
-    //         const passwordHash = await bcrypt.hash(password, saltRounds);
+            const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    //         await Employee.create({
-    //             name,
-    //             email,
-    //             position,
-    //             role,
-    //             passwordHash: passwordHash,
-    //             twoFactorEnabled: false,
-    //             photo: "null" // Corrigido para 'null' para ser compatível com o banco
-    //         });
+            await Employee.create({
+                name,
+                email,
+                position,
+                role,
+                passwordHash: passwordHash,
+                twoFactorEnabled: false,
+                                forcePasswordChange: true,
+                photo: req.file ? req.file.buffer : null
+                // photo: "null" // Corrigido para 'null' para ser compatível com o banco
+            });
 
-    //         res.redirect('/funcionarios?success=created');
+            res.redirect('/funcionarios?success=created');
 
-    //     } catch (error) {
-    //         // ===============================================
-    //         //           LÓGICA DE ERRO APRIMORADA 👇
-    //         // ===============================================
+        } catch (error) {
+            // ===============================================
+            //           LÓGICA DE ERRO APRIMORADA 👇
+            // ===============================================
 
-    //         // Verifica se o erro é de violação de chave única (como email duplicado)
-    //         if (error.name === 'SequelizeUniqueConstraintError') {
-    //             console.warn(`Attempt to create a user with duplicate email: ${email}`);
-    //             // Redireciona de volta para a página com uma mensagem de erro clara
-    //             return res.redirect('/funcionarios?error=email_in_use');
-    //         }
+            // Verifica se o erro é de violação de chave única (como email duplicado)
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                console.warn(`Attempt to create a user with duplicate email: ${email}`);
+                // Redireciona de volta para a página com uma mensagem de erro clara
+                return res.redirect('/funcionarios?error=email_in_use');
+            }
 
-    //         // Para qualquer outro erro, exibe o erro genérico
-    //         console.error("Error creating employee:", error);
-    //         res.redirect('/funcionarios?error=create_failed');
-    //     }
-    // },
+            // Para qualquer outro erro, exibe o erro genérico
+            console.error("Error creating employee:", error);
+            res.redirect('/funcionarios?error=create_failed');
+        }
+    },
 
     // /**
     //  * Atualiza um funcionário (exceto senha).
@@ -108,35 +110,6 @@ const employeeController = {
     //         res.redirect('/funcionarios?error=update_failed');
     //     }
     // },
-    create: async (req, res) => {
-        const { tenantId } = req;
-        const { name, email, position, role, password } = req.body;
-
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Employee } = db.initialize(sequelize);
-            const passwordHash = await bcrypt.hash(password, saltRounds);
-
-            await Employee.create({
-                name,
-                email,
-                position,
-                role,
-                passwordHash: passwordHash,
-                twoFactorEnabled: false,
-                forcePasswordChange: true,
-                // ===============================================
-                //           MUDANÇA APLICADA AQUI 👇
-                // ===============================================
-                // Se req.file existir, salva o buffer da imagem, senão, salva null.
-                photo: req.file ? req.file.buffer : null
-            });
-
-            res.redirect('/funcionarios?success=created');
-        } catch (error) {
-            // ... (Seu tratamento de erro)
-        }
-    },
 
     update: async (req, res) => {
         const { tenantId } = req;
@@ -165,7 +138,15 @@ const employeeController = {
             await employee.update(dataToUpdate);
             res.redirect('/funcionarios?success=updated');
         } catch (error) {
-            // ... (Seu tratamento de erro)
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                console.warn(`Attempt to create a user with duplicate email: ${email}`);
+                // Redireciona de volta para a página com uma mensagem de erro clara
+                return res.redirect('/funcionarios?error=email_in_use');
+            }
+
+            // Para qualquer outro erro, exibe o erro genérico
+            console.error("Error creating employee:", error);
+            res.redirect('/funcionarios?error=create_failed');
         }
     },
 

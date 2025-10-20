@@ -24,7 +24,7 @@ module.exports = (sequelize) => {
         },
         photo: {
             type: DataTypes.BLOB,
-            allowNull: false // 'photo' é 'Não Nulo' na sua tabela
+            allowNull: true // 'photo' é 'Não Nulo' na sua tabela
         },
         position: {
             type: DataTypes.STRING(100),
