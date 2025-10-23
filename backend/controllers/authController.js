@@ -1,175 +1,263 @@
-// // controllers/authController.js
-// const bcrypt = require('bcrypt');
-// const { getTenantDB } = require('../config/database');
-// const db = require('../models'); // Importa o carregador de modelos
+// controllers/authController.js
+const bcrypt = require('bcryptjs');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
+const { getTenantDB } = require('../config/database');
+const db = require('../models'); // Importa o carregador de modelos padrão
 
-// const DUMMY_HASH = '$2a$04$ACZ3vB5MAX1N34O0h57A5eSyHy2zpxfAWhM7P3w65UKCPKx2oivs6';
+const DUMMY_HASH = '$2b$10$fakeHashForTimingAttack.0123456789ABCDEF01234'; 
 
-// const authController = {
+/**
+ * Função auxiliar para finalizar o login e salvar a sessão completa
+ */
+const finalizeLogin = (req, user) => {
+    req.session.loggedIn = true;
+    req.session.user = {
+        id: user.id, 
+        email: user.email,
+        name: user.name,
+        position: user.position,
+        role: user.role
+    };
+    // Limpa quaisquer sinalizadores pendentes
+    delete req.session.two_factor_pending;
+    delete req.session.force_password_change_pending;
+    delete req.session.setup_2fa_pending;
+    delete req.session.partial_login_user_id;
+};
 
-//   showLoginPage: (req, res) => {
-//     res.render('login', { error: null, success: null });
-//   },
-//   loginUser: async (req, res) => {
-//     const { email, password } = req.body;
-//     const { tenantId } = req; // tenantId é pego pelo middleware (correto)
+const authController = {
+    /**
+     * Exibe a página de login
+     */
+    showLoginPage: (req, res) => {
+        res.render('login', { error: req.query.error || null, success: null });
+    },
 
-//     try {
-//       if (!tenantId) {
-//         return res.status(400).render('login', { error: "Inquilino não identificado.", success: null });
-//       }
+    /**
+     * Processa a tentativa de login (Etapa 1: Senha)
+     */
+    loginUser: async (req, res) => {
+        const { email, password } = req.body;
+        const { tenantId } = req;
 
-//       if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-//         return res.render('login', { error: 'E-mail e senha são obrigatórios.', success: null });
-//       }
+        try {
+            if (!tenantId) {
+                return res.status(400).render('login', { error: "Inquilino não identificado.", success: null });
+            }
+            if (!email || !password) {
+                return res.render('login', { error: 'E-mail e senha são obrigatórios.', success: null });
+            }
 
-//       const sequelize = await getTenantDB(tenantId);
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize); // Usa o db.initialize
+            const user = await Employee.findOne({ where: { email } });
 
-//       // ======================================================
-//       //           CORREÇÃO 1: CARREGANDO O MODELO
-//       // ======================================================
-//       // Usamos o 'db.initialize' para garantir que estamos
-//       // carregando o modelo Employee *corrigido* (com 'role', 'passwordHash', etc.)
-//       const { Employee } = db.initialize(sequelize);
-//       // ======================================================
+            const hashToCompare = user ? user.passwordHash : DUMMY_HASH; // Usa passwordHash (camelCase)
+            if (!hashToCompare) {
+                console.error(`[AUTH-SECURITY] Usuário '${email}' encontrado, mas não possui hash de senha.`);
+                return res.render('login', { error: 'Credenciais inválidas.', success: null });
+            }
 
-//       const user = await Employee.findOne({ where: { email } });
+            const passwordMatch = await bcrypt.compare(password, hashToCompare);
 
-//       // ======================================================
-//       //           CORREÇÃO 2: ACESSO À PROPRIEDADE
-//       // ======================================================
-//       // O modelo corrigido mapeia 'password_hash' para 'passwordHash'.
-//       // Removemos também a linha 'bcrypt.hash' desnecessária.
-//       const hashToCompare = user ? user.passwordHash : DUMMY_HASH;
-//       // ======================================================
+            if (!user || !passwordMatch) {
+                return res.render('login', { error: 'Credenciais inválidas.', success: null });
+            }
 
-//       // Segurança: Garante que a conta não esteja corrompida (sem senha)
-//       if (!hashToCompare) {
-//         console.error(`[AUTH-SECURITY] O usuário '${email}' foi encontrado, mas não possui hash de senha.`);
-//         return res.render('login', { error: 'Credenciais inválidas.', success: null });
-//       }
+            req.session.regenerate((err) => {
+                if (err) {
+                    console.error('[SESSION-ERROR] Falha ao regenerar a sessão:', err);
+                    return res.status(500).render('login', { error: 'Ocorreu um erro interno no servidor.', success: null });
+                }
 
-//       const passwordMatch = await bcrypt.compare(password, hashToCompare);
+                req.session.partial_login_user_id = user.id;
+                req.session.tenantId = tenantId;
 
-//       if (!user || !passwordMatch) {
-//         return res.render('login', { error: 'Credenciais inválidas.', success: null });
-//       }
+                // ETAPA 2: Verificar se precisa trocar a senha
+                if (user.forcePasswordChange) {
+                    req.session.force_password_change_pending = true;
+                    return res.redirect('/change-password');
+                }
 
-//       // Regenera a sessão para segurança
-//       req.session.regenerate((err) => {
-//         if (err) {
-//           console.error('[SESSION-ERROR] Falha ao regenerar a sessão:', err);
-//           return res.status(500).render('login', { error: 'Ocorreu um erro interno no servidor.', success: null });
-//         }
+                // ETAPA 3: Verificar 2FA se já estiver ativo
+                if (user.twoFactorEnabled && user.twoFactorSecret) {
+                    req.session.two_factor_pending = true;
+                    return res.redirect('/verify-2fa');
+                }
 
-//         // Verifica o 2FA (usando as propriedades camelCase do modelo)
-//         if (user.twoFactorEnabled && user.twoFactorSecret) {
-//           req.session.two_factor_pending = true;
-//           req.session.two_factor_user_email = user.email;
-//           req.session.tenantId = tenantId;
-//           return res.redirect('/verificar-2fa');
-//         }
+                finalizeLogin(req, user);
+                return res.redirect('/itens'); // Redireciona para a página de itens
+            });
+        } catch (error) {
+            console.error(`[AUTH] Erro crítico durante o login para '${tenantId}':`, error);
+            res.status(500).render('login', { error: "Ocorreu um erro interno no servidor.", success: null });
+        }
+    },
 
-//         // Armazena os dados do usuário na sessão
-//         req.session.loggedIn = true;
-//         req.session.user = {
-//           // ======================================================
-//           //           CORREÇÃO 3: POPULANDO A SESSÃO
-//           // ======================================================
-//           // O modelo corrigido mapeia 'id_employee' para 'id'
-//           id: user.id,
-//           email: user.email,
-//           name: user.name,
-//           position: user.position,
-//           // O 'user.role' agora funcionará, pois o modelo corrigido
-//           // não tem mais o erro de digitação no ENUM.
-//           role: user.role
-//         };
+    /**
+     * Mostra a página "Trocar Senha"
+     */
+    showChangePasswordPage: (req, res) => {
+        if (!req.session.force_password_change_pending) return res.redirect('/login');
+        res.render('change-password', { error: null });
+    },
 
-//         res.redirect('/tools');
-//       });
+    /**
+     * Processa a troca de senha do primeiro login
+     */
+    postChangePassword: async (req, res) => {
+        if (!req.session.force_password_change_pending || !req.session.partial_login_user_id) return res.redirect('/login');
 
-//     } catch (error) {
-//       console.error(`[AUTH] Erro crítico durante o login para '${tenantId}':`, error);
-//       res.status(500).render('login', { error: "Ocorreu um erro interno no servidor.", success: null });
-//     }
-//   },
+        const { password, confirmPassword } = req.body;
+        const { tenantId, partial_login_user_id } = req.session;
 
-//   /**
-//    * Destrói a sessão do usuário para fazer logout.
-//    */
-//   logoutUser: (req, res) => {
-//     req.session.destroy(err => {
-//       if (err) {
-//         console.error('Erro ao fazer logout:', err);
-//         return res.status(500).send('Não foi possível fazer logout.');
-//       }
-//       res.redirect('/login');
-//     });
-//   },
+        if (password !== confirmPassword) return res.render('change-password', { error: 'As senhas não coincidem.' });
+        
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize);
+            const user = await Employee.findByPk(partial_login_user_id);
 
-//   /**
-//    * Renderiza a página de verificação de 2FA.
-//    */
-//   show2FAPage: (req, res) => {
-//     if (!req.session.two_factor_pending) {
-//       return res.redirect('/login');
-//     }
-//     res.render('verificar-2fa', { error: null });
-//   },
+            if (!user) throw new Error('Usuário não encontrado.');
 
-//   /**
-//    * Verifica o token 2FA fornecido pelo usuário.
-//    */
-//   verifyLogin2FA: async (req, res) => {
-//     if (!req.session.two_factor_pending) {
-//       return res.redirect('/login');
-//     }
+            user.passwordHash = await bcrypt.hash(password, 10);
+            user.forcePasswordChange = false;
+            await user.save();
+            
+            delete req.session.force_password_change_pending;
 
-//     const { token } = req.body;
-//     const email = req.session.two_factor_user_email;
-//     const tenantId = req.session.tenantId;
+            if (!user.twoFactorEnabled) { 
+                req.session.setup_2fa_pending = true;
+                return res.redirect('/setup-2fa');
+            }
 
-//     try {
-//       if (!tenantId) {
-//         return res.render('verificar-2fa', { error: 'Sessão inválida. Inquilino não encontrado.' });
-//       }
+            if (user.twoFactorEnabled && user.twoFactorSecret) {
+                req.session.two_factor_pending = true;
+                return res.redirect('/verify-2fa');
+            }
 
-//       const sequelize = await getTenantDB(tenantId);
-//       const Employee = defineEmployeeModel(sequelize);
-//       const user = await Employee.findOne({ where: { email: email } });
+            finalizeLogin(req, user);
+            return res.redirect('/itens');
+        } catch (error) {
+            res.render('change-password', { error: 'Ocorreu um erro ao salvar sua nova senha.' });
+        }
+    },
 
-//       if (!user || !user.two_factor_secret) {
-//         return res.render('verificar-2fa', { error: 'Usuário não encontrado ou 2FA não configurado.' });
-//       }
+    /**
+     * Mostra a página de CONFIGURAÇÃO do 2FA
+     */
+    showSetup2FAPage: async (req, res) => {
+        if (!req.session.setup_2fa_pending || !req.session.partial_login_user_id) return res.redirect('/login');
+        const { tenantId, partial_login_user_id } = req.session;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize);
+            const user = await Employee.findByPk(partial_login_user_id);
 
-//       const verified = speakeasy.totp.verify({
-//         secret: user.two_factor_secret,
-//         encoding: 'base32',
-//         token: token,
-//         window: 1
-//       });
+            const secret = speakeasy.generateSecret({ length: 20, name: `StockEx (${user.email})` });
+            user.twoFactorSecret = secret.base32; // Salva o segredo no banco
+            await user.save();
 
-//       if (verified) {
-//         // Regenerar a sessão aqui também seria uma boa prática, mas para simplificar,
-//         // vamos apenas finalizar o processo de login na sessão já regenerada.
-//         req.session.loggedIn = true;
-//         req.session.user = { id: user.id_employee, email: user.email, name: user.name, position: user.position };
+            qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+                if (err) throw new Error('Não foi possível gerar o QR code.');
+                res.render('setup-2fa', { error: null, qrCodeUrl: data_url });
+            });
+        } catch (error) {
+            res.render('setup-2fa', { error: 'Erro ao gerar o QR code.', qrCodeUrl: null });
+        }
+    },
 
-//         // Limpa os dados temporários do processo 2FA da sessão
-//         delete req.session.two_factor_pending;
-//         delete req.session.two_factor_user_email;
-//         delete req.session.tenantId;
+    /**
+     * Processa a VERIFICAÇÃO da configuração do 2FA
+     */
+    verify2FASetup: async (req, res) => {
+        if (!req.session.setup_2fa_pending || !req.session.partial_login_user_id) return res.redirect('/login');
 
-//         return res.redirect('/dashboard');
-//       } else {
-//         return res.render('verificar-2fa', { error: 'Código 2FA inválido.' });
-//       }
-//     } catch (error) {
-//       console.error(`[AUTH-2FA] Erro crítico durante verificação 2FA para '${tenantId}':`, error);
-//       return res.status(500).render('verificar-2fa', { error: "Ocorreu um erro interno no servidor." });
-//     }
-//   }
-// };
+        const { token } = req.body;
+        const { tenantId, partial_login_user_id } = req.session;
+        
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize);
+            const user = await Employee.findByPk(partial_login_user_id);
 
-// module.exports = authController;
+            if (!user || !user.twoFactorSecret) return res.render('setup-2fa', { error: 'Usuário não encontrado ou segredo 2FA não configurado.', qrCodeUrl: null });
+
+            const verified = speakeasy.totp.verify({
+                secret: user.twoFactorSecret,
+                encoding: 'base32',
+                token: token,
+                window: 1
+            });
+
+            if (verified) {
+                user.twoFactorEnabled = true; // ATIVA o 2FA
+                await user.save();
+                delete req.session.setup_2fa_pending;
+                finalizeLogin(req, user); // LOGIN COMPLETO!
+                return res.redirect('/itens');
+            } else {
+                return res.render('setup-2fa', { error: 'Código inválido. Tente novamente.', qrCodeUrl: `data:image/png;base64,...` /* recrie o QR code se necessário */ });
+            }
+        } catch (error) {
+            res.render('setup-2fa', { error: 'Ocorreu um erro interno.', qrCodeUrl: null });
+        }
+    },
+
+    /**
+     * Mostra a página "Verificar 2FA" (para logins normais)
+     */
+    show2FAPage: (req, res) => {
+        if (!req.session.two_factor_pending) return res.redirect('/login');
+        res.render('verify-2fa', { error: null });
+    },
+
+    /**
+     * ======================================================
+     * NOME DA FUNÇÃO CORRIGIDO AQUI 👇
+     * ======================================================
+     * Processa a verificação do token 2FA (para logins normais)
+     */
+    verify2FA: async (req, res) => {
+        if (!req.session.two_factor_pending || !req.session.partial_login_user_id) return res.redirect('/login');
+
+        const { token } = req.body;
+        const { tenantId, partial_login_user_id } = req.session;
+        
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Employee } = db.initialize(sequelize); // Usa o db.initialize
+            const user = await Employee.findByPk(partial_login_user_id);
+
+            if (!user || !user.twoFactorSecret) { // Usa twoFactorSecret (camelCase)
+                return res.render('verify-2fa', { error: 'Usuário não encontrado ou 2FA não configurado.' });
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: user.twoFactorSecret, // Usa twoFactorSecret (camelCase)
+                encoding: 'base32',
+                token: token,
+                window: 1
+            });
+
+            if (verified) {
+                finalizeLogin(req, user);
+                return res.redirect('/itens');
+            } else {
+                return res.render('verify-2fa', { error: 'Código inválido.' });
+            }
+        } catch (error) {
+            console.error("Error verifying 2FA:", error);
+            res.render('verify-2fa', { error: 'Ocorreu um erro interno.' });
+        }
+    },
+
+    logoutUser: (req, res) => {
+        req.session.destroy(err => {
+          if (err) { console.error('Erro ao fazer logout:', err); }
+          res.redirect('/login');
+        });
+    }
+};
+module.exports = authController;

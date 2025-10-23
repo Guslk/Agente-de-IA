@@ -70,7 +70,7 @@
                     <option value="">Todos</option>
                     <% if (typeof allEmployees !== 'undefined' && allEmployees.length > 0) { %>
                         <% allEmployees.forEach(emp => { %>
-                            <option value="<%= emp.id_employee %>" <%= (filters.employeeId == emp.id) ? 'selected' : '' %>>
+                            <option value="<%= emp.id_employee %>" <%= (filters.employeeId == emp.id_empl0yee) ? 'selected' : '' %>>
                                 <%= emp.name %>
                             </option>
                         <% }); %>

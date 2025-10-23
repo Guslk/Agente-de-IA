@@ -16,32 +16,25 @@ const itemController = {
 
     create: async (req, res) => {
         const { tenantId } = req;
-        if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
-
+        // Recebe os nomes corretos do formulário .ejs
+        const { nome, id_stock, codigo_barras, descricao, unidade_medida, quantidade_minima, loc_corredor, loc_prateleira, loc_posicao } = req.body;
         try {
             const sequelize = await getTenantDB(tenantId);
             const { Item } = db.initialize(sequelize);
-
-            // Mapeia todos os campos do seu novo formulário
-            const dadosItem = {
-                name: req.body.nome,
-                id_stock: req.body.id_stock,
-                code: req.body.codigo_barras,
-                description: req.body.descricao,
-                unitOfMeasure: req.body.unidade_medida,
-                minimumQuantity: req.body.quantidade_minima,  // Novo campo
-                position: `${req.body.loc_corredor}-${req.body.loc_prateleira}-${req.body.loc_posicao}`
-            };
-
-            // Cria apenas o item, sem transação ou entrada de estoque
-            await Item.create(dadosItem);
-
-            res.redirect('/itens?sucesso=item_criado');
-
+            
+            await Item.create({
+                name: nome,
+                stockId: id_stock,
+                code: codigo_barras,
+                description: descricao,
+                unitOfMeasure: unidade_medida,
+                minimumQuantity: quantidade_minima,
+                position: `${loc_corredor}-${loc_prateleira}-${loc_posicao}`
+            });
+            res.redirect('/itens?success=item_created');
         } catch (error) {
-            console.error("Erro ao cadastrar item:", error);
-            // Idealmente, renderiza a página de novo com os dados e o erro
-            res.status(500).send(`Erro ao salvar o item: ${error.message}`);
+            console.error("Error creating item:", error);
+            res.status(500).send(`Error creating item: ${error.message}`);
         }
     },
 

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificar 2FA</title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <h2>Verificação de Duas Etapas</h2>
+        <p>Abra seu app autenticador e insira o código de 6 dígitos.</p>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger"><%= error %></div>
+        <% } %>
+
+        <form action="/verify-2fa" method="POST">
+            <div class="form-group">
+                <label for="token">Código de 6 dígitos</label>
+                <input type="text" name="token" id="token" required maxlength="6" pattern="\d{6}">
+            </div>
+            <button type="submit" class="btn-primary">Verificar e Entrar</button>
+        </form>
+    </div>
+</body>
+</html>

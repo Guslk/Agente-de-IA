@@ -27,7 +27,7 @@ module.exports = (sequelize) => {
             field: 'code_tools' 
         },
         status: { 
-            type: DataTypes.ENUM('Em estoque', 'Em uso', 'Em manutenção', 'Desativado', "Excluido"),
+            type: DataTypes.ENUM('Em estoque', 'Em uso', 'Em manutenção', 'Desativada', "Excluido"),
             allowNull: false, 
             defaultValue: 'Em estoque' 
         }

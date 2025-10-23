@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurar 2FA</title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <h2>Configurar Verificação de Duas Etapas</h2>
+        <p>Para sua segurança, a verificação de duas etapas é obrigatória. Escaneie o QR code abaixo com seu app autenticador (Google, Authy, etc.).</p>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger"><%= error %></div>
+        <% } %>
+        
+        <% if (qrCodeUrl) { %>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="<%= qrCodeUrl %>" alt="QR Code 2FA">
+            </div>
+            <form action="/setup-2fa" method="POST">
+                <div class="form-group">
+                    <label for="token">Insira o código de 6 dígitos</label>
+                    <input type="text" name="token" id="token" required maxlength="6" pattern="\d{6}">
+                </div>
+                <button type="submit" class="btn-primary">Verificar e Finalizar Login</button>
+            </form>
+        <% } else { %>
+            <p>Não foi possível gerar o QR code. <a href="/setup-2fa">Tente novamente</a>.</p>
+        <% } %>
+    </div>
+</body>
+</html>

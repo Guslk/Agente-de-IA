@@ -121,7 +121,7 @@
                             <option value="">Selecione um estoque...</option>
                             <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
                                 <% stocks.forEach(stock => { %>
-                                    <option value="<%= stock.id_stock %>"><%= stock.name %></option>
+                                    <option value="<%= stock.id %>"><%= stock.name %></option>
                                 <% }); %>
                             <% } %>
                         </select>

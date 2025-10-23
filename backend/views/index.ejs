@@ -76,28 +76,29 @@
                 </tr>
             </thead>
 <tbody>
-                                <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
-                                        <% toolsInUse.forEach(tool => { %>
-                        <tr class="stock-out">
-                                                        <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            
-                                                        <td><%= tool.movements[0].employee.name %></td>
-                            <td><%= new Date(tool.movements[0].movementDate).toLocaleString('pt-BR') %></td>
-                            
-                            <td style="text-align: center;">
-                                                              <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" style="margin:0;">
-                                    <button type="submit" class="btn-devolver">
-                                        <i class="bi bi-box-arrow-in-down-left"></i> Devolver
-                                    </button>
-                              </form>
-                            </td>
-                        </tr>
-              <% }); %>
-                <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
-                <% } %>
-            </tbody>
+    <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
+        <% toolsInUse.forEach(tool => { %>
+            <tr class="stock-out">
+                <td><code><%= tool.code %></code></td>
+                <td><strong><%= tool.name %></strong></td>
+                
+                <td><%= tool.movements[0].employee.name %></td>
+                <td><%= new Date(tool.movements[0].movementDate).toLocaleString('pt-BR') %></td>
+                
+                <td style="text-align: center;">
+                    <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" style="margin:0;">
+                        <button type="submit" class="btn-devolver">
+                            <i class="bi bi-box-arrow-in-down-left"></i> Devolver
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        <% }); %>
+    <% } else { %>
+        <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
+    <% } %>
+</tbody>
+
         </table>
     </section>
 
@@ -189,7 +190,7 @@
                     <select id="edit-tool-status" name="status" required>
                         <option value="Em Estoque">Em Estoque</option>
                         <option value="Em manutenção">Em manutenção</option>
-                        <option value="Desativado">Desativado</option> </select>
+                        <option value="Desativada">Desativado</option> </select>
                 </div>
             </div>
             <div class="modal-footer">
@@ -214,7 +215,7 @@
                         <option value="" disabled selected>Selecione um funcionário...</option>
                         <% if (typeof employees !== 'undefined' && employees.length > 0) { %>
                             <% employees.forEach(employee => { %>
-                                <option value="<%= employee.id_employee %>"><%= employee.name %></option>
+                                <option value="<%= employee.id %>"><%= employee.name %></option>
                             <% }); %>
                         <% } %>
                     </select>
