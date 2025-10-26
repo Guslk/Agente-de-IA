@@ -15,15 +15,15 @@ router.get('/itens', itemController.getAll);
 
 // 2. CREATE (Show Form) -> Mostrar o formulário para criar um novo item
 // GET /itens/novo
-router.get('/itens/novo', itemController.showCreateForm);
+// router.get('/itens/novo', itemController.showCreateForm);
 
 // 3. CREATE (Process Form) -> Salvar o novo item no banco de dados
 // POST /itens
 router.post('/itens', itemController.create);
-
+router.post('/itens/:id/restore', itemController.restore);
 // 4. READ (One) & UPDATE (Show Form) -> Mostrar um item específico para editar
 // GET /itens/:id/editar
-router.get('/itens/:id/editar', itemController.showEditForm);
+// router.get('/itens/:id/editar', itemController.showEditForm);
 // 5. UPDATE (Process Form) -> Salvar as alterações de um item
 // POST /itens/:id/atualizar  (Usamos POST pois formulários HTML simples não suportam PUT/PATCH)
 router.post('/itens/:id/atualizar', itemController.update);

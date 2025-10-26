@@ -51,6 +51,7 @@ const getTenantDB = async (tenantId) => {
     
     // Monta a configuração do Sequelize com as credenciais obtidas.
     const sequelizeConfig = {
+      timezone: 'America/Sao_Paulo',
       dialect: 'mysql', // Especifica o dialeto do banco de dados
       host: tenant.database.host,
       port: tenant.database.port,

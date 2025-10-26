@@ -9,7 +9,6 @@ const session = require('express-session');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-require('dotenv').config();
 
 // --- MÓDULOS PRINCIPAIS DA APLICAÇÃO ---
 // Conexão com a base de dados mestre

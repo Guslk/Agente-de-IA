@@ -1,211 +1,298 @@
+
 <%- include('partials/header', { title: 'Itens', paginaAtiva: 'itens' }) %>
 
+<%
+    // --- Lógica EJS para ajudar a construir os links de ordenação ---
+    
+    const sortColumn = (typeof currentSort !== 'undefined') ? currentSort.column : 'name';
+    const sortOrder = (typeof currentSort !== 'undefined') ? currentSort.order : 'ASC';
+
+    // Pega os filtros atuais para não perdê-los ao ordenar
+    const currentFilters = new URLSearchParams(typeof filters !== 'undefined' ? filters : {});
+    currentFilters.delete('sort'); // Remove parâmetros de ordenação antigos
+    currentFilters.delete('order');
+    const filterParams = currentFilters.toString(); // Constrói a string de consulta (ex: &busca=parafuso&status=Ativo)
+
+    // Função para criar a URL de ordenação
+    const createSortUrl = (columnName) => {
+        let newOrder = 'ASC';
+        if (columnName === sortColumn) {
+            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC'; // Inverte a ordem
+        }
+        return `/itens?sort=${columnName}&order=${newOrder}&${filterParams}`;
+    };
+
+    // Função para mostrar um ícone (seta)
+    const getSortIcon = (columnName) => {
+        if (columnName === sortColumn) {
+            return (sortOrder === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        }
+        return '';
+    };
+%>
+
 <header class="header">
-    <h1 class="header-title">Itens Cadastrados</h1>
-    <div class="header-right">
-        <div class="user-profile">
-            <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
-            <% } %>
-        </div>
-    </div>
-</header>
+    <h1 class="header-title">Itens Cadastrados</h1>
+    </header>
 
 <main class="main-content">
-    
-    <% if (typeof query !== 'undefined' && query.error) { %>
-        <% if (query.error === 'stock_in_use') { %>
-            <div class="alert alert-danger">
-                <strong>Erro!</strong> Não é possível excluir este departamento, pois ele ainda possui itens cadastrados.
-            </div>
-        <% } %>
-    <% } %>
-    
-    <% if (typeof query !== 'undefined' && query.success) { %>
-        <div class="alert alert-success">
-            <strong>Sucesso!</strong> A operação foi realizada com sucesso.
-        </div>
-    <% } %>
+    
+        <div class="main-header">
+        <h2>Catálogo de Itens</h2>
+        <div class="action-buttons">
+            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
+            <button class="btn-secondary" id="btn-show-dpto-modal"><i class="bi bi-gear-fill"></i> Gerenciar Departamentos</button>
+        </div>
+    </div>
+    
+        <section class="filter-section">
+        <form action="/itens" method="GET" class="filter-form" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+            <div class="form-group">
+                <label>Nome do Item</label>
+                <input type="text" name="busca" placeholder="Buscar por nome..." value="<%= filters.busca || '' %>">
+            </div>
+            <div class="form-group">
+                <label>Código</label>
+                <input type="text" name="code" placeholder="Buscar por código..." value="<%= filters.code || '' %>">
+            </div>
+            <div class="form-group">
+                <label>Localização</label>
+                <input type="text" name="position" placeholder="Buscar por localização..." value="<%= filters.position || '' %>">
+            </div>
+            <div class="form-group">
+                <label>Status do Item</label>
+                <select name="status">
+                    <option value="todos" <%= (!filters.status || filters.status === 'todos') ? 'selected' : '' %>>Ativos/Desativados</option>
+                    <option value="Ativo" <%= (filters.status === 'Ativo') ? 'selected' : '' %>>Apenas Ativos</option>
+                    <option value="Desativado" <%= (filters.status === 'Desativado') ? 'selected' : '' %>>Apenas Desativados</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status do Estoque</label>
+                <select name="filtroStatus">
+                    <option value="todos" <%= (!filters.filtroStatus || filters.filtroStatus === 'todos') ? 'selected' : '' %>>Todos os Níveis</option>
+                    <option value="normal" <%= (filters.filtroStatus === 'normal') ? 'selected' : '' %>>Estoque Normal</option>
+                    <option value="baixo" <%= (filters.filtroStatus === 'baixo') ? 'selected' : '' %>>Estoque Baixo</option>
+                    <option value="esgotado" <%= (filters.filtroStatus === 'esgotado') ? 'selected' : '' %>>Esgotado</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-primary" style="align-self: end;"><i class="bi bi-search"></i> Filtrar</button>
+        </form>
+    </section>
 
-    <div class="main-header">
-        <h2>Catálogo de Itens</h2>
-        <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
-            <button class="btn-secondary" id="btn-show-dpto-modal"><i class="bi bi-gear-fill"></i> Gerenciar Departamentos</button>
-        </div>
-    </div>
-    
-    <section class="filter-section">
-        <form action="/itens" method="GET" class="filter-form">
-            <div class="form-group">
-                <input type="text" name="busca" placeholder="Buscar por nome do item..." value="<%= typeof busca !== 'undefined' ? busca : '' %>">
-            </div>
-            <div class="form-group">
-                <select name="filtroStatus">
-                    <option value="todos" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'todos') ? 'selected' : '' %>>Todos os Status</option>
-                    <option value="normal" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'normal') ? 'selected' : '' %>>Estoque Normal</option>
-                    <option value="baixo" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'baixo') ? 'selected' : '' %>>Estoque Baixo</option>
-                    <option value="esgotado" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'esgotado') ? 'selected' : '' %>>Esgotado</option>
-                </select>
-            </div>
-            <button type="submit" class="btn-primary"><i class="bi bi-search"></i> Filtrar</button>
-        </form>
-    </section>
-<section class="inventory-table">
-    <table>
-        <thead>
-            <tr>
-                <th>Nome do Item</th>
-                <th>Qtd. Atual</th>
-                <th>Departamento</th>
-                <th>Localização</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody id="items-table-body">
-            <% if (typeof items !== 'undefined' && items.length > 0) { %>
-                <% items.forEach(item => { %>
-                    <%
-                        // Usa 'item.quantity' diretamente
-                        const qtdAtual = Number(item.quantity) || 0;
-                        let rowClass = '';
-                        if (qtdAtual <= 0) {
-                            rowClass = 'out-of-stock-row';
-                        } else if (qtdAtual < item.minimumQuantity) {
-                            rowClass = 'low-stock-row';
-                        }
-                    %>
-                    <tr class="<%= rowClass %>">
-                        <td><strong><%= item.name %></strong></td>
-                        <td><%= qtdAtual %></td>
-                        <td><%= item.department %></td>
-                        <td><%= item.position %></td>
+    <section class="inventory-table">
+    <table>
+        <thead>
+            <tr>
+                <th><a href="<%= createSortUrl('code') %>">Code <%- getSortIcon('code') %></a></th>
+                <th><a href="<%= createSortUrl('name') %>">Nome do Item <%- getSortIcon('name') %></a></th>
+                <th><a href="<%= createSortUrl('description') %>">Descrição <%- getSortIcon('description') %></a></th>
+                <th><a href="<%= createSortUrl('quantity') %>">Qtd. Atual <%- getSortIcon('quantity') %></a></th>
+                <th><a href="<%= createSortUrl('minimumQuantity') %>">Qtd. Mínima <%- getSortIcon('minimumQuantity') %></a></th>
+                <th><a href="<%= createSortUrl('maximumQuantity') %>">Qtd. Máxima <%- getSortIcon('maximumQuantity') %></a></th>
+                <th><a href="<%= createSortUrl('maximumQuantity') %>"> Valor Total <%- getSortIcon('maximumQuantity') %></a></th>
+                <th><a href="<%= createSortUrl('department') %>">Departamento <%- getSortIcon('department') %></a></th>
+                <th><a href="<%= createSortUrl('position') %>">Localização <%- getSortIcon('position') %></a></th>
+                <th><a href="<%= createSortUrl('status') %>">Status <%- getSortIcon('status') %></a></th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="items-table-body">
+            <% if (typeof items !== 'undefined' && items.length > 0) { %>
+                <% items.forEach(item => { %>
+                    <%
+                        const qtdAtual = Number(item.quantity) || 0;
+                        let rowClass = '';
+                        if (item.status === 'Desativado') rowClass = 'stock-planned';
+                        else if (qtdAtual <= 0) rowClass = 'out-of-stock-row';
+                        else if (qtdAtual < item.minimumQuantity) rowClass = 'low-stock-row';
+                    %>
+                    <tr class="<%= rowClass %>">
+                        <td><code><%= item.code %></code></td>
+                        <td><strong><%= item.name %></strong></td>
+                        <td><%= item.description %></td>
+                        <td><%= qtdAtual %></td>
+                        <td><%= item.minimumQuantity %></td>
+                        <td><%= item.maximumQuantity %></td>
+                        <td><%= item.totalValue %></td>
+                        <td><%= item.department %></td>
+                        <td><%= item.position %></td>
+                        <td><span class="status-badge <%= item.status === 'Ativo' ? 'active' : 'inactive' %>"><%= item.status %></span></td>
                         <td>
                             <button title="Editar" class="action-btn btn-edit" data-item='<%- JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
                             <form action="/itens/<%= item.id %>/deletar" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
                                 <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
                             </form>
                         </td>
-                    </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
-            <% } %>
-        </tbody>
-    </table>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr><td colspan="10" style="text-align: center;">Nenhum item encontrado para os filtros selecionados.</td></tr>
+            <% } %>
+        </tbody>
+    </table>
 </section>
+
+        <div class="main-header" style="margin-top: 40px;">
+        <h2>Itens Excluídos (Lixeira)</h2>
+        <div class="action-buttons">
+            <button class="btn-secondary" id="btn-toggle-excluded">
+                <i class="bi bi-eye-fill"></i> Mostrar Lixeira
+            </button>
+        </div>
+    </div>
+    
+    <section class="inventory-table" id="excluded-items-table" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+             <th>Departamento</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+<tbody>
+                <% if (typeof excludedItems !== 'undefined' && excludedItems.length > 0) { %>
+                    <% excludedItems.forEach(item => { %>
+                        <tr style="opacity: 0.7; background-color: #f8f9fa;">
+                            <td><strong><%= item.name %></strong></td>
+                            <td><%= item.stock ? item.stock.name : 'N/A' %></td>
+                            <td><span class="status-badge inactive"><%= item.status %></span></td>
+                            <td>
+                                                                <form action="/itens/<%= item.id %>/restore" method="POST" style="display: inline;">
+                                    <button type="submit" title="Restaurar Item" class="action-btn restore-btn">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Restaurar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="4" style="text-align: center;">Lixeira está vazia.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
 </main>
 
 <div class="modal-overlay" id="add-item-modal">
-    <div class="modal">
-        <div class="modal-header">
-            <h3>Adicionar Novo Item ao Estoque</h3>
-            <button class="close-button" id="btn-close-add-modal">&times;</button>
-        </div>
-        <form action="/itens" method="POST">
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group"><label for="nome">Nome do Item</label><input type="text" id="nome" name="nome" required></div>
-                    <div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div>
-                    <div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div>
-                    <div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
-                    <div class="form-group"><label for="descricao">Descrição (Opcional)</label><input type="text" id="descricao" name="descricao" class="full-width"></div>
-                </div>
-                <hr style="margin: 20px 0;">
-                <h4>Estoque e Localização</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="id_stock">Estoque</label>
-                        <select id="id_stock" name="id_stock" required>
-                            <option value="">Selecione um estoque...</option>
-                            <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
-                                <% stocks.forEach(stock => { %>
-                                    <option value="<%= stock.id %>"><%= stock.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-                    <div class="form-group"><label for="loc_corredor">Corredor</label><input type="text" id="loc_corredor" name="loc_corredor" placeholder="Ex: A"></div>
-                    <div class="form-group"><label for="loc_prateleira">Prateleira</label><input type="text" id="loc_prateleira" name="loc_prateleira" placeholder="Ex: 04"></div>
-                    <div class="form-group"><label for="loc_posicao">Posição</label><input type="text" id="loc_posicao" name="loc_posicao" placeholder="Ex: 15"></div>
-                </div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Item</button></div>
-        </form>
-    </div>
+    <div class="modal">
+        <div class="modal-header"><h3>Adicionar Novo Item</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
+        <form action="/itens" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label for="nome">Nome do Item</label><input type="text" id="nome" name="nome" required></div>
+                    <div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div>
+                    <div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div>
+                    <div class="form-group"><label for="maximumQuantity">Quantidade Máxima (Opcional)</label><input type="number" id="maximumQuantity" name="maximumQuantity" min="0"></div>
+                    <div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
+                    <div class="form-group full-width"><label for="descricao">Descrição (Opcional)</label><input type="text" id="descricao" name="descricao"></div>
+                </div>
+                <hr class="form-divider">
+                <h4>Estoque e Localização</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_stock">Estoque</label>
+                        <select id="id_stock" name="id_stock" required>
+                            <option value="">Selecione um estoque...</option>
+                            <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                                <% stocks.forEach(stock => { %>
+                                    <option value="<%= stock.id %>"><%= stock.name %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="loc_corredor">Corredor</label><input type="text" id="loc_corredor" name="loc_corredor" placeholder="Ex: A"></div>
+                    <div class="form-group"><label for="loc_prateleira">Prateleira</label><input type="text" id="loc_prateleira" name="loc_prateleira" placeholder="Ex: 04"></div>
+                    <div class="form-group"><label for="loc_posicao">Posição</label><input type="text" id="loc_posicao" name="loc_posicao" placeholder="Ex: 15"></div>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Item</button></div>
+        </form>
+    </div>
 </div>
 
 <div class="modal-overlay" id="dpto-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Gerenciar Departamentos</h3><button class="close-button" id="btn-close-dpto-modal">&times;</button></div>
-        <div class="modal-body">
-            <h4>Departamentos Atuais</h4>
-            <ul class="department-list">
-                <% if(typeof stocks !== 'undefined' && stocks.length > 0) { %>
-                    <% stocks.forEach(stock => { %>
-                        <li>
-                            <span><%= stock.name %></span>
-                            <form action="/stocks/<%= stock.id %>/delete" method="POST" onsubmit="return confirm('Tem certeza?');">
-                                <button type="submit" class="btn-icon danger"><i class="bi bi-trash-fill"></i></button>
-                            </form>
-                        </li>
-                    <% }); %>
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header"><h3>Gerenciar Departamentos</h3><button class="close-button" id="btn-close-dpto-modal">&times;</button></div>
+        <div class="modal-body">
+            <h4>Departamentos Atuais</h4>
+            <ul class="department-list">
+                <% if(typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                    <% stocks.forEach(stock => { %>
+                        <li>
+                            <span><%= stock.name %></span>
+                            <form action="/stocks/<%= stock.id %>/delete" method="POST" onsubmit="return confirm('Tem certeza?');">
+                                <button type="submit" class="btn-icon danger"><i class="bi bi-trash-fill"></i></button>
+                            </form>
+                        </li>
+                    <% }); %>
+                <% } else { %>
+                    <li>Nenhum departamento cadastrado.</li>
                 <% } %>
-            </ul>
-            <hr>
-            <h4>Adicionar Novo Departamento</h4>
-            <form action="/stocks" method="POST">
-                <div class="form-group">
-                    <label for="stock-name">Nome do Departamento</label>
-                    <input type="text" id="stock-name" name="name" required>
-                </div>
-                <button type="submit" class="btn-primary">Adicionar</button>
-            </form>
-        </div>
-    </div>
+            </ul>
+            <hr class="form-divider">
+            <h4 style="margin-top: 20px;">Adicionar Novo Departamento</h4>
+            <form action="/stocks" method="POST" class="filter-form" style="margin-top: 10px;">
+                <div class="form-group">
+                    <label for="stock-name">Nome do Departamento</label>
+                    <input type="text" id="stock-name" name="name" required>
+                </div>
+                <button type="submit" class="btn-primary">Adicionar</button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <div class="modal-overlay" id="edit-item-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Editar Item</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST">
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group"><label for="edit-nome">Nome do Item</label><input type="text" id="edit-nome" name="nome" required></div>
-                    <div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div>
-                    <div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div>
-                    <div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
-                    <div class="form-group"><label for="edit-descricao">Descrição (Opcional)</label><input type="text" id="edit-descricao" name="descricao" class="full-width"></div>
-                </div>
-                <hr style="margin: 20px 0;">
-                <h4>Estoque e Localização</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="edit-id_stock">Estoque</label>
-                        <select id="edit-id_stock" name="id_stock" required>
-                            <option value="">Selecione um estoque...</option>
-                            <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
-                                <% stocks.forEach(stock => { %>
-                                    <option value="<%= stock.id_stock %>"><%= stock.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-                    <div class="form-group"><label for="edit-loc_corredor">Corredor</label><input type="text" id="edit-loc_corredor" name="loc_corredor"></div>
-                    <div class="form-group"><label for="edit-loc_prateleira">Prateleira</label><input type="text" id="edit-loc_prateleira" name="loc_prateleira"></div>
-                    <div class="form-group"><label for="edit-loc_posicao">Posição</label><input type="text" id="edit-loc_posicao" name="loc_posicao"></div>
-                </div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
-        </form>
-    </div>
+    <div class="modal">
+        <div class="modal-header"><h3>Editar Item</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
+        <form id="edit-form" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label for="edit-nome">Nome do Item</label><input type="text" id="edit-nome" name="nome" required></div>
+                    <div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div>
+                    <div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div>
+                    <div class="form-group"><label for="edit-maximumQuantity">Quantidade Máxima (Opcional)</label><input type="number" id="edit-maximumQuantity" name="maximumQuantity" min="0"></div>
+                    <div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div>
+                    <div class="form-group">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status" name="status" required>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Desativado">Desativado</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width"><label for="edit-descricao">Descrição (Opcional)</label><input type="text" id="edit-descricao" name="descricao"></div>
+                </div>
+                <hr class="form-divider">
+                <h4>Estoque e Localização</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-id_stock">Estoque</label>
+                        <select id="edit-id_stock" name="id_stock" required>
+                            <option value="">Selecione um estoque...</option>
+                            <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                                <% stocks.forEach(stock => { %>
+                                    <option value="<%= stock.id %>"><%= stock.name %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="edit-loc_corredor">Corredor</label><input type="text" id="edit-loc_corredor" name="loc_corredor"></div>
+                    <div class="form-group"><label for="edit-loc_prateleira">Prateleira</label><input type="text" id="edit-loc_prateleira" name="loc_prateleira"></div>
+                    <div class="form-group"><label for="edit-loc_posicao">Posição</label><input type="text" id="edit-loc_posicao" name="loc_posicao" placeholder="Ex: 15"></div>
+</div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
+        </form>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
     // Lógica para o modal de ADICIONAR (permanece a mesma)
     const addModal = document.getElementById('add-item-modal');
     const btnShowAddModal = document.getElementById('btn-show-add-modal');
@@ -216,21 +303,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // Lógica para o modal de DEPARTAMENTOS (Estoques)
-const stockModal = document.getElementById('stock-modal');
-const btnShowStockModal = document.getElementById('btn-show-dpto-modal'); // Mantém o ID do seu botão
-const btnCloseStockModal = document.getElementById('btn-close-stock-modal');
+const dptoModal = document.getElementById('dpto-modal');
+const btnShowDptoModal = document.getElementById('btn-show-dpto-modal'); // Mantém o ID do seu botão
+const btnCloseDptoModal = document.getElementById('btn-close-dpto-modal');
 
-if (btnShowStockModal) btnShowStockModal.addEventListener('click', () => stockModal.style.display = 'flex');
-if (btnCloseStockModal) btnCloseStockModal.addEventListener('click', () => stockModal.style.display = 'none');
+if (btnShowDptoModal) btnShowDptoModal.addEventListener('click', () => dptoModal.style.display = 'flex');
+if (btnCloseDptoModal) btnCloseDptoModal.addEventListener('click', () => dptoModal.style.display = 'none');
 window.addEventListener('click', (event) => { 
-    if (event.target === stockModal) stockModal.style.display = 'none'; 
+    if (event.target === dptoModal) dptoModal.style.display = 'none'; 
 });
-    // Lógica para o modal de EDITAR (agora vai funcionar)
+// Lógica para o modal de EDITAR (agora vai funcionar)
     const editModal = document.getElementById('edit-item-modal');
     const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
     const editForm = document.getElementById('edit-form');
     const btnsEdit = document.querySelectorAll('.btn-edit');
-    btnsEdit.forEach(btn => {
+btnsEdit.forEach(btn => {
         btn.addEventListener('click', () => {
             const item = JSON.parse(btn.dataset.item);
 
@@ -242,29 +329,68 @@ window.addEventListener('click', (event) => {
             document.getElementById('edit-codigo_barras').value = item.code;
             document.getElementById('edit-quantidade_minima').value = item.minimumQuantity;
             document.getElementById('edit-unidade_medida').value = item.unitOfMeasure;
-            document.getElementById('edit-descricao').value = item.description;
             document.getElementById('edit-id_stock').value = item.id_stock;
+                                    document.getElementById('edit-maximumQuantity').value = item.maximumQuantity;
+            document.getElementById('edit-status').value = item.status;
 
             // Separa a 'position' para preencher os 3 inputs de localização
             const [corredor = '', prateleira = '', posicao = ''] = item.position.split('-');
             document.getElementById('edit-loc_corredor').value = corredor;
             document.getElementById('edit-loc_prateleira').value = prateleira;
-            document.getElementById('edit-loc_posicao').value = posicao;
+            // document.getElementById('edit-loc_posicao').value = posicao;
 
             // Mostra o modal de edição
             editModal.style.display = 'flex';
         });
     });
 
-    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
-    
-    // Lógica para o modal de DEPARTAMENTOS
-    const dptoModal = document.getElementById('dpto-modal');
-    const btnShowDptoModal = document.getElementById('btn-show-dpto-modal');
-    const btnCloseDptoModal = document.getElementById('btn-close-dpto-modal');
-    if(btnShowDptoModal) btnShowDptoModal.addEventListener('click', () => dptoModal.style.display = 'flex');
-    if(btnCloseDptoModal) btnCloseDptoModal.addEventListener('click', () => dptoModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === dptoModal) dptoModal.style.display = 'none'; });
+    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
+    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+    
+
+    // Lógica para o botão "Mostrar Lixeira"
+    const btnToggleExcluded = document.getElementById('btn-toggle-excluded');
+    const excludedTable = document.getElementById('excluded-items-table');
+
+    if (btnToggleExcluded) {
+        btnToggleExcluded.addEventListener('click', () => {
+            const isHidden = excludedTable.style.display === 'none';
+            if (isHidden) {
+                excludedTable.style.display = 'block'; // Mostra a tabela
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-slash-fill"></i> Ocultar Lixeira';
+            } else {
+                excludedTable.style.display = 'none'; // Oculta a tabela
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-fill"></i> Mostrar Lixeira';
+            }
+        });
+    }
 });
 </script>
+
+<style>
+    .inventory-table th a {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+    }
+    .inventory-table th a:hover {
+        color: #007bff;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .status-badge.active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-badge.inactive {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+</style>

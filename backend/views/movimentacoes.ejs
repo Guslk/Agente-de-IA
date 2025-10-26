@@ -1,308 +1,4 @@
-<!-- <%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
-
-<header class="header">
-    <h1 class="header-title">Registro de Movimentações</h1>
-    <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
-                <span class="notification-badge"><%= lowStockCount %></span>
-            <% } %>
-        </div>
-        <div class="user-profile">
-            <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.nome %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
-            <% } %>
-        </div>
-    </div>
-</header>
-
-<main class="main-content">
-    <div class="main-header">
-        <h2>Operações de Estoque</h2>
-        <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-entrada-modal"><i class="bi bi-plus-circle"></i> Registrar Entrada</button>
-            <button class="btn-saida" id="btn-show-saida-modal"><i class="bi bi-dash-circle"></i> Registrar Saída</button>
-        </div>
-    </div>
-
-    <div class="main-header">
-        <h1>Histórico de Movimentações</h1>
-    </div>
-
-<section class="inventory-table">
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Tipo</th>
-                <th>Item</th>
-                <th>Lote</th>
-                <th>Quantidade</th>
-                <th>Detalhes</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (typeof movements !== 'undefined' && movements.length > 0) { %>
-                <% movements.forEach(mov => { %>
-                    <%
-                        let rowClass = '';
-                        if (mov.type === 'Entrada') rowClass = 'stock-in';
-                        else if (mov.type === 'Saída') rowClass = 'stock-out';
-                        else rowClass = 'stock-planned';
-                    %>
-                    <tr class="<%= rowClass %>">
-                        <td><%= new Date(mov.date).toLocaleString('pt-BR') %></td>
-                        <td><%= mov.type %></td>
-                        <td><%= mov.item %></td>
-                        <td><%= mov.batchCode %></td>
-                        <td><%= mov.quantity %></td>
-                        <td><%= mov.details %></td>
-                    </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="6" style="text-align: center;">Nenhuma movimentação encontrada.</td></tr>
-            <% } %>
-        </tbody>
-    </table>
-</section>
-</main>
-<div class="modal-overlay" id="entrada-modal">
-    <div class="modal" style="max-width: 700px;">         <div class="modal-header">
-            <h3>Register Stock Entry</h3>
-            <button class="close-button" id="btn-close-entrada-modal">&times;</button>
-        </div>
-        <form action="/batches" method="POST">
-            <div class="modal-body">
-                <h4>Item & Batch Information</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="entry-itemId">Item</label>
-                        <select id="entry-itemId" name="itemId" required>
-                            <option value="" disabled selected>Select an item...</option>
-                            <% if (typeof items !== 'undefined' && items.length > 0) { %>
-                                <% items.forEach(item => { %>
-                                    <option value="<%= item.id %>"><%= item.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="batch-selection-group" style="display: none;">
-                        <label for="entry-batchId">Batch</label>
-                        <select id="entry-batchId" name="batchId">
-                            <option value="new">-- Create a New Batch --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="new-batch-group" style="display: none;">
-                        <label for="entry-newBatchCode">New Batch Code</label>
-                        <input type="text" id="entry-newBatchCode" name="batchCode">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="entry-quantity">Quantity to Add</label>
-                        <input type="number" id="entry-quantity" name="quantity" min="1" required>
-                    </div>
-                </div>
-
-                <hr class="form-divider">
-
-                <h4>Purchase Details</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="entry-unitPrice">Unit Price ($)</label>
-                        <input type="number" id="entry-unitPrice" name="unitPrice" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="entry-invoiceNumber">Invoice Number</label>
-                        <input type="text" id="entry-invoiceNumber" name="invoiceNumber" required>
-                    </div>
-                    <div class="form-group full-width">                         <label for="entry-supplierId">Supplier</label>
-                        <select id="entry-supplierId" name="supplierId" required>
-                            <option value="" disabled selected>Select a supplier...</option>
-                            <% if (typeof suppliers !== 'undefined' && suppliers.length > 0) { %>
-                                <% suppliers.forEach(supplier => { %>
-                                    <option value="<%= supplier.id %>"><%= supplier.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn-primary">Confirm Entry</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="modal-overlay" id="saida-modal">
-    <div class="modal" style="max-width: 600px;">
-        <div class="modal-header"><h3>Registrar Saída de Estoque</h3><button class="close-button" id="btn-close-saida-modal">&times;</button></div>
-        <form action="/exits" method="POST">
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="exit-itemId">Item</label>
-                        <select id="exit-itemId" name="itemId" required>
-                            <option value="" disabled selected>Selecione um item...</option>
-                            <% if (typeof items !== 'undefined' && items.length > 0) { %>
-                                <% items.forEach(item => { %>
-                                    <option value="<%= item.id %>"><%= item.name %></option>
-                                <% }); %>
-                            <% } %>
-                        </select>
-                    </div>
-                    <div class="form-group" id="exit-batch-selection-group" style="display: none;">
-                        <label for="exit-batchId">Batch</label>
-                        <select id="exit-batchId" name="batchId" required>
-                            <option value="" disabled selected>Select a batch to exit from...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="exit-quantity">Quantity to Remove</label>
-                        <input type="number" id="exit-quantity" name="quantity" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="exit-productionOrder">Production Order (OS)</label>
-                        <input type="text" id="exit-productionOrder" name="productionOrder">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="exit-justification">Justification / Notes</label>
-                        <input type="text" id="exit-justification" name="justification">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Confirm Exit</button></div>
-        </form>
-    </div>
-</div>
-
-<%- include('partials/footer') %>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // ======================================================
-    // PARTE 1: REFERÊNCIAS AOS ELEMENTOS DO HTML
-    // ======================================================
-    const entryModal = document.getElementById('entrada-modal');
-    const btnShowEntryModal = document.getElementById('btn-show-entrada-modal');
-    const btnCloseEntryModal = document.getElementById('btn-close-entrada-modal');
-
-    const entryItemSelect = document.getElementById('entry-itemId');
-    const entryBatchSelect = document.getElementById('entry-batchId');
-    const entryBatchGroup = document.getElementById('batch-selection-group');
-    const entryNewBatchGroup = document.getElementById('new-batch-group');
-    const entryNewBatchInput = document.getElementById('entry-newBatchCode');
-
-    // ======================================================
-    // PARTE 2: LÓGICA PARA ABRIR E FECHAR O MODAL DE ENTRADA
-    // ======================================================
-
-    if (btnShowEntryModal) {
-        btnShowEntryModal.addEventListener('click', () => {
-            entryModal.style.display = 'flex';
-        });
-    }
-    if (btnCloseEntryModal) {
-        btnCloseEntryModal.addEventListener('click', () => {
-            entryModal.style.display = 'none';
-        });
-    }
-    window.addEventListener('click', (e) => {
-        if (e.target === entryModal) {
-            entryModal.style.display = 'none';
-        }
-    });
-
-    // ======================================================
-    // PARTE 3: FUNÇÃO REUTILIZÁVEL PARA BUSCAR E POPULAR LOTES
-    // ======================================================
-
-    const fetchAndPopulateBatches = async (itemId, batchSelectElem) => {
-        const batchGroup = batchSelectElem.parentElement;
-        if (!itemId) {
-            batchGroup.style.display = 'none';
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/items/${itemId}/batches`);
-            if (!response.ok) {
-                throw new Error(`API response was not ok: ${response.statusText}`);
-            }
-            
-            const batches = await response.json();
-
-            // Limpa apenas as opções de lotes existentes (da posição 1 em diante)
-            while (batchSelectElem.options.length > 1) {
-                batchSelectElem.remove(1);
-            }
-
-            if (batches.length > 0) {
-                batches.forEach(batch => {
-                    // SÓ ADICIONA O LOTE AO DROPDOWN SE AINDA TIVER ESTOQUE DISPONÍVEL
-                    if (batch.currentQuantity > 0) {
-                        const option = document.createElement('option');
-                        option.value = batch.id;
-                        // ===============================================
-                        //       MELHORIA APLICADA AQUI 👇
-                        // ===============================================
-                        // Agora exibe a quantidade ATUAL disponível
-                        option.textContent = `${batch.batchCode} (Qty Available: ${batch.currentQuantity})`;
-                        batchSelectElem.appendChild(option);
-                    }
-                });
-            }
-            
-            batchGroup.style.display = 'block';
-            
-        } catch (error) {
-            console.error('Failed to fetch batches:', error);
-            batchGroup.style.display = 'none';
-        }
-    };
-    
-    // ======================================================
-    // PARTE 4: LÓGICA DINÂMICA PARA O MODAL DE ENTRADA
-    // ======================================================
-    
-    if (entryItemSelect) {
-        entryItemSelect.addEventListener('change', async (e) => {
-            const itemId = e.target.value;
-            
-            // Esconde e reseta os campos de lote
-            entryNewBatchGroup.style.display = 'none';
-            entryNewBatchInput.required = false;
-            entryNewBatchInput.value = '';
-
-            await fetchAndPopulateBatches(itemId, entryBatchSelect);
-
-            // Garante que a opção "Create New" esteja selecionada por padrão
-            entryBatchSelect.value = 'new';
-            
-            // Dispara o evento 'change' para mostrar o campo de novo lote
-            entryBatchSelect.dispatchEvent(new Event('change'));
-        });
-
-        entryBatchSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'new') {
-                entryNewBatchGroup.style.display = 'block';
-                entryNewBatchInput.required = true;
-            } else {
-                entryNewBatchGroup.style.display = 'none';
-                entryNewBatchInput.required = false;
-                entryNewBatchInput.value = '';
-            }
-        });
-    }
-});
-</script> -->
-
-
+<!-- 
 <%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
 
 <header class="header">
@@ -369,7 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <% items.forEach(item => { %><option value="<%= item.id %>"><%= item.name %></option><% }); %>
                     </select>
                 </div>
-                <div class="form-group"><label for="entry-quantity">Quantity</label><input type="number" name="quantity" min="1" required></div>
+                <div class="form-group"><label for="entry-quantity">Quantity</label><input type="floot" name="quantity" min="1" required></div>
+                <div class="form-group">
+    <label for="entry-unitPrice">Preço Unitário (R$)</label>
+    <input type="number" name="unitPrice" step="0.01" min="0" required>
+</div>
                 <div class="form-group">
                     <label for="entry-supplierId">Supplier</label>
                     <select name="supplierId" required>
@@ -421,4 +121,212 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === outputModal) outputModal.style.display = 'none';
         });
     });
-</script>
+</script> -->
+
+
+<%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
+
+<%
+    // --- Lógica EJS para ajudar a construir os links de ordenação ---
+    const sortColumn = (typeof currentSort !== 'undefined') ? currentSort.column : 'date';
+    const sortOrder = (typeof currentSort !== 'undefined') ? currentSort.order : 'DESC';
+
+    const currentFilters = new URLSearchParams(typeof filters !== 'undefined' ? filters : {});
+    currentFilters.delete('sort');
+    currentFilters.delete('order');
+    const filterParams = currentFilters.toString();
+
+    const createSortUrl = (columnName) => {
+        let newOrder = 'ASC';
+        if (columnName === sortColumn) {
+            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC';
+        }
+        return `/movimentacoes?sort=${columnName}&order=${newOrder}&${filterParams}`;
+    };
+
+    const getSortIcon = (columnName) => {
+        if (columnName === sortColumn) {
+            return (sortOrder === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        }
+        return '';
+    };
+%>
+
+<header class="header">
+    <h1 class="header-title">Movimentações de Estoque</h1>
+    </header>
+
+<main class="main-content">
+    <div class="main-header">
+        <h2>Histórico de Movimentações</h2>
+        <div class="action-buttons">
+            <button class="btn-entrada" id="btn-show-entry-modal"><i class="bi bi-plus-circle"></i> Registrar Entrada</button>
+            <button class="btn-saida" id="btn-show-output-modal"><i class="bi bi-dash-circle"></i> Registrar Saída</button>
+        </div>
+    </div>
+
+    <section class="filter-section">
+        <form action="/movimentacoes" method="GET" class="filter-form" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <div class="form-group">
+                <label for="filter-item">Item</label>
+                <select name="itemId" id="filter-item">
+                    <option value="">Todos os Itens</option>
+                    <% if (typeof items !== 'undefined') { %>
+                        <% items.forEach(item => { %>
+                            <option value="<%= item.id %>" <%= (filters.itemId == item.id) ? 'selected' : '' %>>
+                                <%= item.name %>
+                            </option>
+                        <% }); %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-supplier">Fornecedor (Entradas)</label>
+                <select name="supplierId" id="filter-supplier">
+                    <option value="">Todos</option>
+                    <% if (typeof suppliers !== 'undefined') { %>
+                        <% suppliers.forEach(sup => { %>
+                            <option value="<%= sup.id %>" <%= (filters.supplierId == sup.id) ? 'selected' : '' %>>
+                                <%= sup.name %>
+                            </option>
+                        <% }); %>
+                    <% } %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-type">Tipo de Movimento</label>
+                <select name="movementType" id="filter-type">
+                    <option value="todos">Todos</option>
+                    <option value="Entrada" <%= (filters.movementType == 'Entrada') ? 'selected' : '' %>>Apenas Entradas</option>
+                    <option value="Saída" <%= (filters.movementType == 'Saída') ? 'selected' : '' %>>Apenas Saídas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filter-details">OS / Justificativa (Saídas)</label>
+                <input type="text" name="details" id="filter-details" value="<%= filters.details || '' %>" placeholder="Buscar em OS ou Justificativa...">
+            </div>
+            <div class="form-group">
+                <label for="filter-startDate">Data Início</label>
+                <input type="date" name="startDate" id="filter-startDate" value="<%= filters.startDate || '' %>">
+            </div>
+            <div class="form-group">
+                <label for="filter-endDate">Data Fim</label>
+                <input type="date" name="endDate" id="filter-endDate" value="<%= filters.endDate || '' %>">
+            </div>
+            <button type="submit" class="btn-primary" style="align-self: end;"><i class="bi bi-search"></i> Filtrar</button>
+        </form>
+    </section>
+
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th><a href="<%= createSortUrl('date') %>">Data <%- getSortIcon('date') %></a></th>
+                    <th><a href="<%= createSortUrl('item') %>">Item <%- getSortIcon('item') %></a></th>
+                    <th><a href="<%= createSortUrl('quantity') %>">Quantidade <%- getSortIcon('quantity') %></a></th>
+                    <th><a href="<%= createSortUrl('unitPrice') %>">Valor Unitário <%- getSortIcon('unitPrice') %></a></th>
+                    <th>Detalhes</th>
+                    <th><a href="<%= createSortUrl('type') %>">Tipo <%- getSortIcon('type') %></a></th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (movements.length > 0) { %>
+                    <% movements.forEach(mov => { %>
+                        <tr class="<%= mov.type === 'Entrada' ? 'stock-in' : 'stock-out' %>">
+                            <td><%= new Date(mov.date).toLocaleString('pt-BR') %></td>
+                            <td><strong><%= mov.item %></strong></td>
+                            <td><%= mov.quantity %></td>
+                            <td><%= mov.unitPrice %></td>
+                            <td><%= mov.details %></td>
+                            <td><%= mov.type %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+</main>
+<div class="modal-overlay" id="entry-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Register Entry</h3><button class="close-button" id="btn-close-entry-modal">&times;</button></div>
+        <form action="/entries" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="entry-itemId">Item</label>
+                    <select name="itemId" required>
+                        <option value="" disabled selected>Select an item...</option>
+                        <% items.forEach(item => { %><option value="<%= item.id %>"><%= item.name %></option><% }); %>
+                    </select>
+                </div>
+                <div class="form-group"><label for="entry-quantity">Quantity</label><input type="floot" name="quantity" min="1" required></div>
+                <div class="form-group">
+    <label for="entry-unitPrice">Preço Unitário (R$)</label>
+    <input type="number" name="unitPrice" step="0.01" min="0" required>
+</div>
+                <div class="form-group">
+                    <label for="entry-supplierId">Supplier</label>
+                    <select name="supplierId" required>
+                        <option value="" disabled selected>Select...</option>
+                        <% suppliers.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }); %>
+                    </select>
+                </div>
+                <div class="form-group"><label for="entry-invoiceNumber">Invoice Number</label><input type="text" name="invoiceNumber"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-primary">Confirm Entry</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="output-modal">
+    <div class="modal">
+        <div class="modal-header"><h3>Register Output</h3><button class="close-button" id="btn-close-output-modal">&times;</button></div>
+        <form action="/outputs" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="output-itemId">Item</label>
+                    <select name="itemId" required>
+                        <option value="" disabled selected>Select an item...</option>
+                        <% items.forEach(item => { %><option value="<%= item.id %>"><%= item.name %> (Available: <%= item.quantity %>)</option><% }); %>
+                    </select>
+                </div>
+                <div class="form-group"><label for="output-quantity">Quantity</label><input type="number" name="quantity" min="1" required></div>
+                <div class="form-group"><label for="output-justification">Justification</label><input type="text" name="justification"></div>
+                <div class="form-group"><label for="output-productionOrder">Production Order (OS)</label><input type="text" name="productionOrder"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn-danger">Confirm Output</button></div>
+        </form>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const entryModal = document.getElementById('entry-modal');
+        const outputModal = document.getElementById('output-modal');
+        
+        document.getElementById('btn-show-entry-modal').addEventListener('click', () => entryModal.style.display = 'flex');
+        document.getElementById('btn-close-entry-modal').addEventListener('click', () => entryModal.style.display = 'none');
+        
+        document.getElementById('btn-show-output-modal').addEventListener('click', () => outputModal.style.display = 'flex');
+        document.getElementById('btn-close-output-modal').addEventListener('click', () => outputModal.style.display = 'none');
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === entryModal) entryModal.style.display = 'none';
+            if (e.target === outputModal) outputModal.style.display = 'none';
+        });
+    });
+</script> -->
+
+<%- include('partials/footer') %>
+
+<style>
+    .inventory-table th a {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        width: 100%;
+    }
+    .inventory-table th a:hover {
+        color: #007bff;
+    }
+</style>
