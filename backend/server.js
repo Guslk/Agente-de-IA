@@ -77,3 +77,5 @@ const startServer = async () => {
 
 // Inicia a aplicação
 startServer();
+
+
