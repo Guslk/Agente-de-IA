@@ -1,0 +1,70 @@
+<%- include('partials/header', { title: 'Controle de Chapas', paginaAtiva: 'chapas' }) %>
+
+<header class="header">
+    <h1 class="header-title">Controle Geométrico de Chapas</h1>
+    <div class="header-right"> 
+        <div class="notification-icon">
+            <i class="bi bi-bell-fill"></i>
+            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
+                <span class="notification-badge"><%= lowStockCount %></span>
+            <% } %>
+        </div>
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    
+    <div class="chapa-container">
+        <h1>Controle de Consumo de Chapas</h1>
+
+        <div class="chapa-panel">
+            <div class="chapa-form-section">
+                <h2>1. Cadastrar Nova Chapa</h2>
+                <form id="new-plate-form">
+                    <input type="text" id="plate-name" placeholder="Nome/ID da Chapa" required>
+                    <input type="number" id="plate-width" placeholder="Largura (mm)" required>
+                    <input type="number" id="plate-height" placeholder="Altura (mm)" required>
+                    <button type="submit" class="chapa-button">Cadastrar Chapa</button>
+                </form>
+            </div>
+
+            <div class="chapa-form-section">
+                <h2>2. Selecionar Chapa</h2>
+                <select id="plate-selector">
+                    <option value="">-- Carregando chapas... --</option>
+                </select>
+                <p id="plate-dimensions"></p>
+            </div>
+
+            <div class="chapa-form-section">
+                <h2>3. Adicionar Corte por Dimensão</h2>
+                <form id="auto-cut-form">
+                    <input type="number" id="cut-width" placeholder="Largura do Corte (mm)" required>
+                    <input type="number" id="cut-height" placeholder="Altura do Corte (mm)" required>
+                    <button type="submit" id="btn-add-cut-auto" class="chapa-button-auto">Adicionar Corte Automático</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="chapa-canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="chapa-controls">
+            <button id="btn-undo-cut" class="chapa-button">Desfazer Último Corte</button>
+            <button id="btn-save-cuts" class="chapa-button save-button">Salvar Consumo na Chapa</button>
+        </div>
+        <p id="status-message">Para iniciar um corte, clique e arraste a partir de uma borda disponível.</p>
+    </div>
+</main>
+
+<%- include('partials/footer') %>
+
+<%# Link para o script JS específico desta página %>
+<script src="/js/chapas-script.js"></script>

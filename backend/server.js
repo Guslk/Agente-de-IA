@@ -1,4 +1,3 @@
-
 // ===================================================
 // SERVIDOR PRINCIPAL (FICHEIRO DE ENTRADA) - ESTRUTURA CORRETA
 // ===================================================
@@ -14,40 +13,23 @@ const morgan = require('morgan');
 // Conexão com a base de dados mestre
 const { connectMasterDB } = require('./config/database');
 
-
-
-
-
 // Roteadores
 const authRoutes = require('./routes/authRoutes');
-// CORREÇÃO: A linha abaixo estava a importar 'authRoutes' por engano.
 const allTenantRoutes = require('./routes/allTenantRoutes');
+const chapasRoutes = require('./routes/chapasRoutes'); // << 1. IMPORTAR A NOVA ROTA
 
 // Middlewares
 const tenantIdentifier = require('./middleware/tenantIdentifier');
 const isAuthenticated = require('./middleware/authMiddleware');
 
-
-
 // --- CONFIGURAÇÃO DA APLICAÇÃO ---
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 
 // Função principal assíncrona
 const startServer = async () => {
   // 1. Conecta-se à base de dados mestre antes de iniciar o servidor
   await connectMasterDB();
-
-//   // --- MIDDLEWARES DE SEGURANÇA (devem vir primeiro) ---
-//   app.use(helmet());
-//   const limiter = rateLimit({
-//     windowMs: 15 * 60 * 1000, // 15 minutos
-//     max: 150, // Aumentado ligeiramente o limite
-//     standardHeaders: true,
-//     legacyHeaders: false,
-//   });
-//   app.use(limiter);
 
   // --- MIDDLEWARES DE DESEMPENHO E UTILIDADE ---
   app.use(compression());
@@ -71,22 +53,16 @@ const startServer = async () => {
   }));
 
   // --- LÓGICA DE ROTEAMENTO MULTI-TENANT ---
-
-  // Passo 1: O middleware 'tenantIdentifier' é executado para TODOS os pedidos.
-  // Ele identifica o subdomínio e anexa o 'tenantId' ao objeto 'req'.
   app.use(tenantIdentifier);
-
-  // Passo 2: Rotas de autenticação (públicas).
-  // Estas rotas não requerem que o utilizador esteja autenticado.
-  // O 'tenantIdentifier' já foi executado, então estas rotas sabem a que base de dados se devem conectar.
   app.use('/', authRoutes);
   
-  // Passo 3: Rotas principais da aplicação (protegidas).
-  // Apenas utilizadores autenticados podem aceder a estas rotas.
-  app.use('/', isAuthenticated.isAuthenticated, allTenantRoutes);
+  // Rotas protegidas
+  app.use(isAuthenticated.isAuthenticated);
+  app.use('/', allTenantRoutes);
+  app.use('/chapas', chapasRoutes); // << 2. USAR A NOVA ROTA (substitui /materiais)
 
 
-  // --- GESTÃO DE ERROS CENTRALIZADA (deve vir no final) ---
+  // --- GESTÃO DE ERROS CENTRALIZADA ---
   app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Algo correu mal no servidor!');
@@ -101,4 +77,3 @@ const startServer = async () => {
 
 // Inicia a aplicação
 startServer();
-

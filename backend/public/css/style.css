@@ -1298,3 +1298,83 @@ body.auth-page {
     border-radius: 50%;
     object-fit: cover;
 }
+/* .chapa-body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+.chapa-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h1, h2 {
+    color: #1e3a5f;
+}
+.chapa-panel {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+.chapa-form-section {
+    flex: 1;
+}
+input[type="text"], input[type="number"], select, button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+.chapa-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.chapa-button:hover {
+    background-color: #0056b3;
+}
+.chapa-save-button {
+    background-color: #28a745;
+}
+.chapa-save-button:hover {
+    background-color: #218838;
+}
+#chapa-canvas-container {
+    width: 100%;
+    max-width: 1000px; 
+    margin: 20px 0;
+}
+canvas {
+    border: 2px solid #1e3a5f;
+    background-color: #fff;
+    width: 100%; 
+    height: auto;
+    cursor: crosshair;
+}
+.chapa-controls {
+    margin-top: 10px;
+}
+#status-message {
+    margin-top: 15px;
+    font-weight: bold;
+    min-height: 20px;
+}
+#plate-dimensions {
+    font-style: italic;
+    color: #555;
+}
+#auto-cut-form button {
+    background-color: #17a2b8; 
+}
+#auto-cut-form button:hover {
+    background-color: #138496;
+} */
