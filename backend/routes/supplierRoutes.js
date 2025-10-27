@@ -1,21 +1,25 @@
-// routes/supplierRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
+const { isAuthenticated } = require('../middleware/authMiddleware'); // Protege a rota
 
-// 1. Rota para LER TUDO / INDEX (A rota que o res.redirect busca após o cadastro)
-// CORRIGIDO: O nome da sua rota GET deve ser simples para o redirecionamento funcionar.
+// Aplica a autenticação a todas as rotas de fornecedores
+router.use(isAuthenticated);
+
+// Rota para a página principal (lista todos os fornecedores)
 router.get('/fornecedores', supplierController.getAll);
 
-// 2. Rota para CRIAR
-// Manter a rota POST que o seu formulário está usando
-router.post('/fornecedores/novo', supplierController.create); 
+// Rota para CRIAR um novo fornecedor (do modal de cadastro)
+router.post('/fornecedores', supplierController.create);
 
-// 3. Rota para ATUALIZAR
-router.post('/fornecedores/editar/:id', supplierController.update);
+// Rota para ATUALIZAR um fornecedor (do modal de edição)
+router.post('/fornecedores/:id/update', supplierController.update);
 
-// 4. Rota para DELETAR
-router.post('/fornecedores/excluir/:id', supplierController.destroy);
+// Rota para DELETAR (soft delete) um fornecedor (do botão lixeira)
+router.post('/fornecedores/:id/delete', supplierController.destroy);
 
+// Rota para RESTAURAR um fornecedor da lixeira
+router.post('/fornecedores/:id/restore', supplierController.restore);
 
 module.exports = router;

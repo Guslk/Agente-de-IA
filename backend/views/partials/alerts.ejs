@@ -1,0 +1,45 @@
+<% if (typeof query !== 'undefined') { %>
+
+    <% if (query.success) { %>
+        <div class="alert alert-success">
+            <strong>Sucesso!</strong>
+            <% if (query.success === 'created' || query.success === 'item_created' || query.success === 'stock_created') { %>
+                Registro criado com sucesso.
+            <% } else if (query.success === 'updated' || query.success === 'item_updated') { %>
+                Registro atualizado com sucesso.
+            <% } else if (query.success === 'deleted' || query.success === 'item_deleted' || query.success === 'stock_deleted' || query.success === 'tool_deactivated') { %>
+                Registro movido para a lixeira (excluído).
+            <% } else if (query.success === 'restored' || query.success === 'item_restored') { %>
+                Registro restaurado com sucesso.
+            <% } else { %>
+                Operação realizada com sucesso.
+            <% } %>
+        </div>
+    <% } %>
+
+    <% if (query.error) { %>
+        <div class="alert alert-danger">
+            <strong>Erro!</strong>
+            <% if (query.error === 'email_in_use') { %>
+                O email fornecido já está em uso.
+            <% } else if (query.error === 'employee_in_use') { %>
+                Este funcionário não pode ser excluído pois está ligado a movimentações.
+            <% } else if (query.error === 'stock_in_use') { %>
+                Este departamento não pode ser excluído pois possui itens cadastrados.
+            <% } else if (query.error === 'item_in_use') { %>
+                Este item não pode ser excluído pois possui movimentações no histórico.
+            <% } else if (query.error === 'supplier_in_use') { %>
+                Este fornecedor não pode ser excluído pois está ligado a entradas de estoque.
+            <% } else if (query.error === 'not_admin') { %>
+                Acesso negado. Você não tem permissão para esta ação.
+            <% } else if (query.error === 'not_found') { %>
+                O registro solicitado não foi encontrado.
+            <% } else if (query.error === 'fetch_failed') { %>
+                Não foi possível carregar os dados. Tente atualizar a página.
+            <% } else { %>
+                Ocorreu um erro inesperado. Tente novamente.
+            <% } %>
+        </div>
+    <% } %>
+
+<% } %>

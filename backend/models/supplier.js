@@ -45,7 +45,12 @@ module.exports = (sequelize) => {
         address: {
             type: DataTypes.TEXT,
             allowNull: true
-        }
+        },
+        status: {
+            type: DataTypes.ENUM('Ativo', 'Desativado', 'Excluido'),
+            allowNull: false,
+            defaultValue: 'Ativo'
+        }
     }, {
         sequelize,
         modelName: 'Supplier',

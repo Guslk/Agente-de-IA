@@ -132,7 +132,10 @@ const movementController = {
                 where: { status: 'Ativo' },
                 order: [['name', 'ASC']]
             });
-            const suppliers = await Supplier.findAll({ order: [['name', 'ASC']] });
+            const suppliers = await Supplier.findAll({ 
+                where: { status: 'Ativo' }, 
+                order: [['name', 'ASC']] 
+            });
             const employees = await Employee.findAll({ order: [['name', 'ASC']] });
 
             // 7. Renderiza a view com TODOS os dados

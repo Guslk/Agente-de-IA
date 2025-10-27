@@ -81,36 +81,6 @@ const employeeController = {
         }
     },
 
-    // /**
-    //  * Atualiza um funcionário (exceto senha).
-    //  */
-    // update: async (req, res) => {
-    //     const { tenantId } = req;
-    //     const { id } = req.params;
-    //     const { name, email, position, role } = req.body;
-
-    //     try {
-    //         const sequelize = await getTenantDB(tenantId);
-    //         const { Employee } = db.initialize(sequelize);
-
-    //         const employee = await Employee.findByPk(id);
-    //         if (!employee) return res.status(404).send('Funcionário não encontrado.');
-
-    //         await employee.update({ name, email, position, role });
-    //         res.redirect('/funcionarios?success=updated');
-    //     } catch (error) {
-    //         // ===============================================
-    //         //           TRATAMENTO DE ERRO APRIMORADO 👇
-    //         // ===============================================
-    //         // Captura se o novo email já estiver em uso
-    //         if (error.name === 'SequelizeUniqueConstraintError') {
-    //             return res.redirect('/funcionarios?error=email_in_use');
-    //         }
-    //         console.error("Error updating employee:", error);
-    //         res.redirect('/funcionarios?error=update_failed');
-    //     }
-    // },
-
     update: async (req, res) => {
         const { tenantId } = req;
         const { id } = req.params;
@@ -125,15 +95,10 @@ const employeeController = {
 
             const dataToUpdate = { name, email, position, role };
 
-            // ===============================================
-            //           MUDANÇA APLICADA AQUI 👇
-            // ===============================================
-            // Se um novo arquivo foi enviado, atualiza a foto.
-            // Se não, a foto antiga permanece no banco.
             if (req.file) {
                 dataToUpdate.photo = req.file.buffer;
             }
-            // ===============================================
+
 
             await employee.update(dataToUpdate);
             res.redirect('/funcionarios?success=updated');

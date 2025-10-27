@@ -1,11 +1,12 @@
+
 // controllers/supplierController.js
+const { Sequelize, Op } = require('sequelize');
 const { getTenantDB } = require('../config/database');
 const db = require('../models');
-const Fornecedor = require('../models/supplier');
 
 const supplierController = {
     /**
-     * Lista todos os fornecedores, traduzindo os dados para a view.
+     * Lista todos os fornecedores, separados por status.
      */
     getAll: async (req, res) => {
         const { tenantId } = req;
@@ -13,54 +14,72 @@ const supplierController = {
             const sequelize = await getTenantDB(tenantId);
             const { Supplier } = db.initialize(sequelize);
 
-            // 1. Busca os dados do banco (eles virão com os nomes do modelo: 'id', 'name', etc.)
-            const suppliersFromDB = await Supplier.findAll({ order: [['name', 'ASC']], raw: true });
+            const whereActive = { status: 'Ativo' };
+            const whereDeactivated = { status: 'Desativado' };
+            const whereExcluded = { status: 'Excluido' };
 
-            // 2. TRADUÇÃO: Mapeia do padrão do modelo (inglês) para o padrão da view (português)
-            const fornecedoresParaView = suppliersFromDB.map(s => ({
-                id_fornecedor: s.id,
-                nome_empresa: s.name,
-                contato: s.contactPerson,
-                telefone: s.phoneNumber,
-                email: s.email,
-                endereco: s.address
-            }));
+            // 1. Busca Fornecedores Ativos
+            const activeSuppliers = await Supplier.findAll({
+                where: whereActive,
+                order: [['name', 'ASC']]
+            });
+            
+            // 2. Busca Fornecedores Desativados
+            const deactivatedSuppliers = await Supplier.findAll({
+                where: whereDeactivated,
+                order: [['name', 'ASC']]
+            });
 
-            // 3. CORREÇÃO: Envia a lista traduzida com o nome 'fornecedores' que a view espera
-            res.render('Fornecedores', { // Supondo que o arquivo se chame 'suppliers.ejs'
-                fornecedores: fornecedoresParaView, // <-- O nome aqui deve ser 'fornecedores'
-                user: req.session.user,
-                query: req.query
+            // 3. Busca Fornecedores Excluídos (Lixeira)
+            const excludedSuppliers = await Supplier.findAll({
+                where: whereExcluded,
+                order: [['name', 'ASC']]
+            });
+
+            // Renderiza a view 'fornecedores.ejs'
+            res.render('fornecedores', { 
+                activeSuppliers,
+                deactivatedSuppliers,
+                excludedSuppliers,
+                user: req.session.user, 
+                query: req.query 
             });
 
         } catch (error) {
-            console.error("Error fetching suppliers:", error);
-            res.status(500).send(`Error fetching suppliers: ${error.message}`);
+            console.error("Erro ao buscar fornecedores:", error);
+            res.render('fornecedores', { 
+                activeSuppliers: [], 
+                deactivatedSuppliers: [], 
+                excludedSuppliers: [], 
+                user: req.session.user, 
+                query: { error: 'fetch_failed' } 
+            });
         }
     },
 
     /**
-     * Cria um novo fornecedor, traduzindo os dados do formulário.
+     * Cria um novo fornecedor.
      */
     create: async (req, res) => {
+        const { tenantId } = req;
+        const { companyName, contactPerson, phoneNumber, email, address } = req.body;
+        
         try {
-            const sequelize = await getTenantDB(req.tenantId);
+            const sequelize = await getTenantDB(tenantId);
             const { Supplier } = db.initialize(sequelize);
-
-            // TRADUÇÃO: Mapeia do req.body (português) para o modelo (inglês)
-            const dataToSave = {
-                name: req.body.nome_empresa,
-                contactPerson: req.body.contato,
-                phoneNumber: req.body.telefone,
-                email: req.body.email,
-                address: req.body.endereco
-            };
-
-            await Supplier.create(dataToSave);
-            res.redirect('/Fornecedores?success=true');
+            
+            await Supplier.create({
+                companyName,
+                contactPerson,
+                phoneNumber,
+                email,
+                address,
+                status: 'Ativo' // Padrão
+            });
+            res.redirect('/fornecedores?success=created');
         } catch (error) {
             console.error("Error creating supplier:", error);
-            res.status(500).send(`Error: ${error.message}`);
+            res.redirect(`/fornecedores?error=${error.message || 'create_failed'}`);
         }
     },
 
@@ -68,49 +87,79 @@ const supplierController = {
      * Atualiza um fornecedor.
      */
     update: async (req, res) => {
+        const { tenantId } = req;
         const { id } = req.params;
+        const { companyName, contactPerson, phoneNumber, email, address, status } = req.body;
+        
         try {
-            const sequelize = await getTenantDB(req.tenantId);
+            const sequelize = await getTenantDB(tenantId);
             const { Supplier } = db.initialize(sequelize);
 
             const supplier = await Supplier.findByPk(id);
-            if (!supplier) return res.status(404).send('Supplier not found.');
+            if (!supplier) return res.status(404).send('Fornecedor não encontrado.');
 
-            const dataToUpdate = {
-                name: req.body.nome_empresa,
-                contactPerson: req.body.contato,
-                phoneNumber: req.body.telefone,
-                email: req.body.email,
-                address: req.body.endereco
-            };
-
-            await supplier.update(dataToUpdate);
-            res.redirect('/Fornecedores?success=true');
+            await supplier.update({
+                companyName,
+                contactPerson,
+                phoneNumber,
+                email,
+                address,
+                status
+            });
+            
+            res.redirect('/fornecedores?success=updated');
         } catch (error) {
             console.error("Error updating supplier:", error);
-            res.status(500).send(`Error: ${error.message}`);
+            res.redirect(`/fornecedores?error=${error.message || 'update_failed'}`);
         }
     },
 
     /**
-     * Deleta um fornecedor.
+     * "Deleta" (Exclui) um fornecedor (Soft Delete).
      */
     destroy: async (req, res) => {
+        const { tenantId } = req;
         const { id } = req.params;
         try {
-            const sequelize = await getTenantDB(req.tenantId);
+            const sequelize = await getTenantDB(tenantId);
             const { Supplier } = db.initialize(sequelize);
 
             const supplier = await Supplier.findByPk(id);
-            if (!supplier) return res.status(404).send('Supplier not found.');
+            if (!supplier) return res.status(404).send('Fornecedor não encontrado.');
 
-            await supplier.destroy();
-            res.redirect('/Fornecedores?success=true');
+            await supplier.update({ status: 'Excluido' });
+            
+            res.redirect('/fornecedores?success=deleted');
         } catch (error) {
+            // Captura o erro se o fornecedor tiver entradas (Entries) associadas
             if (error.name === 'SequelizeForeignKeyConstraintError') {
-                return res.redirect('/Fornecedores?error=supplier_in_use');
+                return res.redirect('/fornecedores?error=supplier_in_use');
             }
-            res.status(500).send(`Error: ${error.message}`);
+            console.error("Error 'deleting' supplier:", error);
+            res.redirect(`/fornecedores?error=${error.message || 'delete_failed'}`);
+        }
+    },
+
+    /**
+     * "Restaura" um fornecedor (Soft Delete)
+     */
+    restore: async (req, res) => {
+        const { tenantId } = req;
+        const { id } = req.params;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Supplier } = db.initialize(sequelize);
+
+            const supplier = await Supplier.findByPk(id);
+            if (supplier) {
+                await supplier.update({ status: 'Ativo' });
+                res.redirect('/fornecedores?success=restored');
+            } else {
+                res.redirect('/fornecedores?error=not_found');
+            }
+        } catch (error) {
+            console.error("Erro ao restaurar fornecedor:", error);
+            res.redirect(`/fornecedores?error=${error.message || 'restore_failed'}`);
         }
     }
 };

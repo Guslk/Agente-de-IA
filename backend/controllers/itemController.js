@@ -253,15 +253,8 @@ const itemController = {
             const item = await Item.findByPk(id);
 
             if (item) {
-                // ===============================================
-                //           LÓGICA DE SOFT DELETE AQUI 👇
-                // ===============================================
-                // 1. Em vez de 'await item.destroy();'
-                // 2. Nós atualizamos o status do item para 'Excluido'
                 await item.update({ status: 'Excluido' });
-                // ===============================================
 
-                // 3. Redireciona com mensagem de sucesso
                 res.redirect('/itens?success=item_deleted');
             } else {
                 // 4. Trata caso o item não seja encontrado
