@@ -252,7 +252,7 @@ h1 {
     background-color: #f8d7da;
     border-color: #f5c2c7;
 }
-/* .inventory-table {
+ .inventory-table {
     width: 100%;
     background-color: #ffffff;
     border-radius: 8px;
@@ -261,14 +261,14 @@ h1 {
     overflow: hidden; 
 } */
 
-/* .inventory-table table {
+ .inventory-table table {
     width: 100%;
     border-collapse: collapse; 
     font-size: 0.9rem;
-} */
+} 
 
 
-/* .inventory-table tbody tr.stock-in {
+ .inventory-table tbody tr.stock-in {
     background-color: rgba(40, 167, 69, 0.05); 
 }
 .inventory-table tbody tr.stock-in:hover {
@@ -324,7 +324,7 @@ padding: 0.75rem 1.25rem;
 .inventory-table th:last-child,
 .inventory-table td:last-child {
     text-align: center;
-/* }   */
+ }   
 
 /* 5. Estilo para o Botão "Devolver" */
 .btn-devolver {
@@ -1298,7 +1298,7 @@ body.auth-page {
     border-radius: 50%;
     object-fit: cover;
 }
-/* .chapa-body {
+.chapa-body {
     font-family: Arial, sans-serif;
     background-color: #f0f2f5;
     color: #333;
@@ -1312,10 +1312,10 @@ body.auth-page {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
+/* /* } 
 h1, h2 {
     color: #1e3a5f;
-}
+} */
 .chapa-panel {
     display: flex;
     gap: 30px;
@@ -1330,7 +1330,7 @@ input[type="text"], input[type="number"], select, button {
     margin-bottom: 10px;
     border-radius: 4px;
     border: 1px solid #ccc;
-    box-sizing: border-box;
+    box-sizing: border-box; 
 }
 .chapa-button {
     background-color: #007bff;
@@ -1377,4 +1377,5 @@ canvas {
 }
 #auto-cut-form button:hover {
     background-color: #138496;
-} */
+}
+}

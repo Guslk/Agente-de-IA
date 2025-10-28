@@ -1,5 +1,66 @@
 <%- include('partials/header', { title: 'Controle de Chapas', paginaAtiva: 'chapas' }) %>
 
+<style>
+  /* Container principal para o canvas e os campos de dimensão */
+  .chapa-editor-container {
+    display: flex;
+    gap: 20px; /* Espaço entre o canvas e os campos */
+    align-items: flex-start; /* Alinha o topo dos elementos */
+  }
+
+  /* Container do canvas (ocupa a maior parte do espaço) */
+  #chapa-canvas-container {
+    flex-grow: 1; /* Permite que ele cresça */
+    min-width: 0; /* Necessário para flexbox em alguns casos */
+    background-color: #f4f7fa;
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box; 
+    border: 1px solid var(--border-color);
+  }
+
+  /* Regras de enquadramento do canvas */
+  #canvas {
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    max-height: 65vh; 
+    border: 1px solid #ccc;
+    background-color: #fff;
+    cursor: crosshair;
+  }
+
+  /* Container para os campos de dimensão (largura fixa) */
+  .chapa-dimension-fields {
+    width: 150px; /* Largura fixa para os campos */
+    flex-shrink: 0; /* Impede que ele encolha */
+  }
+
+  /* Estilo para os campos de dimensão (reutilizando form-group) */
+  .chapa-dimension-fields .form-group {
+    margin-bottom: 15px;
+  }
+  .chapa-dimension-fields label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-light);
+  }
+  .chapa-dimension-fields input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: right;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: #e9ecef; /* Fundo cinza para indicar 'read-only' */
+  }
+</style>
+
 <header class="header">
     <h1 class="header-title">Controle Geométrico de Chapas</h1>
     <div class="header-right"> 
@@ -12,7 +73,7 @@
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.nome %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
             <% } %>
         </div>
     </div>
@@ -20,51 +81,104 @@
 
 <main class="main-content">
     
-    <div class="chapa-container">
-        <h1>Controle de Consumo de Chapas</h1>
+    <div class="main-header">
+        <h1 style="font-size: 1.5rem; color: #333;">Controle de Consumo de Chapas</h1>
+        <div class="action-buttons">
+            <button id="open-modal-btn" class="btn-primary" style="background-color: var(--primary-color);">
+                <i class="bi bi-plus-circle" style="margin-right: 8px;"></i> Cadastrar Nova Chapa
+            </button>
+        </div>
+    </div>
 
-        <div class="chapa-panel">
-            <div class="chapa-form-section">
-                <h2>1. Cadastrar Nova Chapa</h2>
-                <form id="new-plate-form">
-                    <input type="text" id="plate-name" placeholder="Nome/ID da Chapa" required>
-                    <input type="number" id="plate-width" placeholder="Largura (mm)" required>
-                    <input type="number" id="plate-height" placeholder="Altura (mm)" required>
-                    <button type="submit" class="chapa-button">Cadastrar Chapa</button>
-                </form>
-            </div>
-
-            <div class="chapa-form-section">
-                <h2>2. Selecionar Chapa</h2>
+    <div class="filter-section">
+        <div class="filter-form">
+            
+            <div class="form-group" style="flex-grow: 1.5;">
+                <label for="plate-selector">Selecionar Chapa</label>
                 <select id="plate-selector">
                     <option value="">-- Carregando chapas... --</option>
                 </select>
-                <p id="plate-dimensions"></p>
+                <p id="plate-dimensions" style="margin-top: 5px;"></p>
             </div>
 
-            <div class="chapa-form-section">
-                <h2>3. Adicionar Corte por Dimensão</h2>
-                <form id="auto-cut-form">
-                    <input type="number" id="cut-width" placeholder="Largura do Corte (mm)" required>
-                    <input type="number" id="cut-height" placeholder="Altura do Corte (mm)" required>
-                    <button type="submit" id="btn-add-cut-auto" class="chapa-button-auto">Adicionar Corte Automático</button>
+            <div class="form-group" style="flex-grow: 2;">
+                <label>Adicionar Corte por Dimensão</label>
+                <form id="auto-cut-form" class="form-grid" style="grid-template-columns: 2fr 2fr 1fr; gap: 10px; margin-top: 5px;">
+                    <input type="number" id="cut-width" placeholder="Largura (mm)" required>
+                    <input type="number" id="cut-height" placeholder="Altura (mm)" required>
+                    <button type="submit" id="btn-add-cut-auto" class="btn-primary" style="background-color: #17a2b8; width: 100%; margin: 0; padding: 12px;">Adicionar</button>
                 </form>
             </div>
+            
         </div>
+    </div>
 
+    <!-- NOVO: Container Flex para Canvas + Campos -->
+    <div class="chapa-editor-container">
+        <!-- Container do Canvas (como antes) -->
         <div id="chapa-canvas-container">
             <canvas id="canvas"></canvas>
         </div>
 
-        <div class="chapa-controls">
-            <button id="btn-undo-cut" class="chapa-button">Desfazer Último Corte</button>
-            <button id="btn-save-cuts" class="chapa-button save-button">Salvar Consumo na Chapa</button>
+        <!-- NOVO: Campos para exibir as dimensões -->
+        <div class="chapa-dimension-fields">
+            <div class="form-group">
+                <label for="current-cut-width">Largura Atual (mm)</label>
+                <input type="text" id="current-cut-width" value="0.0" readonly>
+            </div>
+            <div class="form-group">
+                <label for="current-cut-height">Altura Atual (mm)</label>
+                <input type="text" id="current-cut-height" value="0.0" readonly>
+            </div>
         </div>
-        <p id="status-message">Para iniciar um corte, clique e arraste a partir de uma borda disponível.</p>
+    </div>
+
+    <!-- Controles (como antes) -->
+    <div class="report-card" style="padding: 10px; margin-top: 20px;">
+        <div class="chapa-controls" style="display: flex; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border-color);">
+            <button id="btn-undo-cut" class="btn-secondary">Desfazer Último Corte</button>
+            <button id="btn-save-cuts" class="btn-primary" style="background-color: var(--success);">Salvar Consumo na Chapa</button>
+        </div>
+        <p id="status-message" style="padding: 15px; margin: 0;">Para iniciar um corte, clique e arraste a partir de uma borda disponível.</p>
     </div>
 </main>
 
+<!-- Modal de Cadastro (sem alterações) -->
+<div id="new-plate-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Chapa</h3>
+            <button class="close-button" id="close-modal-btn">&times;</button>
+        </div>
+        
+        <form id="new-plate-form">
+            <div class="modal-body">
+                 <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label for="plate-name">Nome/ID da Chapa</label>
+                        <input type="text" id="plate-name" placeholder="Ex: Chapa Inox 304 2mm" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="plate-width">Largura (mm)</label>
+                        <input type="number" id="plate-width" placeholder="Ex: 3000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="plate-height">Altura (mm)</label>
+                        <input type="number" id="plate-height" placeholder="Ex: 1500" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Cadastrar Chapa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 <%- include('partials/footer') %>
 
-<%# Link para o script JS específico desta página %>
 <script src="/js/chapas-script.js"></script>

@@ -3,7 +3,9 @@ const API_URL = '/chapas/api';
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const SNAP_DISTANCE = 10;
+// NOVO: Referências para os campos de dimensão
+const currentWidthInput = document.getElementById('current-cut-width');
+const currentHeightInput = document.getElementById('current-cut-height');
 
 let currentPlate = null;
 let finishedCuts = [];
@@ -87,17 +89,34 @@ function rectsOverlap(rectA, rectB) {
 
 // --- FUNÇÕES DE DESENHO ---
 function redrawCanvas() {
-    canvas.width = currentPlate ? currentPlate.original_width_mm : 800;
-    canvas.height = currentPlate ? currentPlate.original_height_mm : 600;
+    if (!currentPlate) {
+        canvas.width = 800;
+        canvas.height = 600;
+        ctx.fillStyle = '#f4f7fa'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+
+    canvas.width = currentPlate.original_width_mm;
+    canvas.height = currentPlate.original_height_mm;
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#000000';
     ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return; 
+    
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const visualScale = Math.max(scaleX, scaleY);
+
+    const standardLineWidth = 2 * visualScale; 
+    
     ctx.strokeStyle = 'blue';
     ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = standardLineWidth;
     finishedCuts.forEach(cut => {
         const start = cut[0];
         const width = cut[1].x - start.x;
@@ -106,20 +125,7 @@ function redrawCanvas() {
         ctx.strokeRect(start.x, start.y, width, height);
     });
 
-    if (isDrawing && previewRect) {
-        ctx.strokeStyle = isPreviewOverlapping ? '#FF8C00' : 'red';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
-        ctx.fillStyle = isPreviewOverlapping ? '#FF8C00' : 'black';
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        const widthText = `${Math.abs(previewRect.w).toFixed(1)}mm`;
-        const heightText = `${Math.abs(previewRect.h).toFixed(1)}mm`;
-        const textX = previewRect.x + previewRect.w / 2;
-        let textY = previewRect.y + previewRect.h / 2;
-        if (textY < 20) textY = 20;
-        ctx.fillText(`${widthText} x ${heightText}`, textX, textY);
-    }
+    // O desenho do 'previewRect' e do 'texto' foi movido para handleMouseMove
 }
 
 
@@ -144,9 +150,19 @@ function getAllAvailableEdges() {
 }
 
 function findClosestEdge(point) {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0 || canvas.width === 0) return null;
+    
+    const scaleX = canvas.width / rect.width; 
+    const scaleY = canvas.height / rect.height;
+    const visualScale = Math.max(scaleX, scaleY);
+    
+    const SNAP_DISTANCE_LOGICAL = 10 * visualScale; 
+    
     let closestEdge = null;
-    let minDistance = SNAP_DISTANCE;
+    let minDistance = SNAP_DISTANCE_LOGICAL;
     const edges = getAllAvailableEdges();
+    
     for (const edge of edges) {
         let distance;
         if (edge.type === 'horizontal') {
@@ -193,6 +209,9 @@ function handleMouseDown(event) {
         } else {
             startPoint = { x: snappedEdge.p1.x, y: mousePos.y };
         }
+        // NOVO: Limpa os campos de dimensão ao iniciar o desenho
+        if(currentWidthInput) currentWidthInput.value = '0.0';
+        if(currentHeightInput) currentHeightInput.value = '0.0';
     } else {
         setStatusMessage('Clique perto de uma borda para iniciar um novo corte.', 'orange');
     }
@@ -200,6 +219,9 @@ function handleMouseDown(event) {
 
 function handleMouseMove(event) {
     if (!isDrawing) return;
+
+    redrawCanvas(); // Desenha a base
+
     const currentMousePos = getCanvasCoordinates(event);
     const x1 = startPoint.x, y1 = startPoint.y, x2 = currentMousePos.x, y2 = currentMousePos.y;
     let rectX, rectY, rectW, rectH;
@@ -228,7 +250,25 @@ function handleMouseMove(event) {
             }
         }
     }
-    redrawCanvas();
+
+    // Desenha a pré-visualização (retângulo)
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const visualScale = Math.max(scaleX, scaleY);
+
+    ctx.lineWidth = 2 * visualScale;
+    ctx.strokeStyle = isPreviewOverlapping ? '#FF8C00' : 'red';
+    ctx.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
+    
+    // --- ATUALIZAÇÃO DOS CAMPOS DE TEXTO ---
+    // Removemos toda a lógica de ctx.fillText, ctx.setTransform, etc.
+    if(currentWidthInput) currentWidthInput.value = Math.abs(previewRect.w).toFixed(1);
+    if(currentHeightInput) currentHeightInput.value = Math.abs(previewRect.h).toFixed(1);
+
+    // Nota: Não precisamos mais de ctx.save() e ctx.restore() aqui
 }
 
 function handleMouseUp() {
@@ -237,30 +277,28 @@ function handleMouseUp() {
 
     if (isPreviewOverlapping) {
         setStatusMessage('Corte inválido: sobrepõe um corte existente ou tem tamanho nulo.', 'red');
-        previewRect = null;
-        snappedEdge = null;
-        redrawCanvas();
-        return;
+    } else if (!previewRect || Math.abs(previewRect.w) < 5 || Math.abs(previewRect.h) < 5) {
+        // Corte muito pequeno, apenas ignora
+    } else {
+        const finalRect = normalizeRect(previewRect);
+        const newRectangle = [
+            { x: finalRect.x, y: finalRect.y },
+            { x: finalRect.x + finalRect.w, y: finalRect.y },
+            { x: finalRect.x + finalRect.w, y: finalRect.y + finalRect.h },
+            { x: finalRect.x, y: finalRect.y + finalRect.h }
+        ];
+        finishedCuts.push(newRectangle);
+        setStatusMessage('Corte adicionado. Clique em "Salvar" para persistir.', 'blue');
     }
-
-    if (!previewRect || Math.abs(previewRect.w) < 5 || Math.abs(previewRect.h) < 5) {
-        previewRect = null;
-        redrawCanvas();
-        return;
-    }
-
-    const finalRect = normalizeRect(previewRect);
-    const newRectangle = [
-        { x: finalRect.x, y: finalRect.y },
-        { x: finalRect.x + finalRect.w, y: finalRect.y },
-        { x: finalRect.x + finalRect.w, y: finalRect.y + finalRect.h },
-        { x: finalRect.x, y: finalRect.y + finalRect.h }
-    ];
-    finishedCuts.push(newRectangle);
-    setStatusMessage('Corte adicionado. Clique em "Salvar" para persistir.', 'blue');
+    
+    // Limpa a pré-visualização e redesenha tudo
     previewRect = null;
     snappedEdge = null;
     redrawCanvas();
+    
+    // NOVO: Limpa os campos de dimensão ao finalizar o desenho
+    if(currentWidthInput) currentWidthInput.value = '0.0';
+    if(currentHeightInput) currentHeightInput.value = '0.0';
 }
 
 function undoLastCut() {
@@ -273,8 +311,12 @@ function undoLastCut() {
 
 function setStatusMessage(message, color = 'green') {
     const statusEl = document.getElementById('status-message');
-    statusEl.textContent = message;
-    statusEl.style.color = color;
+    if (statusEl) { // Adiciona verificação se o elemento existe
+        statusEl.textContent = message;
+        statusEl.style.color = color;
+    } else {
+        console.warn("Elemento #status-message não encontrado.");
+    }
 }
 
 
@@ -282,8 +324,10 @@ function setStatusMessage(message, color = 'green') {
 async function fetchPlates() {
     try {
         const response = await fetch(`${API_URL}/plates`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
         const selector = document.getElementById('plate-selector');
+        if (!selector) return; // Sai se o elemento não existe
         selector.innerHTML = '<option value="">-- Selecione uma chapa --</option>';
         result.data.forEach(plate => {
             const option = document.createElement('option');
@@ -294,25 +338,29 @@ async function fetchPlates() {
             selector.appendChild(option);
         });
     } catch (error) {
+        console.error("Erro ao carregar chapas:", error);
         setStatusMessage('Erro ao carregar chapas.', 'red');
     }
 }
 
-// --- FUNÇÃO CORRIGIDA ---
 async function loadCutsForPlate(plateId) {
     try {
         const response = await fetch(`${API_URL}/plates/${plateId}/cuts`);
+         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
 
-        // CORREÇÃO: Garante que as coordenadas sejam objetos, não strings.
         finishedCuts = result.data.map(dbEntry => {
-            // Se a coordenada for uma string (vinda do SQLite antigo, por exemplo), faz o parse.
-            // Se já for um objeto (vinda do MySQL novo), usa diretamente.
             if (typeof dbEntry.coordinates === 'string') {
-                return JSON.parse(dbEntry.coordinates);
+                try {
+                    return JSON.parse(dbEntry.coordinates);
+                } catch (e) {
+                    console.error("Erro ao parsear coordenadas:", dbEntry.coordinates, e);
+                    return []; // Retorna array vazio em caso de erro
+                }
             }
-            return dbEntry.coordinates; // Já está no formato correto
-        });
+            // Verifica se já é um array antes de retornar
+            return Array.isArray(dbEntry.coordinates) ? dbEntry.coordinates : [];
+        }).filter(cut => cut.length > 0); // Filtra arrays vazios
 
         redrawCanvas();
     } catch (error) {
@@ -337,19 +385,29 @@ async function handleSaveCuts() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cuts: finishedCuts })
         });
-        if (!response.ok) throw new Error('Falha na resposta da API.');
+        if (!response.ok) {
+             const errorData = await response.json().catch(() => ({ error: 'Falha na resposta da API sem JSON.' }));
+             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
         const result = await response.json();
         setStatusMessage(result.message, 'green');
     } catch (error) {
-        setStatusMessage('Erro ao salvar os cortes.', 'red');
+        console.error("Erro ao salvar cortes:", error);
+        setStatusMessage(`Erro ao salvar os cortes: ${error.message}`, 'red');
     }
 }
 
 async function handleNewPlateSubmit(event) {
     event.preventDefault();
-    const name = document.getElementById('plate-name').value;
-    const width = parseFloat(document.getElementById('plate-width').value);
-    const height = parseFloat(document.getElementById('plate-height').value);
+    const nameInput = document.getElementById('plate-name');
+    const widthInput = document.getElementById('plate-width');
+    const heightInput = document.getElementById('plate-height');
+
+    // Verifica se os elementos existem antes de ler o valor
+    const name = nameInput ? nameInput.value : null;
+    const width = widthInput ? parseFloat(widthInput.value) : NaN;
+    const height = heightInput ? parseFloat(heightInput.value) : NaN;
+
 
     if (!name || isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
         setStatusMessage('Por favor, preencha todos os campos com valores válidos.', 'red');
@@ -363,76 +421,154 @@ async function handleNewPlateSubmit(event) {
             body: JSON.stringify({ name, width, height })
         });
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Erro ao criar chapa.');
+            const errorData = await response.json().catch(() => ({ error: 'Erro ao criar chapa sem JSON.' }));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         setStatusMessage('Chapa cadastrada com sucesso!', 'green');
-        document.getElementById('new-plate-form').reset();
-        fetchPlates();
+        
+        const form = document.getElementById('new-plate-form');
+        if(form) form.reset(); // Reseta o formulário se existir
+        
+        const modal = document.getElementById('new-plate-modal');
+        if (modal) modal.style.display = 'none'; // Fecha o modal se existir
+        
+        fetchPlates(); // Atualiza a lista de chapas
     } catch (error) {
         console.error("Erro na requisição:", error);
-        setStatusMessage(error.message, 'red');
+        setStatusMessage(`Erro ao criar chapa: ${error.message}`, 'red');
     }
 }
 
 
 // --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // Verifica se estamos na página correta antes de rodar o script
+    // (Adicione um ID único ao body da sua página de chapas, ex: <body id="page-chapas">)
+    // if (!document.body.matches('#page-chapas')) {
+    //     console.log("Não estamos na página de chapas, script não será executado.");
+    //     return; 
+    // }
+
+    console.log("DOM carregado, iniciando script de chapas.");
+
+    // Verifica se os elementos essenciais existem
+    if (!canvas || !currentWidthInput || !currentHeightInput) {
+        console.error("Elementos essenciais do canvas ou campos de dimensão não encontrados. O script não pode continuar.");
+        return;
+    }
+    
     fetchPlates();
-    redrawCanvas();
-});
+    redrawCanvas(); 
 
-document.getElementById('auto-cut-form').addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (!currentPlate) {
-        setStatusMessage('Por favor, selecione uma chapa primeiro.', 'red');
-        return;
-    }
-    const width = parseFloat(document.getElementById('cut-width').value);
-    const height = parseFloat(document.getElementById('cut-height').value);
-    if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
-        setStatusMessage('Por favor, insira dimensões válidas.', 'red');
-        return;
-    }
-    const bestPosition = findBestFitPosition(width, height);
-    if (bestPosition) {
-        const newRectangle = [
-            { x: bestPosition.x, y: bestPosition.y },
-            { x: bestPosition.x + bestPosition.w, y: bestPosition.y },
-            { x: bestPosition.x + bestPosition.w, y: bestPosition.y + bestPosition.h },
-            { x: bestPosition.x, y: bestPosition.y + bestPosition.h }
-        ];
-        finishedCuts.push(newRectangle);
-        redrawCanvas();
-        setStatusMessage(`Corte de ${width}x${height} adicionado automaticamente!`, 'green');
-        document.getElementById('auto-cut-form').reset();
+    // Lógica do Modal
+    const modal = document.getElementById('new-plate-modal');
+    const openBtn = document.getElementById('open-modal-btn');
+    const closeBtn = document.getElementById('close-modal-btn');
+
+    if (modal && openBtn && closeBtn) {
+        openBtn.onclick = () => { modal.style.display = 'block'; };
+        closeBtn.onclick = () => { modal.style.display = 'none'; };
+        window.onclick = (event) => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
     } else {
-        setStatusMessage(`Não foi encontrado espaço para um corte de ${width}x${height}.`, 'red');
+        console.warn("Elementos do modal não encontrados.");
     }
-});
 
-canvas.addEventListener('mousedown', handleMouseDown);
-canvas.addEventListener('mousemove', handleMouseMove);
-window.addEventListener('mouseup', handleMouseUp);
+    // Listener do formulário de corte automático
+    const autoCutForm = document.getElementById('auto-cut-form');
+    if (autoCutForm) {
+        autoCutForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!currentPlate) {
+                setStatusMessage('Por favor, selecione uma chapa primeiro.', 'red');
+                return;
+            }
+            const widthInput = document.getElementById('cut-width');
+            const heightInput = document.getElementById('cut-height');
+            const width = widthInput ? parseFloat(widthInput.value) : NaN;
+            const height = heightInput ? parseFloat(heightInput.value) : NaN;
 
-document.getElementById('plate-selector').addEventListener('change', (event) => {
-    const selectedOption = event.target.options[event.target.selectedIndex];
-    if (!selectedOption.value) {
-        currentPlate = null;
-        document.getElementById('plate-dimensions').textContent = '';
-        finishedCuts = [];
-        redrawCanvas();
-        return;
+            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+                setStatusMessage('Por favor, insira dimensões válidas.', 'red');
+                return;
+            }
+            const bestPosition = findBestFitPosition(width, height);
+            if (bestPosition) {
+                const newRectangle = [
+                    { x: bestPosition.x, y: bestPosition.y },
+                    { x: bestPosition.x + bestPosition.w, y: bestPosition.y },
+                    { x: bestPosition.x + bestPosition.w, y: bestPosition.y + bestPosition.h },
+                    { x: bestPosition.x, y: bestPosition.y + bestPosition.h }
+                ];
+                finishedCuts.push(newRectangle);
+                redrawCanvas();
+                setStatusMessage(`Corte de ${width}x${height} adicionado automaticamente!`, 'green');
+                autoCutForm.reset(); // Reseta o formulário
+            } else {
+                setStatusMessage(`Não foi encontrado espaço para um corte de ${width}x${height}.`, 'red');
+            }
+        });
+    } else {
+        console.warn("Formulário #auto-cut-form não encontrado.");
     }
-    currentPlate = {
-        id: selectedOption.value,
-        original_width_mm: parseFloat(selectedOption.dataset.width),
-        original_height_mm: parseFloat(selectedOption.dataset.height)
-    };
-    document.getElementById('plate-dimensions').textContent = `Dimensões: ${currentPlate.original_width_mm}mm x ${currentPlate.original_height_mm}mm`;
-    loadCutsForPlate(currentPlate.id);
-});
 
-document.getElementById('new-plate-form').addEventListener('submit', handleNewPlateSubmit);
-document.getElementById('btn-undo-cut').addEventListener('click', undoLastCut);
-document.getElementById('btn-save-cuts').addEventListener('click', handleSaveCuts);
+    // Listeners de desenho manual
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    // Listeners de controles
+    const plateSelector = document.getElementById('plate-selector');
+    if (plateSelector) {
+        plateSelector.addEventListener('change', (event) => {
+            const selectedOption = event.target.options[event.target.selectedIndex];
+            const plateDimensionsEl = document.getElementById('plate-dimensions'); // Pega o elemento P
+
+            if (!selectedOption.value) {
+                currentPlate = null;
+                 if(plateDimensionsEl) plateDimensionsEl.textContent = ''; // Limpa o texto se existe
+                finishedCuts = [];
+                redrawCanvas();
+                return;
+            }
+            currentPlate = {
+                id: selectedOption.value,
+                original_width_mm: parseFloat(selectedOption.dataset.width),
+                original_height_mm: parseFloat(selectedOption.dataset.height)
+            };
+            if(plateDimensionsEl) { // Atualiza o texto se existe
+               plateDimensionsEl.textContent = `Dimensões: ${currentPlate.original_width_mm}mm x ${currentPlate.original_height_mm}mm`;
+            }
+            loadCutsForPlate(currentPlate.id);
+        });
+    } else {
+         console.warn("Seletor #plate-selector não encontrado.");
+    }
+    
+    const newPlateForm = document.getElementById('new-plate-form');
+    if(newPlateForm) {
+        newPlateForm.addEventListener('submit', handleNewPlateSubmit);
+    } else {
+         console.warn("Formulário #new-plate-form não encontrado.");
+    }
+
+    const undoBtn = document.getElementById('btn-undo-cut');
+    if(undoBtn) {
+        undoBtn.addEventListener('click', undoLastCut);
+    } else {
+        console.warn("Botão #btn-undo-cut não encontrado.");
+    }
+
+    const saveBtn = document.getElementById('btn-save-cuts');
+    if(saveBtn) {
+        saveBtn.addEventListener('click', handleSaveCuts);
+    } else {
+        console.warn("Botão #btn-save-cuts não encontrado.");
+    }
+
+    console.log("Script de chapas inicializado com sucesso.");
+});
