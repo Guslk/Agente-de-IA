@@ -1,5 +1,11 @@
-
 <%- include('partials/header', { title: 'Funcionários', paginaAtiva: 'funcionarios' }) %>
+
+<!-- Estilo agora vem do style.css principal -->
+<!-- Adicionado estilo específico para status de role -->
+<style>
+    .status-pill.admin { background-color: var(--primary-color); color: white; }
+    .status-pill.operator { background-color: #6c757d; color: white; } /* Cinza (btn-secondary) */
+</style>
 
 <header class="header">
     <h1 class="header-title">Gerenciamento de Funcionários</h1>
@@ -7,168 +13,229 @@
         <% if (typeof user !== 'undefined' && user) { %>
             <div class="user-profile">
                 <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
             </div>
         <% } %>
     </div>
 </header>
 
 <main class="main-content">
-    
+
     <div class="main-header">
-<% if (typeof query !== 'undefined' && query.error) { %>
-        <div class="alert alert-danger">
+        <h2>Funcionários Cadastrados</h2>
+        <% if (user.role === 'Administrador') { %>
+            <div class="action-buttons">
+                <!-- Botão Adicionar com classe btn-primary e cor success -->
+                <button class="btn-primary" id="btn-show-add-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle"></i> Adicionar Funcionário</button>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Alertas (se houver) -->
+    <% if (typeof query !== 'undefined' && query.error) { %>
+        <div class="alert alert-danger" style="margin-top: -10px; margin-bottom: 20px;">
             <% if (query.error === 'employee_in_use') { %>
                 <strong>Erro!</strong> Não é possível excluir este funcionário, pois ele está associado a movimentações.
-            
             <% } else if (query.error === 'email_in_use') { %>
                 <strong>Erro!</strong> O email que você digitou já está cadastrado.
-            
             <% } else { %>
-                <strong>Erro!</strong> Ocorreu um problema.
+                <strong>Erro!</strong> <%= query.error %> <!-- Mostra a mensagem de erro genérica -->
             <% } %>
         </div>
     <% } %>
     <% if (typeof query !== 'undefined' && query.success) { %>
-        <% } %>
-        <h2>Funcionários Cadastrados</h2>
-        <% if (user.role === 'Administrador') { %>
-            <div class="action-buttons">
-                <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle"></i> Adicionar Funcionário</button>
-            </div>
-        <% } %>
-    </div>
- 
-    </section> 
-        <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Foto</th> 
-                    <th>Nome</th>
-                    <th>Email</th>
-                    <th>Cargo</th>
-                    <th>Função no Sistema</th>
-                    <% if (user.role === 'Administrador') { %>
-                        <th>Ações</th>
-                    <% } %>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (funcionarios.length > 0) { %>
-                    <% funcionarios.forEach(func => { %>
-                        <tr>
+         <!-- Pode adicionar um alert-success aqui se desejar -->
+    <% } %>
+
+    <!-- Tabela de Funcionários -->
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Foto</th> <!-- Largura fixa para avatar -->
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Cargo</th>
+                    <th>Função no Sistema</th>
+                    <% if (user.role === 'Administrador') { %>
+                        <th>Ações</th>
+                    <% } %>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (funcionarios.length > 0) { %>
+                    <% funcionarios.forEach(func => { %>
+                        <tr>
                             <td>
                                 <% if (func.photo && func.photo.length > 0) { %>
+                                    <!-- Usando table-avatar -->
                                     <img src="data:image/jpeg;base64,<%= func.photo.toString('base64') %>" alt="Foto" class="table-avatar">
                                 <% } else { %>
                                     <img src="https://i.pravatar.cc/40?u=<%= func.email %>" alt="Avatar" class="table-avatar">
                                 <% } %>
                             </td>
-                            <td><strong><%= func.name %></strong></td>
-                            <td><%= func.email %></td>
-                            <td><%= func.position || '-' %></td>
-                            <td>
-                                <span class="status-badge <%= func.role === 'Administrador' ? 'admin' : 'operator' %>">
-                                    <%= func.role %>
-                                </span>
-                            </td>
-                            <% if (user.role === 'Administrador') { %>
-                                <td>
-                                    <button title="Editar" class="action-btn btn-edit" data-employee='<%- JSON.stringify(func) %>'><i class="bi bi-pencil-square"></i></button>
-                                    <form action="/funcionarios/<%= func.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza?');">
-                                        <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
-                                    </form>
-                                </td>
-                            <% } %>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                                        <td colspan="<%= user.role === 'Administrador' ? '6' : '5' %>" style="text-align: center;">Nenhum funcionário encontrado.</td>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
+                            <td><strong><%= func.name %></strong></td>
+                            <td><%= func.email %></td>
+                            <td><%= func.position || '-' %></td>
+                            <td>
+                                <!-- Usando status-pill com classe específica de role -->
+                                <span class="status-pill <%= func.role === 'Administrador' ? 'admin' : 'operator' %>">
+                                    <%= func.role %>
+                                </span>
+                            </td>
+                            <% if (user.role === 'Administrador') { %>
+                                <td>
+                                    <!-- Botões de ação com classes corretas -->
+                                    <button title="Editar" class="action-btn btn-edit" data-employee='<%- JSON.stringify(func) %>'><i class="bi bi-pencil-square"></i></button>
+                                    <form action="/funcionarios/<%= func.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este funcionário?');">
+                                        <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                                    </form>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr>
+                         <td colspan="<%= user.role === 'Administrador' ? '6' : '5' %>" style="text-align: center;">Nenhum funcionário encontrado.</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 </main>
 
+<!-- Modal de Adicionar Funcionário -->
 <div class="modal-overlay" id="add-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Adicionar Novo Funcionário</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
+    <div class="modal"> <!-- Tamanho padrão -->
+        <div class="modal-header">
+            <h3>Adicionar Novo Funcionário</h3>
+            <button class="close-button" id="btn-close-add-modal">&times;</button>
+        </div>
+        <!-- Formulário com enctype para upload de foto -->
         <form action="/funcionarios" method="POST" enctype="multipart/form-data">
-            <div class="modal-body form-grid">
-                <div class="form-group"><label for="name">Nome Completo</label><input type="text" name="name" required></div>
-                <div class="form-group"><label for="email">Email</label><input type="email" name="email" required></div>
-                <div class="form-group"><label for="position">Cargo</label><input type="text" name="position"></div>
-                <div class="form-group"><label for="password">Senha Provisória</label><input type="password" name="password" required></div>
-                <div class="form-group">
-                    <label for="role">Função no Sistema</label>
-                    <select name="role" required>
-                        <option value="Operador" selected>Operador</option>
-                        <option value="Administrador">Administrador</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="photo">Foto (Opcional)</label>
-                    <input type="file" name="photo" id="photo" accept="image/*">
+            <div class="modal-body">
+                <!-- Usando form-grid padrão -->
+                <div class="form-grid">
+                    <div class="form-group"><label for="add-name">Nome Completo</label><input type="text" id="add-name" name="name" required></div>
+                    <div class="form-group"><label for="add-email">Email</label><input type="email" id="add-email" name="email" required></div>
+                    <div class="form-group"><label for="add-position">Cargo</label><input type="text" id="add-position" name="position"></div>
+                    <div class="form-group"><label for="add-password">Senha Provisória</label><input type="password" id="add-password" name="password" required></div>
+                    <div class="form-group">
+                        <label for="add-role">Função no Sistema</label>
+                        <select id="add-role" name="role" required>
+                            <option value="Operador" selected>Operador</option>
+                            <option value="Administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="photo">Foto (Opcional)</label>
+                        <input type="file" name="photo" id="photo" accept="image/*">
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Funcionário</button></div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Funcionário</button>
+            </div>
         </form>
     </div>
 </div>
 
 
+<!-- Modal de Editar Funcionário -->
 <div class="modal-overlay" id="edit-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Editar Funcionário</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST" enctype="multipart/form-data">
-            <div class="modal-body form-grid">
-                <div class="form-group"><label for="edit-name">Nome Completo</label><input type="text" id="edit-name" name="name" required></div>
-                <div class="form-group"><label for="edit-email">Email</label><input type="email" id="edit-email" name="email" required></div>
-                <div class="form-group"><label for="edit-position">Cargo</label><input type="text" id="edit-position" name="position"></div>
-                <div class="form-group">
-                    <label for="edit-role">Função no Sistema</label>
-                    <select id="edit-role" name="role" required>
-                        <option value="Operador">Operador</option>
-                        <option value="Administrador">Administrador</option>
-                    </select>
-                </div>
-                <div class="form-group full-width">
-                    <label for="edit-photo">Alterar Foto (Opcional)</label>
-                    <input type="file" name="photo" id="edit-photo" accept="image/*">
+    <div class="modal"> <!-- Tamanho padrão -->
+        <div class="modal-header">
+            <h3>Editar Funcionário</h3>
+            <button class="close-button" id="btn-close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-form" method="POST" enctype="multipart/form-data"> <!-- Action definida via JS -->
+            <div class="modal-body">
+                 <!-- Usando form-grid padrão -->
+                <div class="form-grid">
+                    <div class="form-group"><label for="edit-name">Nome Completo</label><input type="text" id="edit-name" name="name" required></div>
+                    <div class="form-group"><label for="edit-email">Email</label><input type="email" id="edit-email" name="email" required></div>
+                    <div class="form-group"><label for="edit-position">Cargo</label><input type="text" id="edit-position" name="position"></div>
+                    <div class="form-group">
+                        <label for="edit-role">Função no Sistema</label>
+                        <select id="edit-role" name="role" required>
+                            <option value="Operador">Operador</option>
+                            <option value="Administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <!-- Campo de foto ocupa a linha inteira -->
+                    <div class="form-group full-width">
+                        <label for="edit-photo">Alterar Foto (Opcional)</label>
+                        <input type="file" name="photo" id="edit-photo" accept="image/*">
+                         <!-- Adicionar pré-visualização da foto atual (opcional) -->
+                         <!-- <img id="edit-photo-preview" src="#" alt="Foto Atual" class="table-avatar" style="margin-top: 10px; display: none;"> -->
+                    </div>
+                     <!-- Campo para nova senha (opcional) -->
+                    <div class="form-group full-width">
+                         <label for="edit-password">Nova Senha (deixe em branco para não alterar)</label>
+                         <input type="password" id="edit-password" name="password" placeholder="Nova Senha">
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Alterações</button>
+            </div>
         </form>
     </div>
 </div>
 
 <%- include('partials/footer') %>
 
+<!-- Script JS existente (IDs foram mantidos) -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Lógica para o modal de ADICIONAR
     const addModal = document.getElementById('add-modal');
-    document.getElementById('btn-show-add-modal').addEventListener('click', () => addModal.style.display = 'flex');
-    document.getElementById('btn-close-add-modal').addEventListener('click', () => addModal.style.display = 'none');
-    window.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
+    const btnShowAddModal = document.getElementById('btn-show-add-modal');
+    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
+
+    // Verifica se os elementos existem antes de adicionar listeners
+    if(addModal && btnShowAddModal && btnCloseAddModal){
+        btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
+        btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === addModal) addModal.style.display = 'none'; });
+    }
 
     // Lógica para o modal de EDITAR
     const editModal = document.getElementById('edit-modal');
     const editForm = document.getElementById('edit-form');
-    document.getElementById('btn-close-edit-modal').addEventListener('click', () => editModal.style.display = 'none');
-    window.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
+    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+    const btnsEdit = document.querySelectorAll('.btn-edit');
 
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const employee = JSON.parse(btn.dataset.employee);
-            editForm.action = `/funcionarios/${employee.id}/update`;
-            document.getElementById('edit-name').value = employee.name;
-            document.getElementById('edit-email').value = employee.email;
-            document.getElementById('edit-position').value = employee.position;
-            document.getElementById('edit-role').value = employee.role;
-            editModal.style.display = 'flex';
+    if(editModal && editForm && btnCloseEditModal && btnsEdit.length > 0){
+        btnsEdit.forEach(btn => {
+            btn.addEventListener('click', () => {
+                 try {
+                    const employee = JSON.parse(btn.dataset.employee);
+                    editForm.action = `/funcionarios/${employee.id}/update`;
+                    document.getElementById('edit-name').value = employee.name || '';
+                    document.getElementById('edit-email').value = employee.email || '';
+                    document.getElementById('edit-position').value = employee.position || '';
+                    document.getElementById('edit-role').value = employee.role || 'Operador';
+                     // Limpar campo de senha e foto ao abrir
+                    document.getElementById('edit-password').value = '';
+                    document.getElementById('edit-photo').value = ''; 
+                    // Se tivesse pré-visualização da foto:
+                    // const preview = document.getElementById('edit-photo-preview');
+                    // if (employee.photo && employee.photo.length > 0) {
+                    //     preview.src = `data:image/jpeg;base64,${employee.photo}`; // Precisa ajustar se não for base64
+                    //     preview.style.display = 'block';
+                    // } else {
+                    //     preview.style.display = 'none';
+                    // }
+                    editModal.style.display = 'flex';
+                } catch(e) {
+                    console.error("Erro ao processar dados do funcionário:", e, btn.dataset.employee);
+                    alert("Erro ao carregar dados do funcionário para edição.");
+                }
+            });
         });
-    });
+        btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
+    }
 });
 </script>

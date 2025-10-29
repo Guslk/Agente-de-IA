@@ -1,182 +1,219 @@
 <%- include('partials/header', { title: 'Ferramentas', paginaAtiva: 'ferramentas' }) %>
 
+<!-- O estilo agora vem do style.css principal -->
+
 <header class="header">
-    <h1 class="header-title">Controle de Ferramentas</h1>
-    <div class="header-right">
-        <div class="user-profile">
-            <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
-            <% } %>
-        </div>
-    </div>
+    <h1 class="header-title">Controle de Ferramentas</h1>
+    <div class="header-right">
+        <!-- Adicionei a classe .notification-icon se aplicável -->
+        <!-- <div class="notification-icon"> ... </div> -->
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <!-- Adicionei a classe avatar-img -->
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            <% } %>
+        </div>
+    </div>
 </header>
 
 <main class="main-content">
-    <div class="main-header">
-        <h2>Ferramentas Disponíveis</h2>
-        <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-add-tool-modal"><i class="bi bi-plus-circle-fill"></i> Nova Ferramenta</button>
-            <a href="/tool-history" class="btn-secondary">
-                <i class="bi bi-clock-history"></i> Ver Histórico
-            </a>
-        </div>
-    </div>
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <th style="text-align: center;">Ação</th>
-                </tr>
-            </thead>
-            <tbody id="items-table-body">
-                <% if (typeof availableTools !== 'undefined' && availableTools.length > 0) { %>
-                    <% availableTools.forEach(tool => { %>
-                                                <tr class="stock-in"> 
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
+    <div class="main-header">
+        <!-- Usei h2 como no style.css -->
+        <h2>Ferramentas Disponíveis</h2>
+        <div class="action-buttons">
+            <!-- Usei btn-primary, mantendo a cor inline por enquanto -->
+            <button class="btn-primary" id="btn-show-add-tool-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle-fill"></i> Nova Ferramenta</button>
+            <!-- Usei btn-secondary -->
+            <a href="/tool-history" class="btn-secondary">
+                <i class="bi bi-clock-history"></i> Ver Histórico
+            </a>
+        </div>
+    </div>
 
-<td style="text-align: center;">
-    <button class="btn-retirar" data-id="<%= tool.id %>" data-nome="<%= tool.name %>">
-        <i class="bi bi-box-arrow-up-right"></i> Retirar
-    </button>
-    
-    <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
-        <i class="bi bi-pencil-square"></i>
-    </button>
-    <form action="/tools/destroy/<%= tool.id %>" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja desativar esta ferramenta?');">
-            <button type="submit" title="Desativar" class="action-btn danger">
-                <i class="bi bi-trash-fill"></i>
-            </button>
-        </form>
-</td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
-
-    <div class="main-header" style="margin-top: 10px;">
-        <h2>Ferramentas em Uso (Retiradas)</h2>
-    </div>
-<section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Ferramenta</th>
-                    <th>Retirado por</th>
-                    <th>Data e Hora da Retirada</th>
-                    <th style=" text-align: center;">Ação</th>
-                </tr>
-            </thead>
-<tbody>
-    <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
-        <% toolsInUse.forEach(tool => { %>
-            <tr class="stock-out">
-                <td><code><%= tool.code %></code></td>
-                <td><strong><%= tool.name %></strong></td>
-                
-                <td><%= tool.movements[0].employee.name %></td>
-                <td><%= new Date(tool.movements[0].movementDate).toLocaleString('pt-BR') %></td>
-                
-                <td style="text-align: center;">
-                    <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" style="margin:0;">
-                        <button type="submit" class="btn-devolver">
-                            <i class="bi bi-box-arrow-in-down-left"></i> Devolver
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        <% }); %>
-    <% } else { %>
-        <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
-    <% } %>
-</tbody>
-
-        </table>
-    </section>
-
-</table>
-    </section>
-
-        <div class="main-header" style="margin-top: 40px;">
-        <h2>Ferramentas em Manutenção</h2>
-    </div>
-        <section class="inventory-table tools-maintenance">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <th style="width: 150px; text-align: center;">Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof toolsInMaintenance !== 'undefined' && toolsInMaintenance.length > 0) { %>
-                    <% toolsInMaintenance.forEach(tool => { %>
-                                                <tr class="stock-planned"> 
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            <td style="text-align: center;">
-                                                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
+    <!-- Tabela de Ferramentas Disponíveis -->
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome da Ferramenta</th>
+                    <!-- Removi o style inline, o CSS já centraliza a última coluna -->
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="items-table-body">
+                <% if (typeof availableTools !== 'undefined' && availableTools.length > 0) { %>
+                    <% availableTools.forEach(tool => { %>
+                        <!-- Classe stock-in já está correta -->
+                        <tr class="stock-in">
+                            <td><code><%= tool.code %></code></td>
+                            <td><strong><%= tool.name %></strong></td>
+                            <!-- Removi style inline de alinhamento -->
+                            <td>
+                                <!-- Botão Retirar com classe correta -->
+                                <button class="btn-retirar" data-id="<%= tool.id %>" data-nome="<%= tool.name %>" title="Retirar">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </button>
+                                <!-- Botão Editar com classe correta -->
+                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                            </td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta em manutenção.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
+                                <!-- Formulário de Desativar -->
+                                <form action="/tools/destroy/<%= tool.id %>" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja desativar esta ferramenta?');">
+                                    <!-- Botão Desativar com classes corretas -->
+                                    <button type="submit" title="Desativar" class="action-btn danger">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
-        <div class="main-header" style="margin-top: 40px;">
-        <h2>Ferramentas Desativadas</h2>
-    </div>
-        <section class="inventory-table tools-deactivated">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <th style="width: 150px; text-align: center;">Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof deactivatedTools !== 'undefined' && deactivatedTools.length > 0) { %>
-                    <% deactivatedTools.forEach(tool => { %>
-                        <tr style="opacity: 0.6; background-color: #f8f9fa;">                             <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            <td style="text-align: center;">
-                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
+    <!-- Tabela de Ferramentas em Uso -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Ferramentas em Uso (Retiradas)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Ferramenta</th>
+                    <th>Retirado por</th>
+                    <th>Data e Hora da Retirada</th>
+                    <!-- Removi style inline de alinhamento -->
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
+                    <% toolsInUse.forEach(tool => { %>
+                        <!-- Classe stock-out já está correta -->
+                        <tr class="stock-out">
+                            <td><code><%= tool.code %></code></td>
+                            <td><strong><%= tool.name %></strong></td>
+                            <td><%= tool.movements[0].employee.name %></td>
+                            <td><%= new Date(tool.movements[0].movementDate).toLocaleString('pt-BR') %></td>
+                            <!-- Removi style inline de alinhamento -->
+                            <td>
+                                <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" style="margin:0;">
+                                    <!-- Botão Devolver com classe correta -->
+                                    <button type="submit" class="close-button" title="Devolver">
+                                        <i class="bi bi-box-arrow-in-down-left"></i> 
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Tabela de Ferramentas em Manutenção -->
+     <div class="main-header" style="margin-top: 30px;">
+        <h2>Ferramentas em Manutenção</h2>
+    </div>
+    <section class="inventory-table tools-maintenance">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome da Ferramenta</th>
+                    <!-- Removi style inline de alinhamento/largura -->
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof toolsInMaintenance !== 'undefined' && toolsInMaintenance.length > 0) { %>
+                    <% toolsInMaintenance.forEach(tool => { %>
+                        <!-- Classe stock-planned já está correta -->
+                        <tr class="stock-planned">
+                            <td><code><%= tool.code %></code></td>
+                            <td><strong><%= tool.name %></strong></td>
+                            <!-- Removi style inline de alinhamento -->
+                            <td>
+                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                            </td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta desativada.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
+                                <!-- Adicionado botão para reativar (opcional) -->
+                                <!--
+                                <form action="/tools/reactivate/<%= tool.id %>?status=Em Estoque" method="POST" style="display: inline;">
+                                     <button type="submit" title="Marcar como Disponível" class="action-btn" style="color: var(--success);"><i class="bi bi-check-circle-fill"></i></button>
+                                </form>
+                                -->
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta em manutenção.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Tabela de Ferramentas Desativadas -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Ferramentas Desativadas</h2>
+    </div>
+    <section class="inventory-table tools-deactivated">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome da Ferramenta</th>
+                    <!-- Removi style inline de alinhamento/largura -->
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof deactivatedTools !== 'undefined' && deactivatedTools.length > 0) { %>
+                    <% deactivatedTools.forEach(tool => { %>
+                        <!-- Estilo para linha desativada -->
+                        <tr style="opacity: 0.6; background-color: #f8f9fa;">
+                            <td><code><%= tool.code %></code></td>
+                            <td><strong><%= tool.name %></strong></td>
+                             <!-- Removi style inline de alinhamento -->
+                            <td>
+                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <!-- Adicionado botão para reativar (opcional) -->
+                                <!--
+                                <form action="/tools/reactivate/<%= tool.id %>?status=Em Estoque" method="POST" style="display: inline;">
+                                     <button type="submit" title="Reativar" class="action-btn" style="color: var(--success);"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                </form>
+                                -->
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta desativada.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 </main>
 
+<!-- MODAL DE EDIÇÃO - Estrutura atualizada -->
 <div class="modal-overlay" id="edit-tool-modal">
     <div class="modal" style="max-width: 500px;">
         <div class="modal-header">
             <h3>Editar Ferramenta</h3>
             <button class="close-button" id="btn-close-edit-tool-modal">&times;</button>
         </div>
-        <form id="edit-form" method="POST">
+        <form id="edit-form" method="POST"> <!-- Action será definida via JS -->
             <div class="modal-body">
+                <!-- Usando form-group -->
                 <div class="form-group">
                     <label for="edit-tool-code">Código da Ferramenta</label>
                     <input type="text" id="edit-tool-code" name="code" required>
@@ -190,132 +227,146 @@
                     <select id="edit-tool-status" name="status" required>
                         <option value="Em Estoque">Em Estoque</option>
                         <option value="Em manutenção">Em manutenção</option>
-                        <option value="Desativada">Desativado</option> </select>
+                        <option value="Desativada">Desativado</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
+                <!-- Usando btn-primary -->
                 <button type="submit" class="btn-primary">Salvar Alterações</button>
             </div>
         </form>
     </div>
 </div>
 
-
+<!-- MODAL DE RETIRADA - Estrutura atualizada -->
 <div class="modal-overlay" id="withdraw-modal">
-    <div class="modal" style="max-width: 500px;">
-        <div class="modal-header">
-            <h3 id="withdraw-modal-title">Retirar Ferramenta</h3>
-            <button class="close-button" id="btn-close-withdraw-modal">&times;</button>
-        </div>
-        <form id="withdraw-form" method="POST">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="withdraw-employee">Responsável pela Retirada</label>
-                                        <select id="withdraw-employee" name="employeeId" required>
-                        <option value="" disabled selected>Selecione um funcionário...</option>
-                        <% if (typeof employees !== 'undefined' && employees.length > 0) { %>
-                            <% employees.forEach(employee => { %>
-                                <option value="<%= employee.id %>"><%= employee.name %></option>
-                            <% }); %>
-                        <% } %>
-                    </select>
-                </div>
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="withdraw-modal-title">Retirar Ferramenta</h3>
+            <button class="close-button" id="btn-close-withdraw-modal">&times;</button>
+        </div>
+        <form id="withdraw-form" method="POST"> <!-- Action será definida via JS -->
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="withdraw-employee">Responsável pela Retirada</label>
+                    <select id="withdraw-employee" name="employeeId" required>
+                        <option value="" disabled selected>Selecione um funcionário...</option>
+                        <% if (typeof employees !== 'undefined' && employees.length > 0) { %>
+                            <% employees.forEach(employee => { %>
+                                <option value="<%= employee.id %>"><%= employee.name %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label for="withdraw-notes">Observações (Projeto, OS, etc.)</label>
                     <input type="text" id="withdraw-notes" name="notes">
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn-primary">Confirmar Retirada</button>
-            </div>
-        </form>
-    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Confirmar Retirada</button>
+            </div>
+        </form>
+    </div>
 </div>
 
+<!-- MODAL DE ADIÇÃO - Estrutura atualizada -->
 <div class="modal-overlay" id="add-tool-modal">
-    <div class="modal" style="max-width: 500px;">
-        <div class="modal-header">
-            <h3>Cadastrar Nova Ferramenta</h3>
-            <button class="close-button" id="btn-close-add-tool-modal">&times;</button>
-        </div>
-                <form action="/tools" method="POST">
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="tool-code">Código da Ferramenta</label>
-                                        <input type="text" id="tool-code" name="code" required placeholder="Ex: FUR-BOS-01">
-                </div>
-                <div class="form-group">
-                    <label for="tool-name">Nome da Ferramenta</label>
-                                        <input type="text" id="tool-name" name="name" required placeholder="Ex: Furadeira de Impacto Bosch">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn-primary">Salvar Ferramenta</button>
-            </div>
-        </form>
-    </div>
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Ferramenta</h3>
+            <button class="close-button" id="btn-close-add-tool-modal">&times;</button>
+        </div>
+        <form action="/tools" method="POST"> <!-- Action definida diretamente -->
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="tool-code">Código da Ferramenta</label>
+                    <input type="text" id="tool-code" name="code" required placeholder="Ex: FUR-BOS-01">
+                </div>
+                <div class="form-group">
+                    <label for="tool-name">Nome da Ferramenta</label>
+                    <input type="text" id="tool-name" name="name" required placeholder="Ex: Furadeira de Impacto Bosch">
+                </div>
+                 <!-- Campo de Status inicial (opcional, pode ser definido no backend) -->
+                 <!--
+                 <div class="form-group">
+                    <label for="add-tool-status">Status Inicial</label>
+                    <select id="add-tool-status" name="status">
+                        <option value="Em Estoque" selected>Em Estoque</option>
+                        <option value="Em manutenção">Em manutenção</option>
+                    </select>
+                 </div>
+                 -->
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Ferramenta</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
 
+<!-- Script JS existente (não precisa de alteração) -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Lógica do modal de RETIRADA
-    const withdrawModal = document.getElementById('withdraw-modal');
-    const modalTitle = document.getElementById('withdraw-modal-title');
-    const withdrawForm = document.getElementById('withdraw-form');
-    const btnCloseModal = document.getElementById('btn-close-withdraw-modal');
-    const btnsRetirar = document.querySelectorAll('.btn-retirar');
-    
-    btnsRetirar.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const toolId = btn.dataset.id;
-            const toolName = btn.dataset.nome;
-            modalTitle.innerText = `Retirar: ${toolName}`;
-            withdrawForm.action = `/tools/withdraw/${toolId}`; // Rota padronizada
-            withdrawModal.style.display = 'flex';
-        });
-    });
-    if (btnCloseModal) btnCloseModal.addEventListener('click', () => withdrawModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === withdrawModal) withdrawModal.style.display = 'none'; });
+    // Lógica do modal de RETIRADA
+    const withdrawModal = document.getElementById('withdraw-modal');
+    const modalTitle = document.getElementById('withdraw-modal-title');
+    const withdrawForm = document.getElementById('withdraw-form');
+    const btnCloseModal = document.getElementById('btn-close-withdraw-modal');
+    const btnsRetirar = document.querySelectorAll('.btn-retirar');
 
-    // Lógica do modal de CADASTRO
-    const addToolModal = document.getElementById('add-tool-modal');
-    const btnShowAddToolModal = document.getElementById('btn-show-add-tool-modal');
-    const btnCloseAddToolModal = document.getElementById('btn-close-add-tool-modal');
+    if (withdrawModal && modalTitle && withdrawForm && btnCloseModal && btnsRetirar.length > 0) {
+        btnsRetirar.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const toolId = btn.dataset.id;
+                const toolName = btn.dataset.nome;
+                modalTitle.innerText = `Retirar: ${toolName}`;
+                withdrawForm.action = `/tools/withdraw/${toolId}`;
+                withdrawModal.style.display = 'flex';
+            });
+        });
+        btnCloseModal.addEventListener('click', () => withdrawModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === withdrawModal) withdrawModal.style.display = 'none'; });
+    }
 
-    if(btnShowAddToolModal) btnShowAddToolModal.addEventListener('click', () => addToolModal.style.display = 'flex');
-    if(btnCloseAddToolModal) btnCloseAddToolModal.addEventListener('click', () => addToolModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === addToolModal) addToolModal.style.display = 'none'; });
+    // Lógica do modal de CADASTRO
+    const addToolModal = document.getElementById('add-tool-modal');
+    const btnShowAddToolModal = document.getElementById('btn-show-add-tool-modal');
+    const btnCloseAddToolModal = document.getElementById('btn-close-add-tool-modal');
 
+    if(addToolModal && btnShowAddToolModal && btnCloseAddToolModal){
+        btnShowAddToolModal.addEventListener('click', () => addToolModal.style.display = 'flex');
+        btnCloseAddToolModal.addEventListener('click', () => addToolModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === addToolModal) addToolModal.style.display = 'none'; });
+    }
 
-const editToolModal = document.getElementById('edit-tool-modal');
+    // Lógica do modal de EDIÇÃO
+    const editToolModal = document.getElementById('edit-tool-modal');
     const editForm = document.getElementById('edit-form');
     const btnCloseEditModal = document.getElementById('btn-close-edit-tool-modal');
     const btnsEdit = document.querySelectorAll('.btn-edit');
 
-    if (btnsEdit.length > 0) {
+    if (editToolModal && editForm && btnCloseEditModal && btnsEdit.length > 0) {
         btnsEdit.forEach(btn => {
             btn.addEventListener('click', () => {
-                // Pega os dados do botão (data-tool)
-                const tool = JSON.parse(btn.dataset.tool); 
-
-                // 1. Define a 'action' do formulário para a rota de atualização
-                editForm.action = `/tools/update/${tool.id}`;
-
-                // 2. Preenche o formulário com os dados atuais da ferramenta
-                document.getElementById('edit-tool-name').value = tool.name;
-                document.getElementById('edit-tool-code').value = tool.code;
-                document.getElementById('edit-tool-status').value = tool.status;
-                
-                // 3. Mostra o modal
-                editToolModal.style.display = 'flex';
+                try {
+                    const tool = JSON.parse(btn.dataset.tool);
+                    editForm.action = `/tools/update/${tool.id}`;
+                    document.getElementById('edit-tool-name').value = tool.name;
+                    document.getElementById('edit-tool-code').value = tool.code;
+                    document.getElementById('edit-tool-status').value = tool.status;
+                    editToolModal.style.display = 'flex';
+                } catch (e) {
+                    console.error("Erro ao processar dados da ferramenta para edição:", e);
+                    alert("Erro ao carregar dados da ferramenta para edição.");
+                }
             });
         });
+        btnCloseEditModal.addEventListener('click', () => editToolModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === editToolModal) editToolModal.style.display = 'none'; });
     }
-
-    if (btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editToolModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === editToolModal) editToolModal.style.display = 'none'; });
-
 });
 </script>

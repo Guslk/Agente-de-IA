@@ -467,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('close-modal-btn');
 
     if (modal && openBtn && closeBtn) {
-        openBtn.onclick = () => { modal.style.display = 'block'; };
+        openBtn.onclick = () => { modal.style.display = 'flex'; };
         closeBtn.onclick = () => { modal.style.display = 'none'; };
         window.onclick = (event) => {
             if (event.target == modal) {

@@ -1,259 +1,288 @@
-
 <%- include('partials/header', { title: 'Fornecedores', paginaAtiva: 'fornecedores' }) %>
 
+<!-- Estilo agora vem do style.css principal -->
+
 <header class="header">
-    <h1 class="header-title">Fornecedores</h1>
-    <div class="header-right">
-        <div class="user-profile">
-            <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
-            <% } %>
-        </div>
-    </div>
+    <h1 class="header-title">Fornecedores</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            <% } %>
+        </div>
+    </div>
 </header>
 
 <main class="main-content">
-    
 
-    <div class="main-header">
-        <h2>Fornecedores Ativos</h2>
-        <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Fornecedor</button>
-        </div>
-    </div>
-    
+    <div class="main-header">
+        <h2>Fornecedores Ativos</h2>
+        <div class="action-buttons">
+            <!-- Botão Adicionar com classe btn-primary e cor success -->
+            <button class="btn-primary" id="btn-show-add-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle-fill"></i> Adicionar Fornecedor</button>
+        </div>
+    </div>
+
+    <!-- Tabela de Fornecedores Ativos -->
     <section class="inventory-table">
-    <table>
-        <thead>
-            <tr>
-                <th>Nome da Empresa</th>
-                <th>Contato</th>
-                <th>Telefone</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (typeof activeSuppliers !== 'undefined' && activeSuppliers.length > 0) { %>
-                <% activeSuppliers.forEach(supplier => { %>
-                    <tr class="stock-in">
-                                                <td><strong><%= supplier.name %></strong></td> 
-                        <td><%= supplier.contactPerson || '-' %></td>
-                        <td><%= supplier.phoneNumber || '-' %></td>
-                        <td><%= supplier.email || '-' %></td>
-                        <td><span class="status-badge active"><%= supplier.status %></span></td>
-                        <td>
-                            <button title="Editar" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'><i class="bi bi-pencil-square"></i></button>
-                            <form action="/fornecedores/<%= supplier.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza?');">
-                                <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
-                            </form>
-                        </td>
-                    </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="6" style="text-align: center;">Nenhum fornecedor ativo encontrado.</td></tr>
-            <% } %>
-        </tbody>
-    </table>
-</section>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Empresa</th>
+                    <th>Contato</th>
+                    <th>Telefone</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Ações</th> <!-- CSS já centraliza a última coluna -->
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof activeSuppliers !== 'undefined' && activeSuppliers.length > 0) { %>
+                    <% activeSuppliers.forEach(supplier => { %>
+                        <!-- Usando stock-in para fundo verde claro (ou pode remover se não fizer sentido para fornecedores) -->
+                        <tr class="stock-in">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.contactPerson || '-' %></td>
+                            <td><%= supplier.phoneNumber || '-' %></td>
+                            <td><%= supplier.email || '-' %></td>
+                            <!-- Usando status-pill -->
+                            <td><span class="status-pill status-ok"><%= supplier.status %></span></td>
+                            <td>
+                                <!-- Botões de ação com classes corretas -->
+                                <button title="Editar" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'><i class="bi bi-pencil-square"></i></button>
+                                <form action="/fornecedores/<%= supplier.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja desativar este fornecedor?');">
+                                    <button type="submit" title="Desativar" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="6" style="text-align: center;">Nenhum fornecedor ativo encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
-        <div class="main-header" style="margin-top: 40px;">
-        <h2>Fornecedores Desativados</h2>
-    </div>
-    <section class="inventory-table items-deactivated">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome da Empresa</th>
-                    <th>Contato</th>
-                    <th>Telefone</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof deactivatedSuppliers !== 'undefined' && deactivatedSuppliers.length > 0) { %>
-                    <% deactivatedSuppliers.forEach(supplier => { %>
-                        <tr class="stock-planned">
-                                                            <td><strong><%= supplier.name %></strong></td> 
-                            <td><%= supplier.contactPerson || '-' %></td>
-                            <td><%= supplier.phoneNumber || '-' %></td>
-                            <td><span class="status-badge inactive"><%= supplier.status %></span></td>
-                            <td>
-                                <button title="Editar (Reativar)" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'>
+    <!-- Tabela de Fornecedores Desativados -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Fornecedores Desativados</h2>
+    </div>
+    <section class="inventory-table items-deactivated"> <!-- Classe items-deactivated mantida se houver estilo específico -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Empresa</th>
+                    <th>Contato</th>
+                    <th>Telefone</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof deactivatedSuppliers !== 'undefined' && deactivatedSuppliers.length > 0) { %>
+                    <% deactivatedSuppliers.forEach(supplier => { %>
+                        <!-- Usando stock-planned para fundo amarelo claro -->
+                        <tr class="stock-planned">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.contactPerson || '-' %></td>
+                            <td><%= supplier.phoneNumber || '-' %></td>
+                             <!-- Usando status-pill -->
+                            <td><span class="status-pill status-low"><%= supplier.status %></span></td>
+                            <td>
+                                <button title="Editar (Reativar)" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                            </td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhum fornecedor desativado encontrado.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
-    </section>
+                                <!-- Adicionar botão de restaurar se necessário -->
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhum fornecedor desativado encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
-        <div class="main-header" style="margin-top: 40px;">
-        <h2>Lixeira (Fornecedores Excluídos)</h2>
-        <div class="action-buttons">
-            <button class="btn-secondary" id="btn-toggle-excluded">
+    <!-- Tabela da Lixeira (Fornecedores Excluídos) -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Lixeira (Fornecedores Excluídos)</h2>
+        <div class="action-buttons">
+            <button class="btn-secondary" id="btn-toggle-excluded">
                 <i class="bi bi-eye-fill"></i> Mostrar Lixeira
             </button>
-        </div>
-    </div>
-    
-    <section class="inventory-table" id="excluded-items-table" style="display: none;">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome da Empresa</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof excludedSuppliers !== 'undefined' && excludedSuppliers.length > 0) %>
-                    <% excludedSuppliers.forEach(supplier => { %>
-                        <tr style="opacity: 0.7; background-color: #f8f9fa;">
-                                                            <td><strong><%= supplier.name %></strong></td> 
-                            <td><%= supplier.email || '-' %></td>
-                            <td><span class="status-badge inactive"><%= supplier.status %></span></td>
-                            <td>
-                                <form action="/fornecedores/<%= supplier.id %>/restore" method="POST" style="display: inline;">
-                                    <button type="submit" title="Restaurar Fornecedor" class="action-btn restore-btn">
+        </div>
+    </div>
+
+    <section class="inventory-table" id="excluded-items-table" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Empresa</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof excludedSuppliers !== 'undefined' && excludedSuppliers.length > 0) { %>
+                 <%# Loop corrigido: era preciso verificar excludedSuppliers aqui %>
+                    <% excludedSuppliers.forEach(supplier => { %>
+                        <tr style="opacity: 0.7; background-color: #f8f9fa;">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.email || '-' %></td>
+                             <!-- Usando status-pill -->
+                            <td><span class="status-pill status-empty"><%= supplier.status %></span></td>
+                            <td>
+                                <form action="/fornecedores/<%= supplier.id %>/restore" method="POST" style="display: inline;">
+                                    <!-- Botão Restaurar com estilo -->
+                                    <button type="submit" title="Restaurar Fornecedor" class="action-btn restore-btn" style="color: var(--success);">
                                         <i class="bi bi-arrow-counterclockwise"></i> Restaurar
                                     </button>
                                 </form>
-                            </td>
-                        </tr>
-                    <% }); %>
-             </tbody>
-        </table>
-    </section>
+                            </td>
+                        </tr>
+                    <% }); %>
+                 <%# Fechamento da verificação if %>
+                <% } else { %>
+                    <tr><td colspan="4" style="text-align: center;">Lixeira está vazia.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
 </main>
 
+<!-- Modal de Adicionar Fornecedor -->
 <div class="modal-overlay" id="add-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Adicionar Novo Fornecedor</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
-        <form action="/fornecedores" method="POST">
-            <div class="modal-body form-grid-2">                 <div class="form-group"><label>Nome da Empresa</label><input type="text" name="companyName" required></div>
-                <div class="form-group"><label>Pessoa de Contato</label><input type="text" name="contactPerson"></div>
-                <div class="form-group"><label>Telefone</label><input type="tel" name="phoneNumber"></div>
-                <div class="form-group"><label>Email</label><input type="email" name="email"></div>
-                <div class="form-group full-width"><label>Endereço</label><input type="text" name="address"></div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Fornecedor</button></div>
-        </form>
-    </div>
+    <div class="modal"> <!-- Tamanho padrão ou max-width: 800px; -->
+        <div class="modal-header">
+            <h3>Adicionar Novo Fornecedor</h3>
+            <button class="close-button" id="btn-close-add-modal">&times;</button>
+        </div>
+        <form action="/fornecedores" method="POST">
+            <div class="modal-body">
+                <!-- Usando form-grid padrão (2 colunas) -->
+                <div class="form-grid">
+                    <div class="form-group"><label for="add-companyName">Nome da Empresa</label><input type="text" id="add-companyName" name="companyName" required></div>
+                    <div class="form-group"><label for="add-contactPerson">Pessoa de Contato</label><input type="text" id="add-contactPerson" name="contactPerson"></div>
+                    <div class="form-group"><label for="add-phoneNumber">Telefone</label><input type="tel" id="add-phoneNumber" name="phoneNumber"></div>
+                    <div class="form-group"><label for="add-email">Email</label><input type="email" id="add-email" name="email"></div>
+                    <!-- Usando full-width para endereço ocupar a linha inteira -->
+                    <div class="form-group full-width"><label for="add-address">Endereço</label><input type="text" id="add-address" name="address"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Fornecedor</button>
+            </div>
+        </form>
+    </div>
 </div>
 
+<!-- Modal de Editar Fornecedor -->
 <div class="modal-overlay" id="edit-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Editar Fornecedor</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST">
-            <div class="modal-body form-grid-2">
-                <div class="form-group"><label>Nome da Empresa</label><input type="text" id="edit-companyName" name="companyName" required></div>
-                <div class="form-group"><label>Pessoa de Contato</label><input type="text" id="edit-contactPerson" name="contactPerson"></div>
-                <div class="form-group"><label>Telefone</label><input type="tel" id="edit-phoneNumber" name="phoneNumber"></div>
-                <div class="form-group"><label>Email</label><input type="email" id="edit-email" name="email"></div>
-                <div class="form-group full-width"><label>Endereço</label><input type="text" id="edit-address" name="address"></div>
-                <div class="form-group full-width">
-                    <label for="edit-status">Status</label>
-                    <select id="edit-status" name="status" required>
-                        <option value="Ativo">Ativo</option>
-                        <option value="Desativado">Desativado</option>
-                        <option value="Excluido">Excluído (Restaurar)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
-        </form>
-    </div>
+    <div class="modal"> <!-- Tamanho padrão ou max-width: 800px; -->
+        <div class="modal-header">
+            <h3>Editar Fornecedor</h3>
+            <button class="close-button" id="btn-close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-form" method="POST"> <!-- Action definida via JS -->
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label for="edit-companyName">Nome da Empresa</label><input type="text" id="edit-companyName" name="companyName" required></div>
+                    <div class="form-group"><label for="edit-contactPerson">Pessoa de Contato</label><input type="text" id="edit-contactPerson" name="contactPerson"></div>
+                    <div class="form-group"><label for="edit-phoneNumber">Telefone</label><input type="tel" id="edit-phoneNumber" name="phoneNumber"></div>
+                    <div class="form-group"><label for="edit-email">Email</label><input type="email" id="edit-email" name="email"></div>
+                    <div class="form-group full-width"><label for="edit-address">Endereço</label><input type="text" id="edit-address" name="address"></div>
+                    <!-- Status movido para linha própria -->
+                    <div class="form-group full-width">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status" name="status" required>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Desativado">Desativado</option>
+                            <!-- Removida opção Excluido, a reativação é feita pelo botão na lixeira -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
 
+<!-- Script JS existente (IDs foram mantidos) -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Lógica para o modal de ADICIONAR
-    const addModal = document.getElementById('add-modal');
-    const btnShowAddModal = document.getElementById('btn-show-add-modal');
-    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
-    if(btnShowAddModal) btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
-    if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+    // Lógica para o modal de ADICIONAR
+    const addModal = document.getElementById('add-modal');
+    const btnShowAddModal = document.getElementById('btn-show-add-modal');
+    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
+    if(addModal && btnShowAddModal && btnCloseAddModal) {
+        btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
+        btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+    }
 
-    // Lógica para o modal de EDITAR
-    const editModal = document.getElementById('edit-modal');
-    const editForm = document.getElementById('edit-form');
-    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
-    const btnsEdit = document.querySelectorAll('.btn-edit'); // Pega todos os botões de editar
+    // Lógica para o modal de EDITAR
+    const editModal = document.getElementById('edit-modal');
+    const editForm = document.getElementById('edit-form');
+    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+    const btnsEdit = document.querySelectorAll('.btn-edit');
 
-    btnsEdit.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const supplier = JSON.parse(btn.dataset.supplier);
-            
-            editForm.action = `/fornecedores/${supplier.id}/update`;
-            
-            document.getElementById('edit-companyName').value = supplier.companyName;
-            document.getElementById('edit-contactPerson').value = supplier.contactPerson;
-            document.getElementById('edit-phoneNumber').value = supplier.phoneNumber;
-            document.getElementById('edit-email').value = supplier.email;
-            document.getElementById('edit-address').value = supplier.address;
-            document.getElementById('edit-status').value = supplier.status;
-            
-            editModal.style.display = 'flex';
-        });
-    });
-    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
-    
-    // Lógica para o botão "Mostrar Lixeira"
-    const btnToggleExcluded = document.getElementById('btn-toggle-excluded');
-    const excludedTable = document.getElementById('excluded-items-table');
+    if(editModal && editForm && btnCloseEditModal && btnsEdit.length > 0) {
+        btnsEdit.forEach(btn => {
+            btn.addEventListener('click', () => {
+                try {
+                    const supplier = JSON.parse(btn.dataset.supplier);
 
-    if (btnToggleExcluded) {
-        btnToggleExcluded.addEventListener('click', () => {
-            const isHidden = excludedTable.style.display === 'none';
-            if (isHidden) {
-                excludedTable.style.display = 'block'; // Mostra a tabela
-                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-slash-fill"></i> Ocultar Lixeira';
-            } else {
-                excludedTable.style.display = 'none'; // Oculta a tabela
-                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-fill"></i> Mostrar Lixeira';
-            }
-        });
-    }
+                    editForm.action = `/fornecedores/${supplier.id}/update`;
+
+                    // Preenche o formulário
+                    document.getElementById('edit-companyName').value = supplier.name || ''; // Corrigido para 'name'
+                    document.getElementById('edit-contactPerson').value = supplier.contactPerson || '';
+                    document.getElementById('edit-phoneNumber').value = supplier.phoneNumber || '';
+                    document.getElementById('edit-email').value = supplier.email || '';
+                    document.getElementById('edit-address').value = supplier.address || '';
+                    document.getElementById('edit-status').value = supplier.status || 'Ativo';
+
+                    editModal.style.display = 'flex';
+                } catch(e) {
+                    console.error("Erro ao processar dados do fornecedor:", e, btn.dataset.supplier);
+                    alert("Erro ao carregar dados do fornecedor para edição.");
+                }
+            });
+        });
+        btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+    }
+
+    // Lógica para o botão "Mostrar Lixeira"
+    const btnToggleExcluded = document.getElementById('btn-toggle-excluded');
+    const excludedTable = document.getElementById('excluded-items-table'); // ID precisa ser consistente
+
+    if (btnToggleExcluded && excludedTable) {
+        btnToggleExcluded.addEventListener('click', () => {
+            const isHidden = excludedTable.style.display === 'none';
+            if (isHidden) {
+                excludedTable.style.display = 'block'; // Ou 'table'
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-slash-fill"></i> Ocultar Lixeira';
+                btnToggleExcluded.classList.remove('btn-secondary');
+                btnToggleExcluded.classList.add('btn-primary'); // Opcional: muda a cor
+                btnToggleExcluded.style.backgroundColor = 'var(--danger)'; // Cor vermelha
+            } else {
+                excludedTable.style.display = 'none';
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-fill"></i> Mostrar Lixeira';
+                btnToggleExcluded.classList.remove('btn-primary');
+                btnToggleExcluded.style.backgroundColor = ''; // Limpa cor inline
+                btnToggleExcluded.classList.add('btn-secondary');
+            }
+        });
+    }
 });
 </script>
 
-<!-- <style>
-    .status-badge {
-        padding: 0.25rem 0.6rem;
-        border-radius: 12px;
-}
-    .source_quote:         font-weight: 600;
-        text-transform: uppercase;
-    }
-    .status-badge.active {
-        background-color: #d4edda;
-        color: #155724;
-    }
-    .status-badge.inactive {
-        background-color: #fff3cd;
-        color: #856404;
-    }
-    /* Estilo para formulários de 2 colunas */
-    .form-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    .form-grid-2 .full-width {
-        grid-column: 1 / -1;
-    }
-</style> -->
+

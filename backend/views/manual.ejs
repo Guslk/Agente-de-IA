@@ -1,36 +1,46 @@
 <%- include('partials/header', { title: 'Manual de Uso', paginaAtiva: 'manual' }) %>
 
+<!-- Estilo agora vem do style.css principal -->
+
 <header class="header">
     <h1 class="header-title">Manual de Uso</h1>
-    
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-        </div>
-        <div class="user-profile">
-            <span>Bem-vindo, João</span>
-            <img src="https://i.pravatar.cc/40?u=joao" alt="Avatar">
-        </div>
+        <% if (typeof user !== 'undefined' && user) { %>
+            <div class="user-profile">
+                <span>Bem-vindo, <%= user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            </div>
+        <% } %>
     </div>
 </header>
 
 <main class="main-content">
     <div class="main-header">
         <h2>Como Utilizar o Sistema StockEx</h2>
+        <!-- Pode adicionar botões aqui se necessário no futuro -->
+        <!-- <div class="action-buttons"> ... </div> -->
     </div>
-    <section class="inventory-table"> 
-        <p style="font-size: 1.1rem;">Olá! Esta página conterá o manual de uso completo da aplicação.</p>
-        <p style="margin-top: 15px;">Aqui você poderá adicionar textos, imagens e vídeos explicando cada funcionalidade do sistema, desde o cadastro de itens até a geração de relatórios.</p>
-        
+
+    <!-- Conteúdo do manual dentro de um report-card -->
+    <section class="report-card">
+        <p style="font-size: 1.1rem; margin-bottom: 15px;">Olá! Esta página conterá o manual de uso completo da aplicação.</p>
+        <p>Aqui você poderá adicionar textos, imagens e vídeos explicando cada funcionalidade do sistema, desde o cadastro de itens até a geração de relatórios.</p>
+
         <h3 style="margin-top: 30px; color: var(--primary-color);">Tópicos Futuros:</h3>
-        <ul style="margin-top: 10px; padding-left: 20px;">
+        <ul style="margin-top: 10px; padding-left: 20px; line-height: 1.6;">
             <li>Como cadastrar um novo item</li>
             <li>Como registrar entradas e saídas de estoque</li>
             <li>Como gerenciar fornecedores e funcionários</li>
             <li>Como interpretar os gráficos da página de relatórios</li>
             <li>Como usar o assistente de IA para consultas rápidas</li>
+            <li>Como funciona o controle geométrico de chapas</li>
+            <li>Como gerenciar usuários e permissões (se aplicável)</li>
         </ul>
+         <!-- Adicionar mais conteúdo aqui -->
+         <p style="margin-top: 20px; color: var(--text-light);"><i>(Este manual está em construção.)</i></p>
     </section>
 </main>
 
-<%- include('partials/footer') %>   
+<%- include('partials/footer') %>
+
+<!-- Nenhum script específico necessário para esta página -->

@@ -1,4 +1,3 @@
-
 <%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
 
 <%
@@ -29,19 +28,30 @@
 
 <header class="header">
     <h1 class="header-title">Movimentações de Estoque</h1>
-    </header>
+    <!-- Adicionado header-right para consistência -->
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome || user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            <% } %>
+        </div>
+    </div>
+</header>
 
 <main class="main-content">
     <div class="main-header">
         <h2>Histórico de Movimentações</h2>
         <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-entry-modal"><i class="bi bi-plus-circle"></i> Registrar Entrada</button>
-            <button class="btn-saida" id="btn-show-output-modal"><i class="bi bi-dash-circle"></i> Registrar Saída</button>
+             <!-- Botões com classes primárias e cores específicas via style -->
+            <button class="btn-primary" id="btn-show-entry-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle"></i> Registrar Entrada</button>
+            <button class="btn-primary" id="btn-show-output-modal" style="background-color: var(--danger);"><i class="bi bi-dash-circle"></i> Registrar Saída</button>
         </div>
     </div>
 
+    <!-- Filtros com classes corretas -->
     <section class="filter-section">
-        <form action="/movimentacoes" method="GET" class="filter-form" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+        <form action="/movimentacoes" method="GET" class="filter-form">
             <div class="form-group">
                 <label for="filter-item">Item</label>
                 <select name="itemId" id="filter-item">
@@ -78,7 +88,7 @@
             </div>
             <div class="form-group">
                 <label for="filter-details">OS / Justificativa (Saídas)</label>
-                <input type="text" name="details" id="filter-details" value="<%= filters.details || '' %>" placeholder="Buscar em OS ou Justificativa...">
+                <input type="text" name="details" id="filter-details" value="<%= filters.details || '' %>" placeholder="Buscar...">
             </div>
             <div class="form-group">
                 <label for="filter-startDate">Data Início</label>
@@ -92,116 +102,180 @@
         </form>
     </section>
 
+    <!-- Tabela com classe correta -->
     <section class="inventory-table">
         <table>
             <thead>
                 <tr>
-                    <th><a href="<%= createSortUrl('date') %>">Data <%- getSortIcon('date') %></a></th>
-                    <th><a href="<%= createSortUrl('item') %>">Item <%- getSortIcon('item') %></a></th>
-                    <th><a href="<%= createSortUrl('quantity') %>">Quantidade <%- getSortIcon('quantity') %></a></th>
-                    <th><a href="<%= createSortUrl('unitPrice') %>">Valor Unitário <%- getSortIcon('unitPrice') %></a></th>
-                    <th>Detalhes</th>
-                    <th><a href="<%= createSortUrl('type') %>">Tipo <%- getSortIcon('type') %></a></th>
+                    <!-- Links de ordenação -->
+                    <th><a href="<%= createSortUrl('date') %>">Data<%- getSortIcon('date') %></a></th>
+                    <th><a href="<%= createSortUrl('item') %>">Item<%- getSortIcon('item') %></a></th>
+                    <th><a href="<%= createSortUrl('quantity') %>">Quantidade<%- getSortIcon('quantity') %></a></th>
+                    <th><a href="<%= createSortUrl('unitPrice') %>">Valor Unitário<%- getSortIcon('unitPrice') %></a></th>
+                    <th>Detalhes</th> <!-- Sem ordenação -->
+                    <th><a href="<%= createSortUrl('type') %>">Tipo<%- getSortIcon('type') %></a></th>
                 </tr>
             </thead>
             <tbody>
                 <% if (movements.length > 0) { %>
                     <% movements.forEach(mov => { %>
+                        <!-- Classes stock-in/stock-out já corretas -->
                         <tr class="<%= mov.type === 'Entrada' ? 'stock-in' : 'stock-out' %>">
                             <td><%= new Date(mov.date).toLocaleString('pt-BR') %></td>
                             <td><strong><%= mov.item %></strong></td>
                             <td><%= mov.quantity %></td>
-                            <td><%= mov.unitPrice %></td>
+                             <!-- Formatando valor monetário -->
+                            <td><%= typeof mov.unitPrice === 'number' ? `R$ ${mov.unitPrice.toFixed(2)}` : 'N/A' %></td>
                             <td><%= mov.details %></td>
                             <td><%= mov.type %></td>
                         </tr>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>
+                    <tr><td colspan="6" style="text-align: center;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>
                 <% } %>
             </tbody>
         </table>
     </section>
 </main>
+
+<!-- Modal de Entrada - Estrutura atualizada -->
 <div class="modal-overlay" id="entry-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Register Entry</h3><button class="close-button" id="btn-close-entry-modal">&times;</button></div>
+    <div class="modal"> <!-- Tamanho padrão -->
+        <div class="modal-header">
+            <h3>Registrar Entrada</h3>
+            <button class="close-button" id="btn-close-entry-modal">&times;</button>
+        </div>
         <form action="/entries" method="POST">
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="entry-itemId">Item</label>
-                    <select name="itemId" required>
-                        <option value="" disabled selected>Select an item...</option>
-                        <% items.forEach(item => { %><option value="<%= item.id %>"><%= item.name %></option><% }); %>
-                    </select>
+                <!-- Usando form-grid para layout -->
+                <div class="form-grid">
+                    <div class="form-group full-width"> <!-- full-width para ocupar as duas colunas -->
+                        <label for="entry-itemId">Item</label>
+                        <select name="itemId" id="entry-itemId" required>
+                            <option value="" disabled selected>Selecione um item...</option>
+                            <% if(typeof items !== 'undefined') { items.forEach(item => { %>
+                                <option value="<%= item.id %>"><%= item.name %></option>
+                            <% }); } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="entry-quantity">Quantidade</label>
+                        <!-- Corrigido para type="number" -->
+                        <input type="number" id="entry-quantity" name="quantity" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="entry-unitPrice">Preço Unitário (R$)</label>
+                        <input type="number" id="entry-unitPrice" name="unitPrice" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="entry-supplierId">Fornecedor</label>
+                        <select name="supplierId" id="entry-supplierId" required>
+                            <option value="" disabled selected>Selecione...</option>
+                            <% if(typeof suppliers !== 'undefined') { suppliers.forEach(s => { %>
+                                <option value="<%= s.id %>"><%= s.name %></option>
+                            <% }); } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="entry-invoiceNumber">Número da Nota Fiscal</label>
+                        <input type="text" id="entry-invoiceNumber" name="invoiceNumber">
+                    </div>
                 </div>
-                <div class="form-group"><label for="entry-quantity">Quantity</label><input type="floot" name="quantity" min="1" required></div>
-                <div class="form-group">
-    <label for="entry-unitPrice">Preço Unitário (R$)</label>
-    <input type="number" name="unitPrice" step="0.01" min="0" required>
-</div>
-                <div class="form-group">
-                    <label for="entry-supplierId">Supplier</label>
-                    <select name="supplierId" required>
-                        <option value="" disabled selected>Select...</option>
-                        <% suppliers.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }); %>
-                    </select>
-                </div>
-                <div class="form-group"><label for="entry-invoiceNumber">Invoice Number</label><input type="text" name="invoiceNumber"></div>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Confirm Entry</button></div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Confirmar Entrada</button>
+            </div>
         </form>
     </div>
 </div>
 
+<!-- Modal de Saída - Estrutura atualizada -->
 <div class="modal-overlay" id="output-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Register Output</h3><button class="close-button" id="btn-close-output-modal">&times;</button></div>
+    <div class="modal"> <!-- Tamanho padrão -->
+        <div class="modal-header">
+            <h3>Registrar Saída</h3>
+            <button class="close-button" id="btn-close-output-modal">&times;</button>
+        </div>
         <form action="/outputs" method="POST">
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="output-itemId">Item</label>
-                    <select name="itemId" required>
-                        <option value="" disabled selected>Select an item...</option>
-                        <% items.forEach(item => { %><option value="<%= item.id %>"><%= item.name %> (Available: <%= item.quantity %>)</option><% }); %>
-                    </select>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="output-itemId">Item</label>
+                        <select name="itemId" id="output-itemId" required>
+                            <option value="" disabled selected>Selecione um item...</option>
+                            <% if(typeof items !== 'undefined') { items.forEach(item => { %>
+                                <!-- Mostra quantidade disponível -->
+                                <option value="<%= item.id %>"><%= item.name %> (Disponível: <%= item.quantity || 0 %>)</option>
+                            <% }); } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="output-quantity">Quantidade</label>
+                        <input type="number" id="output-quantity" name="quantity" min="1" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="output-productionOrder">Ordem de Produção (OS)</label>
+                        <input type="text" id="output-productionOrder" name="productionOrder">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="output-justification">Justificativa / Observação</label>
+                        <input type="text" id="output-justification" name="justification">
+                    </div>
                 </div>
-                <div class="form-group"><label for="output-quantity">Quantity</label><input type="number" name="quantity" min="1" required></div>
-                <div class="form-group"><label for="output-justification">Justification</label><input type="text" name="justification"></div>
-                <div class="form-group"><label for="output-productionOrder">Production Order (OS)</label><input type="text" name="productionOrder"></div>
             </div>
-            <div class="modal-footer"><button type="submit" class="btn-danger">Confirm Output</button></div>
+            <div class="modal-footer">
+                <!-- Usando btn-primary com cor danger -->
+                <button type="submit" class="btn-primary" style="background-color: var(--danger);">Confirmar Saída</button>
+            </div>
         </form>
     </div>
 </div>
+
+<!-- Script JS existente (IDs foram mantidos) -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const entryModal = document.getElementById('entry-modal');
         const outputModal = document.getElementById('output-modal');
+        const btnShowEntry = document.getElementById('btn-show-entry-modal');
+        const btnCloseEntry = document.getElementById('btn-close-entry-modal');
+        const btnShowOutput = document.getElementById('btn-show-output-modal');
+        const btnCloseOutput = document.getElementById('btn-close-output-modal');
+
+        if(entryModal && btnShowEntry && btnCloseEntry) {
+            btnShowEntry.addEventListener('click', () => entryModal.style.display = 'flex');
+            btnCloseEntry.addEventListener('click', () => entryModal.style.display = 'none');
+            window.addEventListener('click', (e) => {
+                if (e.target === entryModal) entryModal.style.display = 'none';
+            });
+        }
         
-        document.getElementById('btn-show-entry-modal').addEventListener('click', () => entryModal.style.display = 'flex');
-        document.getElementById('btn-close-entry-modal').addEventListener('click', () => entryModal.style.display = 'none');
-        
-        document.getElementById('btn-show-output-modal').addEventListener('click', () => outputModal.style.display = 'flex');
-        document.getElementById('btn-close-output-modal').addEventListener('click', () => outputModal.style.display = 'none');
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === entryModal) entryModal.style.display = 'none';
-            if (e.target === outputModal) outputModal.style.display = 'none';
-        });
+        if(outputModal && btnShowOutput && btnCloseOutput) {
+            btnShowOutput.addEventListener('click', () => outputModal.style.display = 'flex');
+            btnCloseOutput.addEventListener('click', () => outputModal.style.display = 'none');
+            window.addEventListener('click', (e) => {
+                if (e.target === outputModal) outputModal.style.display = 'none';
+            });
+        }
     });
-</script> -->
+</script>
 
 <%- include('partials/footer') %>
 
 <style>
     .inventory-table th a {
-        color: inherit;
-        text-decoration: none;
-        display: block;
+        color: inherit; /* Usa a cor padrão do texto do cabeçalho */
+        text-decoration: none; /* Remove o sublinhado */
+        display: block; /* Garante que o link ocupe toda a célula */
         width: 100%;
+        transition: color 0.2s ease; /* Adiciona uma transição suave */
     }
     .inventory-table th a:hover {
-        color: #007bff;
+        color: var(--primary-color); /* Muda a cor ao passar o mouse (opcional) */
+         /* text-decoration: underline; */ /* Adiciona sublinhado ao passar o mouse (opcional) */
     }
+     .inventory-table th a i {
+         /* Ajusta ligeiramente a aparência do ícone de ordenação */
+        font-size: 0.9em;
+        opacity: 0.7;
+     }
 </style>
