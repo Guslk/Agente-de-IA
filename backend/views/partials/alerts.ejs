@@ -14,6 +14,15 @@
             <% } else { %>
                 Operação realizada com sucesso.
             <% } %>
+            <% } else if (query.success === 'item_restored') { %>
+            Item restaurado com sucesso!
+            
+                <% } else if (query.success === 'item_restored_reassigned') { %>
+            Item restaurado com sucesso! **Atenção:** O departamento original deste item foi excluído, por isso ele foi movido para o departamento mais usado.
+        
+        <% } else { %>
+            Operação realizada com sucesso!
+        <% } %>
         </div>
     <% } %>
 

@@ -22,8 +22,99 @@
 
     <div class="toast-container" id="toast-container">
     </div>
-    
+
     <script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // ===============================================
+    //       LÓGICA GLOBAL DE POP-UP (TOAST)
+    // ===============================================
+    const toastContainer = document.getElementById('toast-container');
+
+    // 1. Função auxiliar para criar e mostrar o pop-up
+    function showToast(message, isError = false) {
+        if (!toastContainer) return; 
+
+        const toast = document.createElement('div');
+        toast.className = `toast-pop ${isError ? 'toast-error' : 'toast-success'}`;
+        const iconClass = isError ? 'bi bi-exclamation-triangle-fill' : 'bi bi-check-circle-fill';
+        toast.innerHTML = `<i class="${iconClass}"></i> <span>${message}</span>`;
+        
+        toastContainer.appendChild(toast);
+
+        // Animação de entrada
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+
+        // Animação de saída e remoção
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            
+            toast.addEventListener('transitionend', () => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, { once: true });
+
+        }, 4000); // 4 segundos visível
+    }
+
+    // 2. Mapeamento de mensagens (do seu 'partials/alerts.ejs')
+    const errorMessages = {
+        'stock_in_use': 'Não é possível excluir este departamento, pois ele possui itens cadastrados.',
+        'item_in_use': 'Não é possível excluir este item, pois ele possui movimentações no histórico.',
+        'employee_in_use': 'Este funcionário não pode ser excluído pois está ligado a movimentações.',
+        'supplier_in_use': 'Este fornecedor não pode ser excluído pois está ligado a entradas de estoque.',
+        'email_in_use': 'O email fornecido já está em uso.',
+        'not_admin': 'Acesso negado. Você não tem permissão para esta ação.',
+        'not_found': 'O registro solicitado não foi encontrado.',
+        'fetch_failed': 'Não foi possível carregar os dados. Tente atualizar a página.',
+        // Adicione outros erros genéricos se necessário
+        'create_failed': 'Ocorreu um erro ao criar o registro.',
+        'update_failed': 'Ocorreu um erro ao atualizar o registro.',
+        'delete_failed': 'Ocorreu um erro ao excluir o registro.',
+        'restore_failed': 'Ocorreu um erro ao restaurar o registro.'
+  }   
+    const successMessages = {
+        'created': 'Registro criado com sucesso!',
+        'item_created': 'Item criado com sucesso!',
+        'stock_created': 'Departamento criado com sucesso!',
+        'updated': 'Registro atualizado com sucesso!',
+        'item_updated': 'Item atualizado com sucesso!',
+        'deleted': 'Registro movido para a lixeira!',
+        'item_deleted': 'Item movido para a lixeira!',
+        'stock_deleted': 'Departamento excluído com sucesso.',
+        'restored': 'Registro restaurado com sucesso!',
+        'item_restored': 'Item restaurado com sucesso!',
+        'undefined': 'Operação realizada com sucesso!' // Mensagem genérica
+    };
+
+    // 3. Verifica a URL e aciona os pop-ups
+    const urlParams = new URLSearchParams(window.location.search);
+    const successQuery = urlParams.get('success');
+    const errorQuery = urlParams.get('error');
+
+    if (successQuery) {
+        const message = successMessages[successQuery] || successMessages['undefined'];
+        showToast(message, false); // false = não é erro
+    }
+
+    if (errorQuery) {
+        const message = errorMessages[errorQuery] || `Erro: ${errorQuery}`;
+        showToast(message, true); // true = é erro
+    }
+    
+    // 4. Limpa a URL para que o pop-up não apareça novamente se o usuário atualizar a página
+    if (successQuery || errorQuery) {
+        const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    }
+});
+</script>
+    
+    <!-- <script>
     document.addEventListener('DOMContentLoaded', () => {
         // LÓGICA DO WIDGET DE CHAT IA
         const chatFab = document.getElementById('chat-fab');
@@ -158,7 +249,7 @@
         window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
     }
     });
-    </script>
+    </script> -->
 
     <style>
 /* Contêiner dos Pop-ups (Canto Inferior Esquerdo, como pedido) */

@@ -154,25 +154,107 @@ const itemController = {
         }
     },
 
+    // restore: async (req, res) => {
+    //     const { tenantId } = req;
+    //     const { id } = req.params; // Pega o ID do item da URL
+
+    //     try {
+    //         const sequelize = await getTenantDB(tenantId);
+    //         const { Item } = db.initialize(sequelize);
+
+    //         const item = await Item.findByPk(id);
+
+    //         if (item) {
+    //             // Apenas muda o status de volta para 'Ativo'
+    //             await item.update({ status: 'Ativo' });
+
+    //             res.redirect('/itens?success=item_restored');
+    //         } else {
+    //             res.redirect('/itens?error=item_not_found');
+    //         }
+    //     } catch (error) {
+    //         console.error("Erro ao restaurar item:", error);
+    //         res.redirect(`/itens?error=${error.message || 'restore_failed'}`);
+    //     }
+    // },
+
     restore: async (req, res) => {
         const { tenantId } = req;
-        const { id } = req.params; // Pega o ID do item da URL
+        const { id } = req.params;
+        let wasReassigned = false; // Flag para saber se o item foi realocado
 
         try {
             const sequelize = await getTenantDB(tenantId);
-            const { Item } = db.initialize(sequelize);
+            const { Item, Stock } = db.initialize(sequelize);
 
             const item = await Item.findByPk(id);
 
             if (item) {
-                // Apenas muda o status de volta para 'Ativo'
-                await item.update({ status: 'Ativo' });
 
-                res.redirect('/itens?success=item_restored');
+                let originalStockExists = true; // Assume que existe
+
+                if (item.stockId) { // Verifica se o item tinha um departamento
+                    const stock = await Stock.findByPk(item.stockId);
+
+                    // Se o departamento não existe (foi deletado)
+                    if (!stock || stock.status === 'Excluido') {
+                        originalStockExists = false;
+                        wasReassigned = true; // Marca que uma realocação é necessária
+
+                        console.warn(`Item ${id} está órfão. Departamento ${item.stockId} não existe. Buscando substituto...`);
+
+                        // 1. Encontra o 'stockId' mais usado por outros itens ATIVOS
+                        const mostUsedStock = await Item.findOne({
+                            attributes: [
+                                'stockId',
+                                [sequelize.fn('COUNT', sequelize.col('stockId')), 'count']
+                            ],
+                            where: {
+                                stockId: { [Op.ne]: null },
+                                status: 'Ativo' // Conta apenas entre itens ativos
+                            },
+                            include: [{
+                                model: Stock,
+                                as: 'stock',
+                                attributes: [],
+                                where: { status: 'Ativo' } // Garante que o departamento de destino esteja ativo
+                            }],
+                            group: ['stockId'],
+                            order: [[sequelize.fn('COUNT', sequelize.col('stockId')), 'DESC']],
+                            raw: true
+                        });
+
+                        if (mostUsedStock) {
+                            // 2. Atribui o item ao departamento mais usado
+                            item.stockId = mostUsedStock.stockId;
+                        } else {
+                            // 3. Se NENHUM item tiver departamento (raro), define como nulo
+                            item.stockId = null;
+                        }
+                    }
+                }
+
+                // Seta o status para 'Ativo'
+                item.status = 'Ativo';
+                // Salva as alterações (novo status e/ou novo stockId)
+                await item.save();
+
+                // Decide qual mensagem de sucesso enviar
+                if (wasReassigned) {
+                    res.redirect('/itens?success=item_restored_reassigned');
+                } else {
+                    res.redirect('/itens?success=item_restored');
+                }
+
             } else {
                 res.redirect('/itens?error=item_not_found');
             }
         } catch (error) {
+            // Conflito de Duplicidade (ex: código de item já existe)
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                console.warn(`Conflito de restauração: Item ${id} tem código/nome duplicado.`);
+                return res.redirect('/itens?error=restore_failed_duplicate');
+            }
             console.error("Erro ao restaurar item:", error);
             res.redirect(`/itens?error=${error.message || 'restore_failed'}`);
         }
@@ -198,76 +280,144 @@ const itemController = {
         }
     },
     update: async (req, res) => {
-        const { tenantId } = req;
-        const { id } = req.params; // Pega o ID do item da URL
+        const { tenantId } = req;
+        const { id } = req.params;
+        // 1. Recebe todos os campos do modal de edição
+        const { 
+            nome, id_stock, codigo_barras, descricao, unidade_medida, 
+            quantidade_minima, maximumQuantity, status, // <- Novos campos
+            loc_corredor, loc_prateleira, loc_posicao 
+        } = req.body;
+        
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item } = db.initialize(sequelize);
 
-        if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
-
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Item } = db.initialize(sequelize);
-
-            // 1. Encontra o item que será atualizado
-            const item = await Item.findByPk(id);
-
-            if (item) {
-                // 2. Monta o objeto com os dados atualizados do formulário
-                const dadosAtualizados = {
-                    name: req.body.nome,
-                    code: req.body.codigo_barras,
-                    description: req.body.descricao,
-                    unitOfMeasure: req.body.unidade_medida,
-                    minimumQuantity: req.body.quantidade_minima,
-                    id_stock: req.body.id_stock, // Atualiza o estoque
-                    maximumQuantity: req.body.maximumQuantity,
-                    status: req.body.status,
-                    position: `${req.body.loc_corredor}-${req.body.loc_prateleira}-${req.body.loc_posicao}`
-                };
-
-                // 3. Salva as alterações no banco de dados
-                await item.update(dadosAtualizados);
-
-                // 4. Redireciona de volta para a lista de itens
-                res.redirect('/itens?sucesso=item_atualizado');
-            } else {
-                res.status(404).send('Item não encontrado para atualizar.');
+            const item = await Item.findByPk(id);
+            if (!item) {
+                return res.redirect(`/itens?error=item_not_found`);
             }
-        } catch (error) {
-            console.error("Erro ao atualizar item:", error);
-            res.status(500).send(`Erro ao atualizar item: ${error.message}`);
-        }
-    },
+
+            // 2. Atualiza o item com os dados do formulário
+            await item.update({
+                name: nome,
+                stockId: id_stock,
+                code: codigo_barras,
+                description: descricao,
+                unitOfMeasure: unidade_medida,
+                minimumQuantity: quantidade_minima,
+                maximumQuantity: maximumQuantity || null,
+                status: status, // Permite alterar o status (ex: para 'Desativado')
+                position: `${loc_corredor}-${loc_prateleira}-${loc_posicao}`
+            });
+            
+            res.redirect('/itens?success=item_updated');
+        } catch (error) {
+            console.error("Error updating item:", error);
+            res.redirect(`/itens?error=${error.message || 'update_failed'}`);
+        }
+    },
+    // update: async (req, res) => {
+    //     const { tenantId } = req;
+    //     const { id } = req.params; // Pega o ID do item da URL
+
+    //     if (!tenantId) return res.status(400).send("Erro: Inquilino não identificado.");
+
+    //     try {
+    //         const sequelize = await getTenantDB(tenantId);
+    //         const { Item } = db.initialize(sequelize);
+
+    //         // 1. Encontra o item que será atualizado
+    //         const item = await Item.findByPk(id);
+
+    //         if (item) {
+    //             // 2. Monta o objeto com os dados atualizados do formulário
+    //             const dadosAtualizados = {
+    //                 name: req.body.nome,
+    //                 code: req.body.codigo_barras,
+    //                 description: req.body.descricao,
+    //                 unitOfMeasure: req.body.unidade_medida,
+    //                 minimumQuantity: req.body.quantidade_minima,
+    //                 id_stock: req.body.id_stock, // Atualiza o estoque
+    //                 maximumQuantity: req.body.maximumQuantity,
+    //                 status: req.body.status,
+    //                 position: `${req.body.loc_corredor}-${req.body.loc_prateleira}-${req.body.loc_posicao}`
+    //             };
+
+    //             // 3. Salva as alterações no banco de dados
+    //             await item.update(dadosAtualizados);
+
+    //             // 4. Redireciona de volta para a lista de itens
+    //             res.redirect('/itens?sucesso=item_atualizado');
+    //         } else {
+    //             res.status(404).send('Item não encontrado para atualizar.');
+    //         }
+    //     } catch (error) {
+    //         console.error("Erro ao atualizar item:", error);
+    //         res.status(500).send(`Erro ao atualizar item: ${error.message}`);
+    //     }
+    // },
     destroy: async (req, res) => {
-        const { tenantId } = req;
-        const { id } = req.params; // Pega o ID do item da URL
+        const { tenantId } = req;
+        const { id } = req.params;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item } = db.initialize(sequelize);
 
-        if (!tenantId) {
-            // Redireciona para o login se o inquilino for perdido
-            return res.redirect('/login?error=Inquilino não identificado.');
-        }
+            const item = await Item.findByPk(id);
+            if (item) {
+                // 1. Verifica se o item já tem movimentações (opcional, mas recomendado)
+                // Se você tiver um modelo 'Movement', pode verificar aqui.
+                // Por enquanto, apenas atualizamos o status.
+                
+                // 2. Muda o status para 'Excluido'
+                await item.update({ status: 'Excluido' });
+                
+                res.redirect('/itens?success=item_deleted');
+            } else {
+                res.redirect('/itens?error=item_not_found');
+            }
+        } catch (error) {
+            // Este erro (ForeignKey) não deve acontecer com soft delete,
+            // mas é bom mantê-lo por segurança caso a lógica mude.
+            console.error("Erro ao 'excluir' (soft delete) item:", error);
+            if (error.name === 'SequelizeForeignKeyConstraintError') {
+                return res.redirect('/itens?error=item_in_use');
+            }
+            res.redirect(`/itens?error=${error.message || 'delete_failed'}`);
+        }
+    }
+    // destroy: async (req, res) => {
+    //     const { tenantId } = req;
+    //     const { id } = req.params; // Pega o ID do item da URL
 
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Item } = db.initialize(sequelize);
+    //     if (!tenantId) {
+    //         // Redireciona para o login se o inquilino for perdido
+    //         return res.redirect('/login?error=Inquilino não identificado.');
+    //     }
 
-            const item = await Item.findByPk(id);
+    //     try {
+    //         const sequelize = await getTenantDB(tenantId);
+    //         const { Item } = db.initialize(sequelize);
 
-            if (item) {
-                await item.update({ status: 'Excluido' });
+    //         const item = await Item.findByPk(id);
 
-                res.redirect('/itens?success=item_deleted');
-            } else {
-                // 4. Trata caso o item não seja encontrado
-                res.redirect('/itens?error=item_not_found');
-            }
-        } catch (error) {
-            console.error("Erro ao 'excluir' (soft delete) item:", error);
+    //         if (item) {
+    //             await item.update({ status: 'Excluido' });
 
-            // O erro 'SequelizeForeignKeyConstraintError' não acontecerá mais aqui,
-            // mas tratamos outros erros de forma genérica.
-            res.redirect(`/itens?error=${error.message || 'delete_failed'}`);
-        }
-    }
+    //             res.redirect('/itens?success=item_deleted');
+    //         } else {
+    //             // 4. Trata caso o item não seja encontrado
+    //             res.redirect('/itens?error=item_not_found');
+    //         }
+    //     } catch (error) {
+    //         console.error("Erro ao 'excluir' (soft delete) item:", error);
+
+    //         // O erro 'SequelizeForeignKeyConstraintError' não acontecerá mais aqui,
+    //         // mas tratamos outros erros de forma genérica.
+    //         res.redirect(`/itens?error=${error.message || 'delete_failed'}`);
+    //     }
+    // }
 
 };
 

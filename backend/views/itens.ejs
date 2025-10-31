@@ -3,24 +3,33 @@
 
 <%
     // --- Lógica EJS para ajudar a construir os links de ordenação ---
-    
+        
     const sortColumn = (typeof currentSort !== 'undefined') ? currentSort.column : 'name';
     const sortOrder = (typeof currentSort !== 'undefined') ? currentSort.order : 'ASC';
 
     // Pega os filtros atuais para não perdê-los ao ordenar
     const currentFilters = new URLSearchParams(typeof filters !== 'undefined' ? filters : {});
-    currentFilters.delete('sort'); // Remove parâmetros de ordenação antigos
+    currentFilters.delete('sort');
     currentFilters.delete('order');
+    currentFilters.delete('success');
+    currentFilters.delete('error');
     const filterParams = currentFilters.toString(); // Constrói a string de consulta (ex: &busca=parafuso&status=Ativo)
 
-    // Função para criar a URL de ordenação
+
     const createSortUrl = (columnName) => {
         let newOrder = 'ASC';
+        // Se já estamos ordenando por esta coluna, inverte a ordem
         if (columnName === sortColumn) {
-            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC'; // Inverte a ordem
+            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC'; 
         }
-        return `/itens?sort=${columnName}&order=${newOrder}&${filterParams}`;
+        
+        // Mude '/itens' para a URL da sua página (ex: '/tools' ou '/tool-history')
+        const baseUrl = '/itens'; 
+        
+        // Retorna a URL com nova ordenação + todos os filtros antigos (agora limpos)
+        return `${baseUrl}?sort=${columnName}&order=${newOrder}&${filterParams}`;
     };
+
 
     // Função para mostrar um ícone (seta)
     const getSortIcon = (columnName) => {
@@ -30,6 +39,8 @@
         return '';
     };
 %>
+
+<
 
 <header class="header">
     <h1 class="header-title">Itens Cadastrados</h1>
@@ -331,13 +342,14 @@ btnsEdit.forEach(btn => {
             document.getElementById('edit-unidade_medida').value = item.unitOfMeasure;
             document.getElementById('edit-id_stock').value = item.id_stock;
                                     document.getElementById('edit-maximumQuantity').value = item.maximumQuantity;
+                                    document.getElementById('edit-descricao').value = item.description;
             document.getElementById('edit-status').value = item.status;
 
             // Separa a 'position' para preencher os 3 inputs de localização
             const [corredor = '', prateleira = '', posicao = ''] = item.position.split('-');
             document.getElementById('edit-loc_corredor').value = corredor;
             document.getElementById('edit-loc_prateleira').value = prateleira;
-            // document.getElementById('edit-loc_posicao').value = posicao;
+            document.getElementById('edit-loc_posicao').value = posicao;
 
             // Mostra o modal de edição
             editModal.style.display = 'flex';
