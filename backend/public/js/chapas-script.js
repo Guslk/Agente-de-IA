@@ -2,7 +2,6 @@
 const API_URL = '/chapas/api';
 
 // --- VARIÁVEIS GLOBAIS ---
-// Definidas como 'let' e serão atribuídas no DOMContentLoaded
 let canvas, ctx, currentWidthInput, currentHeightInput;
 let currentPlate = null;
 let finishedCuts = [];
@@ -330,7 +329,7 @@ function handleMouseUp() {
                 { x: finalRect.x + finalRect.w, y: finalRect.y + finalRect.h },
                 { x: finalRect.x, y: finalRect.y + finalRect.h }
             ];
-            if (newRectangle.every(p => typeof p.x === 'number' && typeof p.y === 'number')) {
+            if (newRectangle.every(p => p && typeof p.x === 'number' && typeof p.y === 'number')) {
                 finishedCuts.push(newRectangle);
                 setStatusMessage('Corte adicionado. Clique em "Salvar" para persistir.', 'blue');
             } else {
@@ -390,7 +389,7 @@ async function fetchPlates() {
         }
     } catch (error) {
         console.error("Erro ao carregar chapas:", error);
-        setStatusMessage('Erro ao carregar chapas.', 'red');
+        if(setStatusMessage) setStatusMessage('Erro ao carregar chapas.', 'red');
     }
 }
 
@@ -511,9 +510,8 @@ async function handleNewPlateSubmit(event) {
 }
 
 
-// --- NOVAS FUNÇÕES DE API (BARRAS) ---
+// --- FUNÇÕES DE API (BARRAS) ---
 
-// Define uma mensagem de status específica para a aba de barras
 function setBarStatusMessage(message, color = 'green') {
     const statusEl = document.getElementById('bar-status-message');
     if (statusEl) {
@@ -522,10 +520,8 @@ function setBarStatusMessage(message, color = 'green') {
     }
 }
 
-// Carrega a lista de barras disponíveis
 async function fetchBars() {
     try {
-        // Assume uma nova rota /api/bars
         const response = await fetch(`${API_URL}/bars`); 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
@@ -536,9 +532,8 @@ async function fetchBars() {
             result.data.forEach(bar => {
                 const option = document.createElement('option');
                 option.value = bar.id;
-                // Exemplo: "Barra Inox (Restante: 2500mm)"
-                option.textContent = `${bar.name} (Restante: ${bar.remaining_length}mm)`;
-                option.dataset.remaining = bar.remaining_length;
+                option.textContent = `${bar.name} (Restante: ${bar.remaining_length_mm}mm)`;
+                option.dataset.remaining = bar.remaining_length_mm;
                 selector.appendChild(option);
             });
         }
@@ -548,7 +543,58 @@ async function fetchBars() {
     }
 }
 
-// Submete o consumo de uma barra
+// --- NOVA FUNÇÃO ---
+// Submete o formulário de cadastro de barra
+async function handleNewBarSubmit(event) {
+    event.preventDefault();
+    const nameInput = document.getElementById('bar-name');
+    const lengthInput = document.getElementById('bar-length');
+    const diameterInput = document.getElementById('bar-diameter');
+    const materialInput = document.getElementById('bar-material');
+
+    const name = nameInput ? nameInput.value : null;
+    const length = lengthInput ? parseFloat(lengthInput.value) : NaN;
+    const diameter = diameterInput && diameterInput.value ? parseFloat(diameterInput.value) : null;
+    const material = materialInput ? materialInput.value : null;
+
+    if (!name || isNaN(length) || length <= 0) {
+        // Usa a mensagem de status da aba de barras
+        setBarStatusMessage('Nome e Comprimento Original são obrigatórios.', 'red'); 
+        return;
+    }
+
+    try {
+        // Nova rota da API
+        const response = await fetch(`${API_URL}/bars`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                name, 
+                length, 
+                diameter: isNaN(diameter) ? null : diameter, 
+                material 
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Erro ao criar barra.' }));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        setBarStatusMessage('Barra cadastrada com sucesso!', 'green');
+
+        const form = document.getElementById('new-bar-form');
+        if(form) form.reset();
+
+        const modal = document.getElementById('new-bar-modal');
+        if (modal) modal.style.display = 'none';
+
+        fetchBars(); // Atualiza a lista de barras na aba de consumo
+    } catch (error) {
+        console.error("Erro na requisição de criar barra:", error);
+        // Mostra o erro no status da aba de barras
+        setBarStatusMessage(`Erro ao criar barra: ${error.message}`, 'red');
+    }
+}
+
 async function handleConsumeBar(event) {
     event.preventDefault();
     
@@ -558,7 +604,6 @@ async function handleConsumeBar(event) {
     const barId = selector ? selector.value : null;
     const lengthToConsume = lengthInput ? parseFloat(lengthInput.value) : NaN;
     
-    // Validação
     if (!barId) {
         setBarStatusMessage('Por favor, selecione uma barra.', 'red');
         return;
@@ -569,7 +614,7 @@ async function handleConsumeBar(event) {
     }
     
     const selectedOption = selector.options[selector.selectedIndex];
-    if (!selectedOption || !selectedOption.dataset.remaining) {
+    if (!selectedOption || !selectedOption.dataset || !selectedOption.dataset.remaining) {
          setBarStatusMessage('Erro ao ler dados da barra selecionada.', 'red');
          return;
     }
@@ -581,7 +626,6 @@ async function handleConsumeBar(event) {
     }
 
     try {
-        // Assume uma rota /api/bars/consume para registrar o consumo
         const response = await fetch(`${API_URL}/bars/consume`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -599,17 +643,14 @@ async function handleConsumeBar(event) {
         const result = await response.json();
         setBarStatusMessage(result.message || 'Consumo registrado com sucesso!', 'green');
         
-        // Limpa o formulário e recarrega a lista de barras
         const barForm = document.getElementById('bar-consume-form');
         if(barForm) barForm.reset();
         
         await fetchBars(); // Espera as barras recarregarem
         
-        // Define o seletor para a barra que acabamos de atualizar (se ela ainda existir)
-        if(selector) selector.value = barId;
+        if(selector) selector.value = barId; // Mantém a barra selecionada
         
-        // Recarrega o histórico da barra
-        loadBarHistory(barId);
+        loadBarHistory(barId); // Recarrega o histórico
 
     } catch (error) {
          console.error("Erro ao consumir barra:", error);
@@ -617,7 +658,6 @@ async function handleConsumeBar(event) {
     }
 }
 
-// Carrega o histórico de consumo de uma barra específica
 async function loadBarHistory(barId) {
     const tableBody = document.getElementById('bar-history-tablebody');
     if (!tableBody) return;
@@ -629,19 +669,18 @@ async function loadBarHistory(barId) {
     
     try {
         tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Carregando...</td></tr>';
-        // Assume rota /api/bars/:id/history
         const response = await fetch(`${API_URL}/bars/${barId}/history`); 
         if (!response.ok) throw new Error('Falha ao carregar histórico.');
         
         const result = await response.json();
         
         if (result.data && result.data.length > 0) {
-            tableBody.innerHTML = ''; // Limpa a tabela
+            tableBody.innerHTML = ''; 
             result.data.forEach(entry => {
                 tableBody.innerHTML += `
                     <tr>
                         <td>${new Date(entry.date).toLocaleString('pt-BR')}</td>
-                        <td>${entry.consumed_length} mm</td>
+                        <td>${entry.consumed_length_mm} mm</td>
                         <td>${entry.consumed_by_user || 'N/A'}</td>
                     </tr>
                 `;
@@ -661,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log("DOM carregado, iniciando script de chapas.");
 
-    // --- ATRIBUIÇÃO ROBUSTA DE VARIÁVEIS DO DOM ---
+    // Atribuição robusta
     canvas = document.getElementById('canvas');
     ctx = canvas ? canvas.getContext('2d') : null;
     currentWidthInput = document.getElementById('current-cut-width');
@@ -672,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnViewBarras = document.getElementById('btn-view-barras');
     const chapasView = document.getElementById('chapas-view');
     const barrasView = document.getElementById('barras-view');
-    const btnAddChapa = document.getElementById('open-modal-btn');
+    const btnAddChapa = document.getElementById('open-plate-modal-btn'); // ID Alterado
     const btnAddBarra = document.getElementById('open-bar-modal-btn'); 
 
     if (btnViewChapas && btnViewBarras && chapasView && barrasView) {
@@ -717,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  redrawCanvas(); 
                  if(currentWidthInput) currentWidthInput.value = '0.0';
                  if(currentHeightInput) currentHeightInput.value = '0.0';
-                 setStatusMessage('Desenho cancelado (mouse fora da área).', 'orange');
+                 if(setStatusMessage) setStatusMessage('Desenho cancelado (mouse fora da área).', 'orange');
             }
         });
         window.addEventListener('mouseup', handleMouseUp);
@@ -758,7 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  currentPlate = null;
                  finishedCuts = [];
                  redrawCanvas();
-                 setStatusMessage("Erro ao ler dimensões da chapa selecionada.", "red");
+                 if(setStatusMessage) setStatusMessage("Erro ao ler dimensões da chapa selecionada.", "red");
             }
         });
     } else {
@@ -768,19 +807,19 @@ document.addEventListener('DOMContentLoaded', () => {
     redrawCanvas(); // Desenha o canvas vazio inicial
 
     // Modal de Cadastro de Chapas
-    const modal = document.getElementById('new-plate-modal');
-    const openBtn = document.getElementById('open-modal-btn');
-    const closeBtn = document.getElementById('close-modal-btn');
-    if (modal && openBtn && closeBtn) {
-        openBtn.onclick = () => { modal.style.display = 'flex'; };
-        closeBtn.onclick = () => { modal.style.display = 'none'; };
-        window.onclick = (event) => {
-            if (event.target == modal) {
-                modal.style.display = 'none';
+    const plateModal = document.getElementById('new-plate-modal');
+    const openPlateBtn = document.getElementById('open-plate-modal-btn'); // ID Alterado
+    const closePlateBtn = document.getElementById('close-plate-modal-btn'); // ID Alterado
+    if (plateModal && openPlateBtn && closePlateBtn) {
+        openPlateBtn.onclick = () => { plateModal.style.display = 'flex'; };
+        closePlateBtn.onclick = () => { plateModal.style.display = 'none'; };
+        window.addEventListener('click', (event) => {
+            if (event.target == plateModal) {
+                plateModal.style.display = 'none';
             }
-        };
+        });
     } else {
-        console.warn("Elementos do modal de cadastro não encontrados.");
+        console.warn("Elementos do modal de cadastro de CHAPAS não encontrados.");
     }
 
     // Formulário de corte automático (Chapas)
@@ -809,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     { x: bestPosition.x + bestPosition.w, y: bestPosition.y + bestPosition.h },
                     { x: bestPosition.x, y: bestPosition.y + bestPosition.h }
                 ];
-                if (newRectangle.every(p => typeof p.x === 'number' && typeof p.y === 'number')) {
+                if (newRectangle.every(p => p && typeof p.x === 'number' && typeof p.y === 'number')) {
                     finishedCuts.push(newRectangle);
                     redrawCanvas();
                     setStatusMessage(`Corte de ${width}x${height} adicionado automaticamente!`, 'green');
@@ -850,6 +889,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DA ABA BARRAS ---
+
+    // NOVO: Modal de Cadastro de Barras
+    const barModal = document.getElementById('new-bar-modal');
+    const openBarBtn = document.getElementById('open-bar-modal-btn');
+    const closeBarBtn = document.getElementById('close-bar-modal-btn');
+    if (barModal && openBarBtn && closeBarBtn) {
+        openBarBtn.onclick = () => { barModal.style.display = 'flex'; };
+        closeBarBtn.onclick = () => { barModal.style.display = 'none'; };
+        window.addEventListener('click', (event) => {
+            if (event.target == barModal) {
+                barModal.style.display = 'none';
+            }
+        });
+    } else {
+        console.warn("Elementos do modal de cadastro de BARRAS não encontrados.");
+    }
+
+    // NOVO: Formulário de cadastro de Barra
+    const newBarForm = document.getElementById('new-bar-form');
+    if(newBarForm) {
+        newBarForm.addEventListener('submit', handleNewBarSubmit);
+    } else {
+         console.warn("Formulário #new-bar-form não encontrado.");
+    }
+
+    // Formulário de consumo de Barra
     const barConsumeForm = document.getElementById('bar-consume-form');
     if (barConsumeForm) {
         barConsumeForm.addEventListener('submit', handleConsumeBar);
@@ -857,6 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn("Formulário #bar-consume-form não encontrado.");
     }
 
+    // Seletor de Barras
     const barSelector = document.getElementById('bar-selector');
     if (barSelector) {
         barSelector.addEventListener('change', (event) => {

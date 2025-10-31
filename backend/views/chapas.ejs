@@ -108,7 +108,7 @@
         <h2>Gerenciamento de Consumo</h2>
         <div class="action-buttons">
             <!-- Botão de Cadastrar Chapa (visível por padrão) -->
-            <button id="open-modal-btn" class="btn-primary" style="background-color: var(--primary-color);">
+            <button id="open-plate-modal-btn" class="btn-primary" style="background-color: var(--primary-color);">
                 <i class="bi bi-plus-circle" style="margin-right: 8px;"></i> Cadastrar Nova Chapa
             </button>
             <!-- Botão de Cadastrar Barra (escondido por padrão) -->
@@ -200,7 +200,7 @@
                 </form>
             </div>
 
-            <!-- Aqui você pode adicionar uma tabela ou visualização do histórico de consumo da barra selecionada -->
+            <!-- Tabela de Histórico -->
             <div id="bar-history-container" style="margin-top: 20px;">
                 <h4>Histórico de Consumo da Barra</h4>
                 <section class="inventory-table">
@@ -224,12 +224,12 @@
 
 </main>
 
-<!-- Modal de Cadastro de Chapas (sem alterações) -->
+<!-- Modal de Cadastro de Chapas -->
 <div id="new-plate-modal" class="modal-overlay">
     <div class="modal" style="max-width: 600px;">
         <div class="modal-header">
             <h3>Cadastrar Nova Chapa</h3>
-            <button class="close-button" id="close-modal-btn">&times;</button>
+            <button class="close-button" id="close-plate-modal-btn">&times;</button> <!-- ID alterado para ser único -->
         </div>
         
         <form id="new-plate-form">
@@ -259,11 +259,41 @@
     </div>
 </div>
 
-<!-- 
-    Aqui você pode adicionar o modal para cadastrar novas barras 
-    (ex: <div id="new-bar-modal" class="modal-overlay">...</div>) 
-    e ligá-lo ao botão #open-bar-modal-btn
--->
+<!-- === NOVO MODAL DE CADASTRO DE BARRAS === -->
+<div id="new-bar-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Barra</h3>
+            <button class="close-button" id="close-bar-modal-btn">&times;</button>
+        </div>
+        
+        <form id="new-bar-form">
+            <div class="modal-body">
+                 <div class="form-group full-width">
+                    <label for="bar-name">Nome/ID da Barra</label>
+                    <input type="text" id="bar-name" name="name" placeholder="Ex: Barra Aço 1020 1 pol" required>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="bar-length">Comprimento Original (mm)</label>
+                        <input type="number" id="bar-length" name="length" placeholder="Ex: 6000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bar-diameter">Diâmetro (mm) (Opcional)</label>
+                        <input type="number" id="bar-diameter" name="diameter" step="0.01" placeholder="Ex: 25.4">
+                    </div>
+                     <div class="form-group full-width">
+                        <label for="bar-material">Material (Opcional)</label>
+                        <input type="text" id="bar-material" name="material" placeholder="Ex: Aço 1020">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary" style="background-color: #17a2b8;">Cadastrar Barra</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 
 <%- include('partials/footer') %>

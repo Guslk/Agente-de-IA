@@ -183,6 +183,43 @@ const chapasController = {
         }
     },
 
+    // --- FUNÇÃO ADICIONADA ---
+    /**
+     * API: Cria uma nova barra no banco de dados.
+     * Rota: POST /chapas/api/bars
+     */
+    createBar: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Bar } = db.initialize(sequelize);
+
+            if (!Bar) { 
+                throw new Error("O modelo 'Bar' não foi inicializado.");
+            }
+            
+            const { name, length, diameter, material } = req.body;
+            
+            if (!name || length == null || isNaN(parseFloat(length)) || length <= 0) {
+                 return res.status(400).json({ "error": "Campos obrigatórios: name, length." });
+            }
+            
+            const newBar = await Bar.create({ 
+                name, 
+                original_length_mm: length, 
+                remaining_length_mm: length, // No cadastro, o restante é igual ao original
+                diameter_mm: diameter || null,
+                material: material || null
+            });
+            res.status(201).json({ message: "success", data: newBar });
+
+        } catch (err) { 
+            console.error("Erro em [createBar]:", err); 
+            res.status(400).json({ error: err.message }); 
+        }
+    },
+    // --- FIM DA FUNÇÃO ADICIONADA ---
+
     /**
      * API: Busca o histórico de consumo (cortes) de uma barra.
      * Rota: GET /chapas/api/bars/:id/history

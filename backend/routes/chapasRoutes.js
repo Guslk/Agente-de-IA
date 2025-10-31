@@ -39,6 +39,11 @@ router.post('/api/plates/:id/cuts', chapasController.saveCuts);
 // Lista todas as barras disponíveis (comprimento restante > 0).
 router.get('/api/bars', chapasController.listBars);
 
+// --- ROTA ADICIONADA ---
+// POST /chapas/api/bars
+// Cria uma nova barra no banco de dados.
+router.post('/api/bars', chapasController.createBar);
+
 // GET /chapas/api/bars/:id/history
 // Busca o histórico de consumo de uma barra específica.
 router.get('/api/bars/:id/history', chapasController.getBarHistory);
@@ -49,3 +54,4 @@ router.post('/api/bars/consume', chapasController.consumeBar);
 
 
 module.exports = router;
+
