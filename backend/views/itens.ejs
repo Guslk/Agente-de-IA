@@ -103,7 +103,7 @@
                     <th><a href="<%= createSortUrl('quantity') %>">Qtd. Atual<%- getSortIcon('quantity') %></a></th>
                     <th><a href="<%= createSortUrl('minimumQuantity') %>">Qtd. Mínima<%- getSortIcon('minimumQuantity') %></a></th>
                     <th><a href="<%= createSortUrl('maximumQuantity') %>">Qtd. Máxima<%- getSortIcon('maximumQuantity') %></a></th>
-                    <th>Valor Total</th> <!-- Coluna sem ordenação por enquanto -->
+                    <th><a href="<%= createSortUrl('totalValue') %>"> Valor Total <%- getSortIcon('totalValue') %></a></th>
                     <th><a href="<%= createSortUrl('department') %>">Departamento<%- getSortIcon('department') %></a></th>
                     <th><a href="<%= createSortUrl('position') %>">Localização<%- getSortIcon('position') %></a></th>
                     <th><a href="<%= createSortUrl('status') %>">Status<%- getSortIcon('status') %></a></th>
@@ -124,11 +124,12 @@
                             <td><code><%= item.code %></code></td>
                             <td><strong><%= item.name %></strong></td>
                             <td><%= item.description %></td>
-                            <td><%= qtdAtual %></td>
+                        <td><%= qtdAtual %></td>
                             <td><%= item.minimumQuantity %></td>
                             <td><%= item.maximumQuantity %></td>
                             <!-- LINHA CORRIGIDA -->
-                            <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${item.totalValue.toFixed(2)}` : 'N/A' %></td>
+                            <!-- <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${item.totalValue.toFixed(2)}` : 'N/A' %></td> -->
+                                                    <td><%= item.totalValue %></td>
                             <td><%= item.department %></td>
                             <td><%= item.position %></td>
                             <!-- Usando span para status -->
@@ -216,7 +217,7 @@
                     <div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div>
                     <div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div>
                     <div class="form-group"><label for="maximumQuantity">Quantidade Máxima</label><input type="number" id="maximumQuantity" name="maximumQuantity" min="0"></div>
-                    <div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option><option value="Litro">Litro</option></select></div>
+                    <div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><select id="edit-unidade_medida" name="unidade_medida"><option value="un">Unidade</option><option value="cx">Caixa</option><option value="kg">Kg</option><option value="l">Litro</option></select></div>
                     <div class="form-group full-width"><label for="descricao">Descrição</label><input type="text" id="descricao" name="descricao"></div>
                 </div>
                 <hr class="form-divider">
@@ -294,7 +295,7 @@
                     <div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div>
                     <div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div>
                     <div class="form-group"><label for="edit-maximumQuantity">Quantidade Máxima</label><input type="number" id="edit-maximumQuantity" name="maximumQuantity" min="0"></div>
-                    <div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option><option value="Litro">Litro</option></select></div>
+                    <div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="un">Unidade</option><option value="cx">Caixa</option><option value="kg">Kg</option><option value="l">Litro</option></select></div>
                     <div class="form-group">
                         <label for="edit-status">Status</label>
                         <select id="edit-status" name="status" required>

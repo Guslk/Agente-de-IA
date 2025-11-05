@@ -113,6 +113,7 @@ const itemController = {
                     exclude: ['stockId'],
                     include: [
                         [Sequelize.col('stock.name_stock'), 'department']
+                        
                     ]
                 },
                 order: finalOrder, // <-- Aplica a ordenação dinâmica
@@ -237,6 +238,51 @@ const itemController = {
             res.status(500).send(`Erro ao atualizar item: ${error.message}`);
         }
     },
+    searchActiveItems: async (req, res) => {
+        const { tenantId } = req;
+        const { q } = req.query; // 'q' é o termo da busca (ex: "mouse")
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item } = db.initialize(sequelize);
+
+            const whereClause = {
+                status: 'Ativo'
+            };
+
+            // Se um termo de busca (q) foi fornecido, adiciona o filtro 'like'
+            if (q) {
+                whereClause.name = {
+                    [Op.like]: `%${q}%`
+                };
+            }
+
+            const items = await Item.findAll({
+                where: whereClause,
+                limit: 20,
+                order: [['name', 'ASC']],
+                attributes: ['id', 'name', 'code', 'quantity', 'reservedQuantity'] // Envia a quantidade
+            });
+
+            // Mapeia para incluir a 'availableQuantity'
+            const results = items.map(item => {
+                const available = parseFloat(item.quantity) - parseFloat(item.reservedQuantity);
+                return {
+                    id: item.id,
+                    name: item.name,
+                    code: item.code,
+                    availableQuantity: available
+                };
+            });
+
+            res.json(results); // Envia a lista de itens como JSON
+        
+        } catch (error) {
+            console.error("Error searching items:", error);
+            res.status(500).json({ error: "Erro ao buscar itens." });
+        }
+    },
+
     destroy: async (req, res) => {
         const { tenantId } = req;
         const { id } = req.params; // Pega o ID do item da URL

@@ -1,0 +1,757 @@
+
+<%- include('partials/header', { title: 'Nova Requisição', paginaAtiva: 'requisicoes' }) %>
+
+<header class="header">
+    <h1 class="header-title">Nova Requisição de Itens</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    
+    <div id="alert-container"></div> 
+
+    <div class="form-container" style="max-width: 900px; margin: auto;">
+        <form id="requisition-form">
+            <div class="modal-body">
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="step-indicator">1</div>
+                        <h3>Adicionar Itens</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="search-item-name">Buscar Item Ativo</label>
+                        <div class="input-with-button">
+                            <input type="text" id="selected-item-name" placeholder="Nenhum item selecionado" readonly class="form-control-readonly">
+                            <button type="button" class="btn-secondary btn-lookup" id="btn-open-search-modal">
+                                <i class="bi bi-search"></i> Buscar
+                            </button>
+                        </div>
+                        <input type="hidden" id="selected-item-id"> 
+                        <input type="hidden" id="selected-item-unit"> 
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="search-item-qty">Quantidade a Requisitar</label>
+                        <div class="input-with-button">
+                            <input type="number" id="search-item-qty" placeholder="Qtd." min="0.01" step="0.01">
+                            <button type="button" class="btn-primary" id="btn-add-item-to-cart" style="width: 120px;">
+                                <i class="bi bi-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <div id="quantity-info" style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;"></div>
+                    </div>
+                </section>
+
+                <div class="section-divider"></div>
+                
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="step-indicator">2</div>
+                        <h3>Itens na Requisição (Carrinho)</h3>
+                    </div>
+                    <section class="inventory-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantidade</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart-items-body">
+                                <tr><td colspan="3" style="text-align: center;">Nenhum item adicionado.</td></tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </section>
+
+                <div class="section-divider"></div>
+                
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="step-indicator">3</div>
+                        <h3>Finalizar</h3>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Observações (Opcional)</label>
+                        <textarea name="notes" id="notes" rows="3" placeholder="Adicione observações sobre esta requisição..."></textarea>
+                    </div>
+                </section>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary btn-submit">
+                    <i class="bi bi-send"></i> Enviar Requisição
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<div class="modal-overlay" id="item-search-modal">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Buscar Item Ativo</h3>
+            <button class="close-button" id="btn-close-search-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="item-search-input">Buscar por Nome ou Código</label>
+                <input type="text" id="item-search-input" placeholder="Comece a digitar para filtrar a lista..." autocomplete="off">
+            </div>
+            <div class="search-results-list" id="item-search-results">
+                <div class="result-item" style="text-align: center; color: #64748b; padding: 2rem;">
+                    Digite para buscar itens...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<style>
+    .form-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: #f8fafc;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background-color: #3b82f6;
+        color: white;
+        border-radius: 50%;
+        font-weight: bold;
+        margin-right: 12px;
+        font-size: 0.9rem;
+    }
+    
+    .section-header h3 {
+        margin: 0;
+        color: #1e293b;
+        font-size: 1.25rem;
+    }
+    
+    .section-divider {
+        height: 1px;
+        background: linear-gradient(to right, transparent, #cbd5e1, transparent);
+        margin: 2rem 0;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    
+    .input-with-button {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .input-with-button input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .input-with-button input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-control-readonly {
+        background-color: #f9fafb;
+        color: #6b7280;
+    }
+    
+    .btn-primary, .btn-secondary {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: #2563eb;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+    }
+    
+    .btn-secondary {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #e2e8f0;
+    }
+    
+    .btn-submit {
+        padding: 12px 24px;
+        font-size: 1rem;
+    }
+    
+    textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-family: inherit;
+        font-size: 1rem;
+        resize: vertical;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* Estilos da tabela */
+    .inventory-table {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .inventory-table table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+    }
+    
+    .inventory-table th {
+        background-color: #f8fafc;
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .inventory-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .inventory-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    
+    .action-btn {
+        padding: 6px 10px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .danger {
+        background-color: #fef2f2;
+        color: #dc2626;
+    }
+    
+    .danger:hover {
+        background-color: #fee2e2;
+    }
+    
+    /* Estilos do modal de busca */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+    }
+    
+    .modal {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        color: #1e293b;
+    }
+    
+    .close-button {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #64748b;
+        transition: color 0.2s;
+    }
+    
+    .close-button:hover {
+        color: #1e293b;
+    }
+    
+    .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+    }
+    
+    .search-results-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-top: 16px;
+    }
+    
+    .result-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s;
+    }
+    
+    .result-item:hover {
+        background-color: #f8fafc;
+    }
+    
+    .result-item:last-child {
+        border-bottom: none;
+    }
+    
+    .result-item strong {
+        color: #1e293b;
+    }
+    
+    .result-item span {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .qty {
+        font-size: 0.85rem;
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .unit-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+    }
+
+    .unit-un, .unit-pc {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+
+    .unit-kg, .unit-g, .unit-ton {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    .unit-cx {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .unit-l, .unit-ml {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #a5b4fc;
+    }
+
+    .cart-item-unit {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-left: 0.25rem;
+    }
+    
+    /* Alertas */
+    .alert {
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .alert-success {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+    
+    .alert-danger {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+</style>
+
+<script>
+// Funções para formatação e unidades - CORRIGIDAS PARA VALORES NULOS
+function formatQuantity(quantity, unitOfMeasure) {
+    if (!quantity) return '0';
+    const qty = parseFloat(quantity);
+    
+    // Se unitOfMeasure for nulo, trata como 'un'
+    const effectiveUnit = unitOfMeasure || 'un';
+    
+    if (['kg', 'g', 'ton', 'l', 'ml'].includes(effectiveUnit)) {
+        return qty.toFixed(2);
+    } else if (['un', 'pc', 'cx'].includes(effectiveUnit)) {
+        return qty % 1 === 0 ? qty.toString() : qty.toFixed(2);
+    } else {
+        return qty.toFixed(2);
+    }
+}
+
+function getUnitLabel(unitOfMeasure) {
+    if (!unitOfMeasure) return 'un'; // Default para 'un' se for null
+    
+    const unitMap = {
+        'un': 'un',
+        'kg': 'kg',
+        'g': 'g',
+        'ton': 'ton',
+        'pc': 'pc',
+        'cx': 'cx',
+        'l': 'l',
+        'ml': 'ml'
+    };
+    return unitMap[unitOfMeasure] || unitOfMeasure; // Retorna o próprio valor se não estiver no mapa
+}
+
+function getInputStep(unitOfMeasure) {
+    if (!unitOfMeasure) return '0.01'; // Default
+    
+    if (['kg', 'g', 'ton', 'l', 'ml'].includes(unitOfMeasure)) {
+        return '0.01';
+    } else if (['un', 'pc'].includes(unitOfMeasure)) {
+        return '1';
+    } else if (unitOfMeasure === 'cx') {
+        return '0.5';
+    } else {
+        return '0.01';
+    }
+}
+
+function getInputMin(unitOfMeasure) {
+    if (!unitOfMeasure) return '0.01'; // Default
+    
+    return ['un', 'pc'].includes(unitOfMeasure) ? '1' : '0.01';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- Variáveis do Carrinho ---
+    let cart = []; // Array para guardar os itens: [{id, name, quantity, code, unitOfMeasure}]
+    let selectedItem = null; // Guarda o objeto do item selecionado na busca
+
+    // --- Elementos do Formulário Principal ---
+    const form = document.getElementById('requisition-form');
+    const notesInput = document.getElementById('notes');
+    const alertContainer = document.getElementById('alert-container');
+    const btnAddToCart = document.getElementById('btn-add-item-to-cart');
+    const cartTableBody = document.getElementById('cart-items-body');
+    const selectedItemName = document.getElementById('selected-item-name');
+    const selectedItemId = document.getElementById('selected-item-id');
+    const selectedItemUnit = document.getElementById('selected-item-unit');
+    const selectedItemQty = document.getElementById('search-item-qty');
+    const quantityInfo = document.getElementById('quantity-info');
+    const btnOpenSearchModal = document.getElementById('btn-open-search-modal');
+    
+    // --- Elementos do Modal de Busca ---
+    const searchModal = document.getElementById('item-search-modal');
+    const btnCloseSearchModal = document.getElementById('btn-close-search-modal');
+    const searchInput = document.getElementById('item-search-input');
+    const searchResultsContainer = document.getElementById('item-search-results');
+
+    // --- Funções do Modal de Busca ---
+    const openSearchModal = () => {
+        searchModal.style.display = 'flex';
+        searchInput.focus();
+        performSearch(); // Busca inicial (vazia)
+    };
+    const closeSearchModal = () => {
+        searchModal.style.display = 'none';
+        searchInput.value = '';
+        searchResultsContainer.innerHTML = '';
+    };
+
+    // --- Função de Seleção de Item ---
+    function selectItem(item) {
+        selectedItem = item; // Salva o *objeto* inteiro do item
+        
+        const unitLabel = getUnitLabel(item.unitOfMeasure);
+        selectedItemName.value = `${item.name} (Disponível: ${formatQuantity(item.availableQuantity, item.unitOfMeasure)} ${unitLabel})`;
+        selectedItemId.value = item.id;
+        selectedItemUnit.value = item.unitOfMeasure || 'un';
+        
+        // Atualizar input de quantidade
+        selectedItemQty.step = getInputStep(item.unitOfMeasure);
+        selectedItemQty.min = getInputMin(item.unitOfMeasure);
+        selectedItemQty.value = '';
+        
+        // Atualizar info da quantidade
+        const unitClass = item.unitOfMeasure ? `unit-${item.unitOfMeasure}` : 'unit-un';
+        quantityInfo.innerHTML = `Unidade: <span class="unit-badge ${unitClass}">${unitLabel}</span> | Disponível: <strong>${formatQuantity(item.availableQuantity, item.unitOfMeasure)}</strong>`;
+        
+        closeSearchModal();
+        selectedItemQty.focus();
+    }
+
+    // --- Lógica de Busca (API) ---
+    let debounceTimer;
+    const performSearch = async () => {
+        const query = searchInput.value;
+        try {
+            const response = await fetch(`/api/search-items?q=${query}`);
+            const items = await response.json();
+            searchResultsContainer.innerHTML = ''; 
+
+            if (items.length > 0) {
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    
+                    const unitLabel = getUnitLabel(item.unitOfMeasure);
+                    const unitClass = item.unitOfMeasure ? `unit-${item.unitOfMeasure}` : 'unit-un';
+                    
+                    div.innerHTML = `
+                        <div>
+                            <strong>${item.name}</strong>
+                            <span>(Cód: ${item.code || 'N/A'})</span>
+                            <span class="unit-badge ${unitClass}">
+                                ${unitLabel}
+                            </span>
+                        </div>
+                        <span class="qty">Disponível: ${formatQuantity(item.availableQuantity, item.unitOfMeasure)} ${unitLabel}</span>
+                    `;
+                    // Só permite selecionar se houver estoque
+                    if (item.availableQuantity > 0) {
+                        div.addEventListener('click', () => selectItem(item));
+                    } else {
+                        div.style.cursor = 'not-allowed';
+                        div.style.opacity = '0.5';
+                    }
+                    searchResultsContainer.appendChild(div);
+                });
+            } else {
+                searchResultsContainer.innerHTML = '<div class="result-item">Nenhum item encontrado.</div>';
+            }
+        } catch (err) {
+            console.error('Erro na busca:', err);
+            searchResultsContainer.innerHTML = '<div class="result-item">Erro ao buscar itens.</div>';
+        }
+    };
+
+    // --- Lógica do Carrinho ---
+    function renderCart() {
+        if (cart.length === 0) {
+            cartTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhum item adicionado.</td></tr>';
+            return;
+        }
+        
+        cartTableBody.innerHTML = '';
+        cart.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            const unitLabel = getUnitLabel(item.unitOfMeasure);
+            const unitClass = item.unitOfMeasure ? `unit-${item.unitOfMeasure}` : 'unit-un';
+            
+            tr.innerHTML = `
+                <td>
+                    <strong>${item.name}</strong> 
+                    <span class="cart-item-unit">(Cód: ${item.code})</span>
+                    <span class="unit-badge ${unitClass}">${unitLabel}</span>
+                </td>
+                <td>${formatQuantity(item.quantity, item.unitOfMeasure)} ${unitLabel}</td>
+                <td>
+                    <button type="button" class="action-btn danger btn-remove-from-cart" data-index="${index}">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </td>
+            `;
+            cartTableBody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.btn-remove-from-cart').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                cart.splice(e.currentTarget.dataset.index, 1);
+                renderCart();
+            });
+        });
+    }
+
+    btnAddToCart.addEventListener('click', () => {
+        const quantity = parseFloat(selectedItemQty.value);
+        if (!selectedItem) {
+            showAlert('Por favor, busque e selecione um item.', true);
+            return;
+        }
+        if (!quantity || quantity <= 0) {
+            showAlert('Por favor, insira uma quantidade válida.', true);
+            return;
+        }
+        
+        const unitLabel = getUnitLabel(selectedItem.unitOfMeasure);
+        if (quantity > selectedItem.availableQuantity) {
+            showAlert(`Estoque insuficiente. Disponível: ${formatQuantity(selectedItem.availableQuantity, selectedItem.unitOfMeasure)} ${unitLabel}`, true);
+            return;
+        }
+        
+        // Verifica se o item já está no carrinho
+        const existingItemIndex = cart.findIndex(item => item.id === selectedItem.id);
+        if (existingItemIndex !== -1) {
+            // Atualiza quantidade se já existir
+            cart[existingItemIndex].quantity += quantity;
+        } else {
+            // Adiciona novo item ao carrinho
+            cart.push({
+                id: selectedItem.id,
+                name: selectedItem.name,
+                code: selectedItem.code,
+                unitOfMeasure: selectedItem.unitOfMeasure || 'un',
+                quantity: quantity
+            });
+        }
+
+        // Limpa os campos
+        selectedItem = null;
+        selectedItemName.value = '';
+        selectedItemId.value = '';
+        selectedItemUnit.value = '';
+        selectedItemQty.value = '';
+        quantityInfo.innerHTML = '';
+        renderCart();
+    });
+
+    // --- Lógica de Envio do Formulário ---
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (cart.length === 0) {
+            showAlert('Você não pode enviar uma requisição vazia.', true);
+            return;
+        }
+
+        const dataToSend = {
+            notes: notesInput.value,
+            items: cart.map(item => ({ 
+                id: item.id, 
+                quantity: item.quantity 
+            }))
+        };
+
+        try {
+            const response = await fetch('/requisicoes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToSend)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
+            window.location.href = result.redirectUrl;
+        } catch (error) {
+            showAlert(error.message, true);
+        }
+    });
+
+    // --- Event Listeners dos Modais ---
+    btnOpenSearchModal.addEventListener('click', openSearchModal);
+    btnCloseSearchModal.addEventListener('click', closeSearchModal);
+    window.addEventListener('click', (e) => { if (e.target === searchModal) closeSearchModal(); });
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(performSearch, 300);
+    });
+    
+    // Função de Alerta
+    function showAlert(message, isError = false) {
+        alertContainer.innerHTML = `
+            <div class="alert ${isError ? 'alert-danger' : 'alert-success'}" style="margin-bottom: 1.5rem;">
+                ${message}
+            </div>
+        `;
+        window.scrollTo(0, 0);
+    }
+
+    // Validação de quantidade no input
+    selectedItemQty.addEventListener('input', () => {
+        if (selectedItem) {
+            const quantity = parseFloat(selectedItemQty.value);
+            if (quantity > selectedItem.availableQuantity) {
+                selectedItemQty.style.borderColor = '#ef4444';
+            } else {
+                selectedItemQty.style.borderColor = '#d1d5db';
+            }
+        }
+    });
+});
+</script>

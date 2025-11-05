@@ -14,10 +14,12 @@ const relatorioRoutes = require('./relatorioRoutes');
 const movementRoutes = require('./movementRoutes');
 const supplierRoutes = require('./supplierRoutes')
 const manualRoutes = require('./manualRoutes');     // Adicionado
+const resquestRoutes = require('./requestRoutes');     // Adicionado
 
 
 
 router.use(stockRoutes);
+router.use(resquestRoutes);
 router.use(EmployeeRoutes);
 router.use(toolHistoryRoutes);
 router.use(toolRoutes);

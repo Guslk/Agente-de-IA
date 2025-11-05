@@ -16,7 +16,7 @@ router.get('/itens', itemController.getAll);
 // 2. CREATE (Show Form) -> Mostrar o formulário para criar um novo item
 // GET /itens/novo
 // router.get('/itens/novo', itemController.showCreateForm);
-
+router.get('/api/search-items', itemController.searchActiveItems);
 // 3. CREATE (Process Form) -> Salvar o novo item no banco de dados
 // POST /itens
 router.post('/itens', itemController.create);

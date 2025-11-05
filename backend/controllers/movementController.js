@@ -132,9 +132,9 @@ const movementController = {
                 where: { status: 'Ativo' },
                 order: [['name', 'ASC']]
             });
-            const suppliers = await Supplier.findAll({ 
-                where: { status: 'Ativo' }, 
-                order: [['name', 'ASC']] 
+            const suppliers = await Supplier.findAll({
+                where: { status: 'Ativo' },
+                order: [['name', 'ASC']]
             });
             const employees = await Employee.findAll({ order: [['name', 'ASC']] });
 
@@ -211,7 +211,11 @@ const movementController = {
 
             const currentQuantity = parseFloat(item.quantity);
             const currentValue = parseFloat(item.totalValue);
+            const availableStock = parseFloat(item.quantity) - parseFloat(item.reservedQuantity);
             const quantityToExit = parseFloat(quantity);
+            if (availableStock < quantityToExit) {
+                throw new Error(`Estoque disponível insuficiente. Disponível: ${availableStock}`);
+            }
 
             // 1. Validação de estoque
             if (currentQuantity < quantityToExit) {

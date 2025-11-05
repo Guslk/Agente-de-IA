@@ -25,6 +25,11 @@
                 </a>
             </li>
             <li>
+                <a href="/requisicoes" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'fornecedores') ? 'active' : '' %>">
+                    <i class="bi bi-truck"></i> Reservados
+                </a>
+            </li>
+            <li>
                 <a href="/funcionarios" class="<%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'funcionarios') ? 'active' : '' %>">
                     <i class="bi bi-people-fill"></i> Funcionários
                 </a>
