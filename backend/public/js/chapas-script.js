@@ -6,6 +6,10 @@ let canvas, ctx, currentWidthInput, currentHeightInput;
 let currentPlate = null;
 let finishedCuts = [];
 
+let renderScale = 1.0; // Fator de escala (mm -> pixels)
+let offsetX = 0;       // Deslocamento X para centralizar
+let offsetY = 0;       // Deslocamento Y para centralizar
+
 // Estado para o desenho
 let isDrawing = false;
 let startPoint = null;
@@ -15,29 +19,36 @@ let isPreviewOverlapping = false;
 
 
 // --- FUNÇÃO DE LÓGICA DE EMPACOTAMENTO (CORTE AUTOMÁTICO) ---
+// ATUALIZADA: Agora busca o melhor encaixe por "pontuação" (Max Contact)
 function findBestFitPosition(rectW, rectH) {
     if (!currentPlate) return null;
 
     const candidatePoints = [{ x: 0, y: 0 }];
     finishedCuts.forEach(cut => {
         if (cut && cut.length === 4 && cut[0] && cut[1] && cut[3]) {
+            // Adiciona os cantos de todos os cortes existentes como pontos de partida
             candidatePoints.push({ x: cut[1].x, y: cut[0].y }); // Canto superior direito
             candidatePoints.push({ x: cut[0].x, y: cut[3].y }); // Canto inferior esquerdo
+            candidatePoints.push({ x: cut[1].x, y: cut[3].y }); // Canto inferior direito
         }
     });
 
     let bestFit = null;
+    let highestScore = -1; // Procuramos a MAIOR pontuação de contato
+    
     const orientations = [{ w: rectW, h: rectH }, { w: rectH, h: rectW }];
 
     for (const point of candidatePoints) {
         for (const dim of orientations) {
             const candidateRect = { x: point.x, y: point.y, w: dim.w, h: dim.h };
 
+            // 1. Checa se está dentro da chapa
             if (candidateRect.x + candidateRect.w > currentPlate.original_width_mm + 0.1 ||
                 candidateRect.y + candidateRect.h > currentPlate.original_height_mm + 0.1) {
-                continue;
+                continue; // Fora da chapa
             }
 
+            // 2. Checa colisão com cortes existentes
             let hasCollision = false;
             for (const cut of finishedCuts) {
                 if (cut && cut.length === 4 && cut[0] && cut[1] && cut[3]) {
@@ -52,14 +63,30 @@ function findBestFitPosition(rectW, rectH) {
                 }
             }
             if (hasCollision) {
-                continue;
+                continue; // Sobrepõe outro corte
             }
 
-            if (!bestFit || candidateRect.y < bestFit.y || (candidateRect.y === bestFit.y && candidateRect.x < bestFit.x)) {
+            // 3. (NOVO) Se é um local válido, calcula sua pontuação
+            const score = calculateContactScore(candidateRect, finishedCuts, currentPlate);
+
+            // 4. (NOVO) Compara a pontuação
+            // Se a pontuação for maior, este é o novo "bestFit"
+            if (score > highestScore) {
+                highestScore = score;
                 bestFit = candidateRect;
+            } 
+            // Se for igual, usamos a regra antiga (menor Y, menor X) para desempatar
+            else if (score === highestScore) {
+                if (!bestFit || candidateRect.y < bestFit.y || (candidateRect.y === bestFit.y && candidateRect.x < bestFit.x)) {
+                    bestFit = candidateRect;
+                }
             }
         }
     }
+    
+    // Se não encontrou nenhum lugar com pontuação > -1 (ou seja, nenhum lugar)
+    // bestFit ainda será null.
+    // Caso contrário, retorna o corte válido com a maior pontuação de contato.
     return bestFit;
 }
 
@@ -92,50 +119,101 @@ function rectsOverlap(rectA, rectB) {
 
 // --- FUNÇÕES DE DESENHO (CHAPAS) ---
 function redrawCanvas() {
-    if (!canvas || !ctx) return; // Proteção: Não faz nada se o canvas não foi encontrado
+    if (!canvas || !ctx) return;
+
+    // 1. Define o tamanho do bitmap para o tamanho de exibição (CSS)
+    const displayWidth = canvas.clientWidth;
+    const displayHeight = canvas.clientHeight;
+
+    if (displayWidth === 0 || displayHeight === 0) return; // Canvas não está visível
+
+    canvas.width = displayWidth;
+    canvas.height = displayHeight;
+
+    // Limpa com a cor de fundo padrão
+    ctx.fillStyle = '#f4f7fa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (!currentPlate) {
-        const defaultWidth = canvas.clientWidth || 800;
-        const defaultHeight = defaultWidth * 0.75;
-        canvas.width = defaultWidth;
-        canvas.height = defaultHeight;
-        ctx.fillStyle = '#f4f7fa';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        return;
+        return; // Nada para desenhar
     }
 
-    canvas.width = currentPlate.original_width_mm;
-    canvas.height = currentPlate.original_height_mm;
+    // --- LÓGICA DE ESCALA ---
+    const plateWidth = currentPlate.original_width_mm;
+    const plateHeight = currentPlate.original_height_mm;
 
-    const rect = canvas.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
+    // 2. Calcula a melhor escala para caber na tela, com 2% de padding
+    // A MUDANÇA ESTÁ AQUI: 0.95 foi alterado para 0.98
+    const scaleX = (canvas.width / plateWidth) * 0.98;
+    const scaleY = (canvas.height / plateHeight) * 0.98;
+    renderScale = Math.min(scaleX, scaleY); // Usa a menor escala para caber
 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const visualScaleForBorder = Math.min(scaleX, scaleY);
-    const visualScale = Math.max(scaleX, scaleY);
+    // 3. Calcula o tamanho em pixels e o offset para centralizar
+    const scaledWidth = plateWidth * renderScale;
+    const scaledHeight = plateHeight * renderScale;
+    offsetX = (canvas.width - scaledWidth) / 2;
+    offsetY = (canvas.height - scaledHeight) / 2;
 
+    // 4. Salva o estado, limpa transformações, e aplica a nova
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reseta
+    ctx.translate(offsetX, offsetY);    // Move a origem (0,0)
+    ctx.scale(renderScale, renderScale);  // Aplica a escala
+
+    // --- DESENHA OS ELEMENTOS EM COORDENADAS LÓGICAS (mm) ---
+
+    // Desenha o fundo da chapa
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#AAAAAA';
-    ctx.lineWidth = 1 * visualScaleForBorder;
-    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, plateWidth, plateHeight);
 
-    const standardLineWidth = 2 * visualScale;
+    // Desenha a borda da chapa (linha de 1px visual)
+    ctx.strokeStyle = '#AAAAAA';
+    ctx.lineWidth = 1 / renderScale; // Largura da linha "ao contrário"
+    ctx.strokeRect(0, 0, plateWidth, plateHeight);
+
+    // Desenha os cortes finalizados (linha de 2px visual)
+    const standardLineWidth = 2 / renderScale;
     ctx.strokeStyle = 'blue';
     ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
     ctx.lineWidth = standardLineWidth;
+
     finishedCuts.forEach(cut => {
         if (cut && cut.length === 4 && cut[0] && cut[1] && cut[3]) {
             const start = cut[0];
             const width = cut[1].x - start.x;
             const height = cut[3].y - start.y;
+            // Coordenadas já estão em mm, o canvas cuida de escalar
             ctx.fillRect(start.x, start.y, width, height);
             ctx.strokeRect(start.x, start.y, width, height);
         } else {
             console.warn("Corte inválido encontrado ao desenhar:", cut);
         }
     });
+
+    // Desenha o retângulo de pré-visualização (se estiver desenhando)
+    if (previewRect) {
+        ctx.lineWidth = standardLineWidth;
+        ctx.strokeStyle = isPreviewOverlapping ? '#FF8C00' : 'red';
+        ctx.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
+    }
+
+    // Restaura o contexto para o estado normal
+    ctx.restore();
+}
+
+function isRectOutOfBounds(rect, plate) {
+    if (!rect || !plate) return true;
+    const tolerance = 0.1; // Pequena tolerância para problemas de ponto flutuante
+
+    // Checa se o retângulo (que já é normalizado) está fora dos limites
+    if (rect.x < -tolerance ||
+        rect.y < -tolerance ||
+        rect.x + rect.w > plate.original_width_mm + tolerance ||
+        rect.y + rect.h > plate.original_height_mm + tolerance) 
+    {
+        return true; // Está fora
+    }
+    return false; // Está dentro
 }
 
 
@@ -164,14 +242,11 @@ function getAllAvailableEdges() {
 }
 
 function findClosestEdge(point) {
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0 || canvas.width === 0 || canvas.height === 0) return null;
+    if (!canvas || renderScale === 0) return null; // Proteção
 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const SNAP_X_LOGICAL = 10 * scaleX;
-    const SNAP_Y_LOGICAL = 10 * scaleY;
+    // Define a distância de "snap" como 10 pixels visuais,
+    // e converte para a unidade lógica (mm)
+    const SNAP_LOGICAL = 10 / renderScale;
 
     let closestEdge = null;
     let minDistanceRatio = 1.0;
@@ -182,13 +257,14 @@ function findClosestEdge(point) {
         let distance, snapThreshold, distanceRatio;
 
         if (edge.type === 'horizontal') {
-            const minX = Math.min(edge.p1.x, edge.p2.x) - SNAP_X_LOGICAL;
-            const maxX = Math.max(edge.p1.x, edge.p2.x) + SNAP_X_LOGICAL;
+            // Expande a área de snap em X também
+            const minX = Math.min(edge.p1.x, edge.p2.x) - SNAP_LOGICAL;
+            const maxX = Math.max(edge.p1.x, edge.p2.x) + SNAP_LOGICAL;
             if (point.x >= minX && point.x <= maxX) {
                 distance = Math.abs(point.y - edge.p1.y);
-                snapThreshold = SNAP_Y_LOGICAL;
-                 if (snapThreshold > 0) {
-                     distanceRatio = distance / snapThreshold;
+                snapThreshold = SNAP_LOGICAL; // Snap em Y
+                if (snapThreshold > 0) {
+                    distanceRatio = distance / snapThreshold;
                     if (distance < snapThreshold && distanceRatio < minDistanceRatio) {
                         minDistanceRatio = distanceRatio;
                         closestEdge = edge;
@@ -196,11 +272,12 @@ function findClosestEdge(point) {
                 }
             }
         } else { // Vertical
-            const minY = Math.min(edge.p1.y, edge.p2.y) - SNAP_Y_LOGICAL;
-            const maxY = Math.max(edge.p1.y, edge.p2.y) + SNAP_Y_LOGICAL;
-             if (point.y >= minY && point.y <= maxY) {
+            // Expande a área de snap em Y
+            const minY = Math.min(edge.p1.y, edge.p2.y) - SNAP_LOGICAL;
+            const maxY = Math.max(edge.p1.y, edge.p2.y) + SNAP_LOGICAL;
+            if (point.y >= minY && point.y <= maxY) {
                 distance = Math.abs(point.x - edge.p1.x);
-                snapThreshold = SNAP_X_LOGICAL;
+                snapThreshold = SNAP_LOGICAL; // Snap em X
                 if (snapThreshold > 0) {
                     distanceRatio = distance / snapThreshold;
                     if (distance < snapThreshold && distanceRatio < minDistanceRatio) {
@@ -217,10 +294,23 @@ function findClosestEdge(point) {
 function getCanvasCoordinates(event) {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-     if (!rect || rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return { x: (event.clientX - rect.left) * scaleX, y: (event.clientY - rect.top) * scaleY };
+
+    // Proteção contra divisão por zero se a escala for 0
+    if (!rect || rect.width === 0 || rect.height === 0 || renderScale === 0) {
+        return { x: 0, y: 0 };
+    }
+
+    // 1. Pega a posição do mouse em *pixels* relativos ao canvas
+    const pixelX = event.clientX - rect.left;
+    const pixelY = event.clientY - rect.top;
+
+    // 2. Converte de pixels para coordenadas lógicas (mm)
+    // (pixelX = logicalX * renderScale + offsetX) ->
+    // logicalX = (pixelX - offsetX) / renderScale
+    const logicalX = (pixelX - offsetX) / renderScale;
+    const logicalY = (pixelY - offsetY) / renderScale;
+
+    return { x: logicalX, y: logicalY };
 }
 
 function handleMouseDown(event) {
@@ -250,65 +340,75 @@ function handleMouseDown(event) {
 }
 
 function handleMouseMove(event) {
-    if (!isDrawing || !startPoint || !snappedEdge || !canvas) return;
+    if (!canvas) return;
 
-    redrawCanvas();
+    if (isDrawing) {
+        // --- LÓGICA DE DESENHO (QUANDO O MOUSE ESTÁ PRESSIONADO) ---
+        if (!startPoint || !snappedEdge) return; // Proteção
 
-    const currentMousePos = getCanvasCoordinates(event);
-    const x1 = startPoint.x, y1 = startPoint.y, x2 = currentMousePos.x, y2 = currentMousePos.y;
-    let rectX, rectY, rectW, rectH;
+        const currentMousePos = getCanvasCoordinates(event); // Pega coords LÓGICAS
+        const x1 = startPoint.x, y1 = startPoint.y, x2 = currentMousePos.x, y2 = currentMousePos.y;
+        let rectX, rectY, rectW, rectH;
 
-    if (snappedEdge.p1) {
-        if (snappedEdge.type === 'horizontal') {
-            rectX = x1; rectY = snappedEdge.p1.y; rectW = x2 - x1; rectH = y2 - rectY;
+        if (snappedEdge.p1) {
+            if (snappedEdge.type === 'horizontal') {
+                rectX = x1; rectY = snappedEdge.p1.y; rectW = x2 - x1; rectH = y2 - rectY;
+            } else {
+                rectX = snappedEdge.p1.x; rectY = y1; rectW = x2 - rectX; rectH = y2 - y1;
+            }
+            previewRect = { x: rectX, y: rectY, w: rectW, h: rectH };
         } else {
-            rectX = snappedEdge.p1.x; rectY = y1; rectW = x2 - rectX; rectH = y2 - y1;
+            console.error("snappedEdge sem p1 em handleMouseMove:", snappedEdge);
+            previewRect = null;
+            return;
         }
-        previewRect = { x: rectX, y: rectY, w: rectW, h: rectH };
-    } else {
-        console.error("snappedEdge sem p1 em handleMouseMove:", snappedEdge);
-        previewRect = null;
-        return;
-    }
 
-    isPreviewOverlapping = false;
-    const normalizedPreview = normalizeRect(previewRect);
-    if (normalizedPreview.w < 1 || normalizedPreview.h < 1) {
-        isPreviewOverlapping = true;
-    } else {
-        for (const cut of finishedCuts) {
-            if (cut && cut.length === 4 && cut[0] && cut[1] && cut[3]) {
-                const finishedRect = {
-                    x: cut[0].x, y: cut[0].y,
-                    w: cut[1].x - cut[0].x, h: cut[3].y - cut[0].y
-                };
-                if (rectsOverlap(normalizedPreview, finishedRect)) {
-                    isPreviewOverlapping = true;
-                    break;
+        isPreviewOverlapping = false;
+        const normalizedPreview = normalizeRect(previewRect);
+
+        if (normalizedPreview.w < 1 || normalizedPreview.h < 1) {
+            isPreviewOverlapping = true;
+        } else if (isRectOutOfBounds(normalizedPreview, currentPlate)) {
+            isPreviewOverlapping = true;
+        } else {
+            for (const cut of finishedCuts) {
+                if (cut && cut.length === 4 && cut[0] && cut[1] && cut[3]) {
+                    const finishedRect = {
+                        x: cut[0].x, y: cut[0].y,
+                        w: cut[1].x - cut[0].x, h: cut[3].y - cut[0].y
+                    };
+                    if (rectsOverlap(normalizedPreview, finishedRect)) {
+                        isPreviewOverlapping = true;
+                        break;
+                    }
                 }
             }
         }
-    }
 
-    const rect = canvas.getBoundingClientRect();
-    if (!rect || rect.width === 0 || rect.height === 0) return;
+        if(previewRect) {
+            if(currentWidthInput) currentWidthInput.value = Math.abs(previewRect.w).toFixed(1);
+            if(currentHeightInput) currentHeightInput.value = Math.abs(previewRect.h).toFixed(1);
+        } else {
+             if(currentWidthInput) currentWidthInput.value = '0.0';
+             if(currentHeightInput) currentHeightInput.value = '0.0';
+        }
 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const visualScale = Math.max(scaleX, scaleY);
+        redrawCanvas();
 
-    ctx.lineWidth = 2 * visualScale;
-    ctx.strokeStyle = isPreviewOverlapping ? '#FF8C00' : 'red';
-    if(previewRect) {
-        ctx.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
-    }
-
-    if(previewRect) {
-        if(currentWidthInput) currentWidthInput.value = Math.abs(previewRect.w).toFixed(1);
-        if(currentHeightInput) currentHeightInput.value = Math.abs(previewRect.h).toFixed(1);
     } else {
-         if(currentWidthInput) currentWidthInput.value = '0.0';
-         if(currentHeightInput) currentHeightInput.value = '0.0';
+        // --- LÓGICA DE HOVER (QUANDO O MOUSE ESTÁ SOLTO) ---
+        const currentMousePos = getCanvasCoordinates(event); // Pega coords LÓGICAS
+        const hoveredEdge = findClosestEdge(currentMousePos);
+
+        if (hoveredEdge) {
+            if (hoveredEdge.type === 'horizontal') {
+                canvas.style.cursor = 'ns-resize'; // Cursor Vertical (Norte-Sul)
+            } else {
+                canvas.style.cursor = 'ew-resize'; // Cursor Horizontal (Leste-Oeste)
+            }
+        } else {
+            canvas.style.cursor = 'crosshair'; // Cursor Padrão de Desenho
+        }
     }
 }
 
@@ -658,6 +758,52 @@ async function handleConsumeBar(event) {
     }
 }
 
+function calculateContactScore(rect, allCuts, plate) {
+    let score = 0;
+    const tolerance = 0.1; // Tolerância para comparação de floats
+
+    // 1. Contato com as bordas da chapa
+    // (Math.abs(num) < tolerance) é uma forma segura de checar (num === 0)
+    if (Math.abs(rect.x) < tolerance) score += rect.h; // Borda Esquerda
+    if (Math.abs(rect.y) < tolerance) score += rect.w; // Borda Superior
+    if (Math.abs(rect.x + rect.w - plate.original_width_mm) < tolerance) score += rect.h; // Borda Direita
+    if (Math.abs(rect.y + rect.h - plate.original_height_mm) < tolerance) score += rect.w; // Borda Inferior
+
+    // 2. Contato com outros cortes
+    for (const cut of allCuts) {
+        if (!cut || cut.length !== 4 || !cut[0] || !cut[1] || !cut[3]) continue;
+        
+        const existing = {
+            x: cut[0].x, y: cut[0].y,
+            w: cut[1].x - cut[0].x, h: cut[3].y - cut[0].y
+        };
+
+        // O novo [rect] está tocando à DIREITA do [existing]?
+        if (Math.abs(rect.x - (existing.x + existing.w)) < tolerance) {
+            // Calcula o quanto da borda vertical eles compartilham
+            const overlap = Math.max(0, Math.min(rect.y + rect.h, existing.y + existing.h) - Math.max(rect.y, existing.y));
+            score += overlap;
+        }
+        // O novo [rect] está tocando à ESQUERDA do [existing]?
+        if (Math.abs((rect.x + rect.w) - existing.x) < tolerance) {
+            const overlap = Math.max(0, Math.min(rect.y + rect.h, existing.y + existing.h) - Math.max(rect.y, existing.y));
+            score += overlap;
+        }
+        // O novo [rect] está tocando ABAIXO do [existing]?
+        if (Math.abs(rect.y - (existing.y + existing.h)) < tolerance) {
+            // Calcula o quanto da borda horizontal eles compartilham
+            const overlap = Math.max(0, Math.min(rect.x + rect.w, existing.x + existing.w) - Math.max(rect.x, existing.x));
+            score += overlap;
+        }
+        // O novo [rect] está tocando ACIMA do [existing]?
+        if (Math.abs((rect.y + rect.h) - existing.y) < tolerance) {
+            const overlap = Math.max(0, Math.min(rect.x + rect.w, existing.x + existing.w) - Math.max(rect.x, existing.x));
+            score += overlap;
+        }
+    }
+    return score;
+}
+
 async function loadBarHistory(barId) {
     const tableBody = document.getElementById('bar-history-tablebody');
     if (!tableBody) return;
@@ -699,6 +845,7 @@ async function loadBarHistory(barId) {
 document.addEventListener('DOMContentLoaded', () => {
 
     console.log("DOM carregado, iniciando script de chapas.");
+    window.addEventListener('resize', redrawCanvas);
 
     // Atribuição robusta
     canvas = document.getElementById('canvas');
@@ -747,18 +894,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (canvas && ctx && currentWidthInput && currentHeightInput) {
         canvas.addEventListener('mousedown', handleMouseDown);
         canvas.addEventListener('mousemove', handleMouseMove);
+
+        // NOVO: Define o cursor padrão 'crosshair' ao entrar no canvas
+        canvas.addEventListener('mouseenter', () => {
+            if (canvas) canvas.style.cursor = 'crosshair';
+        });
+
+        // ATUALIZADO: Reseta o cursor ao sair e cancela o desenho
         canvas.addEventListener('mouseleave', () => {
-             if (isDrawing) {
-                 isDrawing = false;
-                 previewRect = null;
-                 snappedEdge = null;
-                 startPoint = null;
-                 redrawCanvas(); 
-                 if(currentWidthInput) currentWidthInput.value = '0.0';
-                 if(currentHeightInput) currentHeightInput.value = '0.0';
-                 if(setStatusMessage) setStatusMessage('Desenho cancelado (mouse fora da área).', 'orange');
+            // Reseta o cursor para o padrão do navegador
+            if (canvas) canvas.style.cursor = 'default'; 
+
+            if (isDrawing) {
+                isDrawing = false;
+                previewRect = null;
+                snappedEdge = null;
+                startPoint = null;
+                redrawCanvas(); 
+                if(currentWidthInput) currentWidthInput.value = '0.0';
+                if(currentHeightInput) currentHeightInput.value = '0.0';
+                if(setStatusMessage) setStatusMessage('Desenho cancelado (mouse fora da área).', 'orange');
             }
         });
+
         window.addEventListener('mouseup', handleMouseUp);
     } else {
         console.warn("Elementos do canvas de Chapas não encontrados. Desenho desabilitado.");
@@ -949,4 +1107,3 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log("Script de chapas inicializado com sucesso.");
 });
-

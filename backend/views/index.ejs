@@ -1,16 +1,50 @@
 <%- include('partials/header', { title: 'Ferramentas', paginaAtiva: 'ferramentas' }) %>
 
-<!-- O estilo agora vem do style.css principal -->
+<%
+    // --- Lógica EJS para ordenação e paginação ---
+    const sortInfo = typeof currentSort !== 'undefined' ? currentSort : { column: 'name', order: 'ASC' };
+    const pageInfo = typeof pagination !== 'undefined' ? pagination : { currentPage: 1, totalPages: 1, totalItems: 0 };
+    const metricInfo = typeof metrics !== 'undefined' ? metrics : { 
+        totalDisponiveis: availableTools.length || 0, 
+        totalEmUso: toolsInUse.length || 0, 
+        totalManutencao: toolsInMaintenance.length || 0,
+        totalDesativadas: deactivatedTools.length || 0
+    };
+    const filterInfo = typeof filters !== 'undefined' ? filters : {};
+
+    // Construir URL com filtros
+    const currentFilters = new URLSearchParams(filterInfo);
+    currentFilters.delete('sort');
+    currentFilters.delete('order');
+    currentFilters.delete('page');
+    const filterParams = currentFilters.toString();
+
+    const createSortUrl = (columnName) => {
+        let newOrder = 'ASC';
+        if (columnName === sortInfo.column) {
+            newOrder = (sortInfo.order === 'ASC') ? 'DESC' : 'ASC';
+        }
+        return `/ferramentas?sort=${columnName}&order=${newOrder}&${filterParams ? filterParams + '&' : ''}page=${pageInfo.currentPage}`;
+    };
+
+    const getSortIcon = (columnName) => {
+        if (columnName === sortInfo.column) {
+            return (sortInfo.order === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        }
+        return '';
+    };
+
+    const createPageUrl = (page) => {
+        return `/ferramentas?${filterParams ? filterParams + '&' : ''}sort=${sortInfo.column}&order=${sortInfo.order}&page=${page}`;
+    };
+%>
 
 <header class="header">
-    <h1 class="header-title">Controle de Ferramentas</h1>
+    <h1 class="header-title">Gestão de Ferramentas</h1>
     <div class="header-right">
-        <!-- Adicionei a classe .notification-icon se aplicável -->
-        <!-- <div class="notification-icon"> ... </div> -->
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.name %></span>
-                <!-- Adicionei a classe avatar-img -->
+                <span>Bem-vindo, <%= user.nome || user.name %></span>
                 <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
             <% } %>
         </div>
@@ -18,289 +52,581 @@
 </header>
 
 <main class="main-content">
+    
+    <!-- Dashboard de Métricas -->
+    <section class="metrics-dashboard">
+        <div class="metric-card">
+            <div class="metric-icon success">
+                <i class="bi bi-tools"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalDisponiveis %></span>
+                <span class="metric-label">Disponíveis</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon warning">
+                <i class="bi bi-person-workspace"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalEmUso %></span>
+                <span class="metric-label">Em Uso</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon danger">
+                <i class="bi bi-wrench"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalManutencao %></span>
+                <span class="metric-label">Manutenção</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon info">
+                <i class="bi bi-archive"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalDesativadas %></span>
+                <span class="metric-label">Desativadas</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cabeçalho Principal -->
     <div class="main-header">
-        <!-- Usei h2 como no style.css -->
-        <h2>Ferramentas Disponíveis</h2>
+        <div class="header-content">
+            <h2>Catálogo de Ferramentas</h2>
+            <p class="header-subtitle">Gerencie todas as ferramentas do seu inventário</p>
+        </div>
         <div class="action-buttons">
-            <!-- Usei btn-primary, mantendo a cor inline por enquanto -->
-            <button class="btn-primary" id="btn-show-add-tool-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle-fill"></i> Nova Ferramenta</button>
-            <!-- Usei btn-secondary -->
-            <a href="/tool-history" class="btn-secondary">
-                <i class="bi bi-clock-history"></i> Ver Histórico
+            <button class="btn btn-primary" id="btn-show-add-modal">
+                <i class="bi bi-plus-circle"></i> Nova Ferramenta
+            </button>
+            <a href="/tool-history" class="btn btn-secondary">
+                <i class="bi bi-clock-history"></i> Histórico
             </a>
         </div>
     </div>
 
+    <!-- Seção de Filtros -->
+    <section class="filter-section">
+        <div class="filter-header">
+            <h3><i class="bi bi-funnel"></i> Filtros</h3>
+            <button type="button" class="btn btn-link" id="btn-clear-filters">
+                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+            </button>
+        </div>
+        <form action="/ferramentas" method="GET" class="filter-form" id="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-busca" class="form-label">
+                        <i class="bi bi-search"></i> Nome da Ferramenta
+                    </label>
+                    <input type="text" id="filter-busca" name="busca" class="form-input" 
+                           placeholder="Buscar por nome..." value="<%= filterInfo.busca || '' %>">
+                </div>
+                <div class="form-group">
+                    <label for="filter-code" class="form-label">
+                        <i class="bi bi-upc-scan"></i> Código
+                    </label>
+                    <input type="text" id="filter-code" name="code" class="form-input" 
+                           placeholder="Buscar por código..." value="<%= filterInfo.code || '' %>">
+                </div>
+                <div class="form-group">
+                    <label for="filter-status" class="form-label">Status</label>
+                    <select id="filter-status" name="status" class="form-select">
+                        <option value="todos" <%= (!filterInfo.status || filterInfo.status === 'todos') ? 'selected' : '' %>>Todos os Status</option>
+                        <option value="Em Estoque" <%= (filterInfo.status === 'Em Estoque') ? 'selected' : '' %>>Disponíveis</option>
+                        <option value="Em Uso" <%= (filterInfo.status === 'Em Uso') ? 'selected' : '' %>>Em Uso</option>
+                        <option value="Em manutenção" <%= (filterInfo.status === 'Em manutenção') ? 'selected' : '' %>>Manutenção</option>
+                        <option value="Desativada" <%= (filterInfo.status === 'Desativada') ? 'selected' : '' %>>Desativadas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-filter">
+                        <i class="bi bi-search"></i> Aplicar Filtros
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <!-- Paginação Top -->
+    <% if (pageInfo.totalPages > 1) { %>
+    <div class="pagination-top">
+        <div class="pagination-info">
+            <i class="bi bi-list-check"></i>
+            Mostrando <strong><%= ((pageInfo.currentPage - 1) * 50) + 1 %> - <%= Math.min(pageInfo.currentPage * 50, pageInfo.totalItems) %></strong> 
+            de <strong><%= pageInfo.totalItems %></strong> ferramentas
+        </div>
+        <div class="pagination-controls">
+            <% if (pageInfo.hasPrev) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage - 1) %>" class="pagination-btn">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            <% } %>
+            
+            <span class="pagination-current">
+                Página <%= pageInfo.currentPage %> de <%= pageInfo.totalPages %>
+            </span>
+            
+            <% if (pageInfo.hasNext) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage + 1) %>" class="pagination-btn">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </a>
+            <% } %>
+        </div>
+    </div>
+    <% } %>
+
     <!-- Tabela de Ferramentas Disponíveis -->
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <!-- Removi o style inline, o CSS já centraliza a última coluna -->
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody id="items-table-body">
-                <% if (typeof availableTools !== 'undefined' && availableTools.length > 0) { %>
-                    <% availableTools.forEach(tool => { %>
-                        <!-- Classe stock-in já está correta -->
-                        <tr class="stock-in">
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            <!-- Removi style inline de alinhamento -->
-                            <td>
-                                <!-- Botão Retirar com classe correta -->
-                                <button class="btn-retirar" data-id="<%= tool.id %>" data-nome="<%= tool.name %>" title="Retirar">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </button>
-                                <!-- Botão Editar com classe correta -->
-                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <!-- Formulário de Desativar -->
-                                <form action="/tools/destroy/<%= tool.id %>" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja desativar esta ferramenta?');">
-                                    <!-- Botão Desativar com classes corretas -->
-                                    <button type="submit" title="Desativar" class="action-btn danger">
-                                        <i class="bi bi-trash-fill"></i>
+    <section class="table-section">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="180"><a href="<%= createSortUrl('code') %>" class="sort-link">Código<%- getSortIcon('code') %></a></th>
+                        <th><a href="<%= createSortUrl('name') %>" class="sort-link">Nome da Ferramenta<%- getSortIcon('name') %></a></th>
+                        <th width="140"><a href="<%= createSortUrl('status') %>" class="sort-link">Status<%- getSortIcon('status') %></a></th>
+                        <th width="120" class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tools-table-body">
+                    <% if (typeof availableTools !== 'undefined' && availableTools.length > 0) { %>
+                        <% availableTools.forEach(tool => { %>
+                            <tr>
+                                <td>
+                                    <div class="code-cell">
+                                        <i class="bi bi-upc-scan"></i>
+                                        <code class="item-code" title="<%= tool.code || 'Sem código' %>">
+                                            <%= tool.code || 'N/A' %>
+                                        </code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="name-cell">
+                                        <strong class="item-name"><%= tool.name %></strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-success">
+                                        <i class="bi bi-check-circle"></i>
+                                        Disponível
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button title="Retirar Ferramenta" class="btn-action btn-primary btn-retirar" 
+                                                data-id="<%= tool.id %>" data-nome="<%= tool.name %>">
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </button>
+                                        <button title="Editar Ferramenta" class="btn-action btn-edit" 
+                                                data-tool='<%- JSON.stringify(tool).replace(/'/g, "&#39;") %>'>
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form action="/tools/destroy/<%= tool.id %>" method="POST" 
+                                              onsubmit="return confirm('Tem certeza que deseja desativar esta ferramenta?');"
+                                              class="action-form">
+                                            <button type="submit" title="Desativar Ferramenta" class="btn-action btn-delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-tools"></i>
+                                    <h4>Nenhuma ferramenta disponível</h4>
+                                    <p>Tente ajustar os filtros ou adicionar novas ferramentas.</p>
+                                    <button class="btn btn-primary" id="btn-show-add-modal-empty">
+                                        <i class="bi bi-plus-circle"></i> Adicionar Primeira Ferramenta
                                     </button>
-                                </form>
+                                </div>
                             </td>
                         </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta disponível no momento.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
 
-    <!-- Tabela de Ferramentas em Uso -->
-    <div class="main-header" style="margin-top: 30px;">
-        <h2>Ferramentas em Uso (Retiradas)</h2>
+    <!-- Paginação Bottom -->
+    <% if (pageInfo.totalPages > 1) { %>
+    <div class="pagination-bottom">
+        <div class="pagination-controls">
+            <% if (pageInfo.hasPrev) { %>
+                <a href="<%= createPageUrl(1) %>" class="pagination-btn" title="Primeira página">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+                <a href="<%= createPageUrl(pageInfo.currentPage - 1) %>" class="pagination-btn">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            <% } %>
+            
+            <div class="pagination-numbers">
+                <% 
+                let startPage = Math.max(1, pageInfo.currentPage - 2);
+                let endPage = Math.min(pageInfo.totalPages, startPage + 4);
+                startPage = Math.max(1, endPage - 4);
+                
+                for (let i = startPage; i <= endPage; i++) { 
+                %>
+                    <a href="<%= createPageUrl(i) %>" 
+                       class="pagination-number <%= i === pageInfo.currentPage ? 'active' : '' %>">
+                        <%= i %>
+                    </a>
+                <% } %>
+            </div>
+            
+            <% if (pageInfo.hasNext) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage + 1) %>" class="pagination-btn">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="<%= createPageUrl(pageInfo.totalPages) %>" class="pagination-btn" title="Última página">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            <% } %>
+        </div>
     </div>
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Ferramenta</th>
-                    <th>Retirado por</th>
-                    <th>Data e Hora da Retirada</th>
-                    <!-- Removi style inline de alinhamento -->
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
-                    <% toolsInUse.forEach(tool => { %>
-                        <!-- Classe stock-out já está correta -->
-                        <tr class="stock-out">
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            <td><%= tool.movements[0].employee.name %></td>
-                            <td><%= new Date(tool.movements[0].movementDate).toLocaleString('pt-BR') %></td>
-                            <!-- Removi style inline de alinhamento -->
-                            <td>
-                                <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" style="margin:0;">
-                                    <!-- Botão Devolver com classe correta -->
-                                    <button type="submit" class="close-button" title="Devolver">
-                                        <i class="bi bi-box-arrow-in-down-left"></i> 
-                                    </button>
-                                </form>
+    <% } %>
+
+    <!-- Ferramentas em Uso -->
+    <div class="section-header">
+        <div class="header-content">
+            <h2><i class="bi bi-person-workspace"></i> Ferramentas em Uso</h2>
+            <p class="header-subtitle">Ferramentas atualmente em uso pelos colaboradores</p>
+        </div>
+    </div>
+
+    <section class="table-section">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="180">Código</th>
+                        <th>Ferramenta</th>
+                        <th>Retirado por</th>
+                        <th>Data e Hora da Retirada</th>
+                        <th width="140" class="text-center">Status</th>
+                        <th width="120" class="text-center">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof toolsInUse !== 'undefined' && toolsInUse.length > 0) { %>
+                        <% toolsInUse.forEach(tool => { %>
+                            <tr class="table-row-warning">
+                                <td>
+                                    <div class="code-cell">
+                                        <i class="bi bi-upc-scan"></i>
+                                        <code class="item-code"><%= tool.code || 'N/A' %></code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong class="item-name"><%= tool.name %></strong>
+                                </td>
+                                <td>
+                                    <div class="employee-info">
+                                        <i class="bi bi-person"></i>
+                                        <%= tool.movements[0].employee.name %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="datetime-info">
+                                        <i class="bi bi-calendar"></i>
+                                        <%= new Date(tool.movements[0].movementDate).toLocaleDateString('pt-BR') %>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock"></i>
+                                            <%= new Date(tool.movements[0].movementDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) %>
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-center">
+                                        <span class="status-badge status-warning">
+                                            <i class="bi bi-person-check"></i> Em Uso
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <form action="/tools/return/<%= tool.movements[0].id %>" method="POST" class="action-form">
+                                            <button type="submit" class="btn-action btn-success" title="Devolver Ferramenta">
+                                                <i class="bi bi-box-arrow-in-down-left"></i> 
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="empty-state-sm">
+                                    <i class="bi bi-check-circle"></i>
+                                    <p>Todas as ferramentas estão disponíveis</p>
+                                </div>
                             </td>
                         </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhuma ferramenta em uso no momento.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
 
-    <!-- Tabela de Ferramentas em Manutenção -->
-     <div class="main-header" style="margin-top: 30px;">
-        <h2>Ferramentas em Manutenção</h2>
+    <!-- Ferramentas em Manutenção -->
+    <div class="section-header">
+        <div class="header-content">
+            <h2><i class="bi bi-wrench"></i> Ferramentas em Manutenção</h2>
+            <p class="header-subtitle">Ferramentas em processo de manutenção ou reparo</p>
+        </div>
     </div>
-    <section class="inventory-table tools-maintenance">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <!-- Removi style inline de alinhamento/largura -->
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof toolsInMaintenance !== 'undefined' && toolsInMaintenance.length > 0) { %>
-                    <% toolsInMaintenance.forEach(tool => { %>
-                        <!-- Classe stock-planned já está correta -->
-                        <tr class="stock-planned">
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                            <!-- Removi style inline de alinhamento -->
-                            <td>
-                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <!-- Adicionado botão para reativar (opcional) -->
-                                <!--
-                                <form action="/tools/reactivate/<%= tool.id %>?status=Em Estoque" method="POST" style="display: inline;">
-                                     <button type="submit" title="Marcar como Disponível" class="action-btn" style="color: var(--success);"><i class="bi bi-check-circle-fill"></i></button>
-                                </form>
-                                -->
+
+    <section class="table-section">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="180">Código</th>
+                        <th>Nome da Ferramenta</th>
+                        <th width="140" class="text-center">Status</th>
+                        <th width="120" class="text-center">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof toolsInMaintenance !== 'undefined' && toolsInMaintenance.length > 0) { %>
+                        <% toolsInMaintenance.forEach(tool => { %>
+                            <tr class="table-row-inactive">
+                                <td>
+                                    <div class="code-cell">
+                                        <i class="bi bi-upc-scan"></i>
+                                        <code class="item-code"><%= tool.code || 'N/A' %></code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong><%= tool.name %></strong>
+                                </td>
+                                <td>
+                                    <div class="text-center">
+                                        <span class="status-badge status-danger">
+                                            <i class="bi bi-wrench"></i> Manutenção
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button title="Editar Ferramenta" class="btn-action btn-edit" 
+                                                data-tool='<%- JSON.stringify(tool).replace(/'/g, "&#39;") %>'>
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <div class="empty-state-sm">
+                                    <i class="bi bi-wrench"></i>
+                                    <p>Nenhuma ferramenta em manutenção</p>
+                                </div>
                             </td>
                         </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta em manutenção.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
 
-    <!-- Tabela de Ferramentas Desativadas -->
-    <div class="main-header" style="margin-top: 30px;">
-        <h2>Ferramentas Desativadas</h2>
+    <!-- Ferramentas Desativadas -->
+    <div class="section-header">
+        <div class="header-content">
+            <h2><i class="bi bi-archive"></i> Ferramentas Desativadas</h2>
+            <p class="header-subtitle">Ferramentas que não estão mais em uso</p>
+        </div>
     </div>
-    <section class="inventory-table tools-deactivated">
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome da Ferramenta</th>
-                    <!-- Removi style inline de alinhamento/largura -->
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (typeof deactivatedTools !== 'undefined' && deactivatedTools.length > 0) { %>
-                    <% deactivatedTools.forEach(tool => { %>
-                        <!-- Estilo para linha desativada -->
-                        <tr style="opacity: 0.6; background-color: #f8f9fa;">
-                            <td><code><%= tool.code %></code></td>
-                            <td><strong><%= tool.name %></strong></td>
-                             <!-- Removi style inline de alinhamento -->
-                            <td>
-                                <button title="Editar" class="action-btn btn-edit" data-tool='<%- JSON.stringify(tool) %>'>
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <!-- Adicionado botão para reativar (opcional) -->
-                                <!--
-                                <form action="/tools/reactivate/<%= tool.id %>?status=Em Estoque" method="POST" style="display: inline;">
-                                     <button type="submit" title="Reativar" class="action-btn" style="color: var(--success);"><i class="bi bi-arrow-counterclockwise"></i></button>
-                                </form>
-                                -->
+
+    <section class="table-section">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="180">Código</th>
+                        <th>Nome da Ferramenta</th>
+                        <th width="140" class="text-center">Status</th>
+                        <th width="120" class="text-center">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof deactivatedTools !== 'undefined' && deactivatedTools.length > 0) { %>
+                        <% deactivatedTools.forEach(tool => { %>
+                            <tr class="table-row-inactive">
+                                <td>
+                                    <div class="code-cell">
+                                        <i class="bi bi-upc-scan"></i>
+                                        <code class="item-code"><%= tool.code || 'N/A' %></code>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong><%= tool.name %></strong>
+                                </td>
+                                <td>
+                                    <div class="text-center">
+                                        <span class="status-badge status-inactive">
+                                            <i class="bi bi-archive"></i> Desativada
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button title="Editar Ferramenta" class="btn-action btn-edit" 
+                                                data-tool='<%- JSON.stringify(tool).replace(/'/g, "&#39;") %>'>
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <div class="empty-state-sm">
+                                    <i class="bi bi-archive"></i>
+                                    <p>Nenhuma ferramenta desativada</p>
+                                </div>
                             </td>
                         </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="3" style="text-align: center;">Nenhuma ferramenta desativada.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
+
 </main>
 
-<!-- MODAL DE EDIÇÃO - Estrutura atualizada -->
-<div class="modal-overlay" id="edit-tool-modal">
-    <div class="modal" style="max-width: 500px;">
+<!-- Modal Nova Ferramenta -->
+<div class="modal-overlay" id="add-tool-modal">
+    <div class="modal">
         <div class="modal-header">
-            <h3>Editar Ferramenta</h3>
-            <button class="close-button" id="btn-close-edit-tool-modal">&times;</button>
+            <h3><i class="bi bi-plus-circle"></i> Cadastrar Nova Ferramenta</h3>
+            <button class="close-button" id="btn-close-add-modal">&times;</button>
         </div>
-        <form id="edit-form" method="POST"> <!-- Action será definida via JS -->
+        <form action="/tools" method="POST" class="modal-form">
             <div class="modal-body">
-                <!-- Usando form-group -->
-                <div class="form-group">
-                    <label for="edit-tool-code">Código da Ferramenta</label>
-                    <input type="text" id="edit-tool-code" name="code" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-tool-name">Nome da Ferramenta</label>
-                    <input type="text" id="edit-tool-name" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-tool-status">Status</label>
-                    <select id="edit-tool-status" name="status" required>
-                        <option value="Em Estoque">Em Estoque</option>
-                        <option value="Em manutenção">Em manutenção</option>
-                        <option value="Desativada">Desativado</option>
-                    </select>
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Informações da Ferramenta
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tool-code" class="form-label required">Código da Ferramenta</label>
+                            <input type="text" id="tool-code" name="code" class="form-input" required 
+                                   placeholder="Ex: FUR-BOS-01">
+                            <div class="form-hint">Código único para identificação</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="tool-name" class="form-label required">Nome da Ferramenta</label>
+                            <input type="text" id="tool-name" name="name" class="form-input" required 
+                                   placeholder="Ex: Furadeira de Impacto Bosch">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <!-- Usando btn-primary -->
-                <button type="submit" class="btn-primary">Salvar Alterações</button>
+                <button type="button" class="btn btn-secondary" id="btn-cancel-add">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Salvar Ferramenta
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- MODAL DE RETIRADA - Estrutura atualizada -->
-<div class="modal-overlay" id="withdraw-modal">
-    <div class="modal" style="max-width: 500px;">
+<!-- Modal Editar Ferramenta -->
+<div class="modal-overlay" id="edit-tool-modal">
+    <div class="modal">
         <div class="modal-header">
-            <h3 id="withdraw-modal-title">Retirar Ferramenta</h3>
+            <h3><i class="bi bi-pencil-square"></i> Editar Ferramenta</h3>
+            <button class="close-button" id="btn-close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-form" method="POST" class="modal-form">
+            <div class="modal-body">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Informações Básicas
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="edit-tool-code" class="form-label required">Código da Ferramenta</label>
+                            <input type="text" id="edit-tool-code" name="code" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-tool-name" class="form-label required">Nome da Ferramenta</label>
+                            <input type="text" id="edit-tool-name" name="name" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-tool-status" class="form-label required">Status</label>
+                            <select id="edit-tool-status" name="status" class="form-select" required>
+                                <option value="Em Estoque">Em Estoque</option>
+                                <option value="Em manutenção">Em manutenção</option>
+                                <option value="Desativada">Desativada</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-edit">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Retirar Ferramenta -->
+<div class="modal-overlay" id="withdraw-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="withdraw-modal-title"><i class="bi bi-box-arrow-up-right"></i> Retirar Ferramenta</h3>
             <button class="close-button" id="btn-close-withdraw-modal">&times;</button>
         </div>
-        <form id="withdraw-form" method="POST"> <!-- Action será definida via JS -->
+        <form id="withdraw-form" method="POST" class="modal-form">
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="withdraw-employee">Responsável pela Retirada</label>
-                    <select id="withdraw-employee" name="employeeId" required>
-                        <option value="" disabled selected>Selecione um funcionário...</option>
-                        <% if (typeof employees !== 'undefined' && employees.length > 0) { %>
-                            <% employees.forEach(employee => { %>
-                                <option value="<%= employee.id %>"><%= employee.name %></option>
-                            <% }); %>
-                        <% } %>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="withdraw-notes">Observações (Projeto, OS, etc.)</label>
-                    <input type="text" id="withdraw-notes" name="notes">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-person-check"></i> Informações da Retirada
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="withdraw-employee" class="form-label required">Responsável pela Retirada</label>
+                            <select id="withdraw-employee" name="employeeId" class="form-select" required>
+                                <option value="" disabled selected>Selecione um funcionário...</option>
+                                <% if (typeof employees !== 'undefined' && employees.length > 0) { %>
+                                    <% employees.forEach(employee => { %>
+                                        <option value="<%= employee.id %>"><%= employee.name %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="withdraw-notes" class="form-label">Observações</label>
+                            <textarea id="withdraw-notes" name="notes" class="form-textarea" rows="3" 
+                                      placeholder="Projeto, OS, local de uso..."></textarea>
+                            <div class="form-hint">Opcional: Informe o motivo da retirada</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn-primary">Confirmar Retirada</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- MODAL DE ADIÇÃO - Estrutura atualizada -->
-<div class="modal-overlay" id="add-tool-modal">
-    <div class="modal" style="max-width: 500px;">
-        <div class="modal-header">
-            <h3>Cadastrar Nova Ferramenta</h3>
-            <button class="close-button" id="btn-close-add-tool-modal">&times;</button>
-        </div>
-        <form action="/tools" method="POST"> <!-- Action definida diretamente -->
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="tool-code">Código da Ferramenta</label>
-                    <input type="text" id="tool-code" name="code" required placeholder="Ex: FUR-BOS-01">
-                </div>
-                <div class="form-group">
-                    <label for="tool-name">Nome da Ferramenta</label>
-                    <input type="text" id="tool-name" name="name" required placeholder="Ex: Furadeira de Impacto Bosch">
-                </div>
-                 <!-- Campo de Status inicial (opcional, pode ser definido no backend) -->
-                 <!--
-                 <div class="form-group">
-                    <label for="add-tool-status">Status Inicial</label>
-                    <select id="add-tool-status" name="status">
-                        <option value="Em Estoque" selected>Em Estoque</option>
-                        <option value="Em manutenção">Em manutenção</option>
-                    </select>
-                 </div>
-                 -->
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn-primary">Salvar Ferramenta</button>
+                <button type="button" class="btn btn-secondary" id="btn-cancel-withdraw">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Confirmar Retirada</button>
             </div>
         </form>
     </div>
@@ -308,65 +634,1507 @@
 
 <%- include('partials/footer') %>
 
-<!-- Script JS existente (não precisa de alteração) -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Lógica do modal de RETIRADA
-    const withdrawModal = document.getElementById('withdraw-modal');
-    const modalTitle = document.getElementById('withdraw-modal-title');
-    const withdrawForm = document.getElementById('withdraw-form');
-    const btnCloseModal = document.getElementById('btn-close-withdraw-modal');
-    const btnsRetirar = document.querySelectorAll('.btn-retirar');
-
-    if (withdrawModal && modalTitle && withdrawForm && btnCloseModal && btnsRetirar.length > 0) {
-        btnsRetirar.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const toolId = btn.dataset.id;
-                const toolName = btn.dataset.nome;
-                modalTitle.innerText = `Retirar: ${toolName}`;
-                withdrawForm.action = `/tools/withdraw/${toolId}`;
-                withdrawModal.style.display = 'flex';
-            });
-        });
-        btnCloseModal.addEventListener('click', () => withdrawModal.style.display = 'none');
-        window.addEventListener('click', (event) => { if (event.target === withdrawModal) withdrawModal.style.display = 'none'; });
-    }
-
-    // Lógica do modal de CADASTRO
-    const addToolModal = document.getElementById('add-tool-modal');
-    const btnShowAddToolModal = document.getElementById('btn-show-add-tool-modal');
-    const btnCloseAddToolModal = document.getElementById('btn-close-add-tool-modal');
-
-    if(addToolModal && btnShowAddToolModal && btnCloseAddToolModal){
-        btnShowAddToolModal.addEventListener('click', () => addToolModal.style.display = 'flex');
-        btnCloseAddToolModal.addEventListener('click', () => addToolModal.style.display = 'none');
-        window.addEventListener('click', (event) => { if (event.target === addToolModal) addToolModal.style.display = 'none'; });
-    }
-
-    // Lógica do modal de EDIÇÃO
-    const editToolModal = document.getElementById('edit-tool-modal');
-    const editForm = document.getElementById('edit-form');
-    const btnCloseEditModal = document.getElementById('btn-close-edit-tool-modal');
-    const btnsEdit = document.querySelectorAll('.btn-edit');
-
-    if (editToolModal && editForm && btnCloseEditModal && btnsEdit.length > 0) {
-        btnsEdit.forEach(btn => {
-            btn.addEventListener('click', () => {
-                try {
-                    const tool = JSON.parse(btn.dataset.tool);
-                    editForm.action = `/tools/update/${tool.id}`;
-                    document.getElementById('edit-tool-name').value = tool.name;
-                    document.getElementById('edit-tool-code').value = tool.code;
-                    document.getElementById('edit-tool-status').value = tool.status;
-                    editToolModal.style.display = 'flex';
-                } catch (e) {
-                    console.error("Erro ao processar dados da ferramenta para edição:", e);
-                    alert("Erro ao carregar dados da ferramenta para edição.");
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ===== CONTROLE DO ESPAÇO EM BRANCO =====
+    function fixWhiteSpace() {
+        const mainContent = document.querySelector('.main-content');
+        const body = document.body;
+        const html = document.documentElement;
+        
+        if (!mainContent) return;
+        
+        // Correções imediatas
+        body.style.overflowX = 'hidden';
+        html.style.overflowX = 'hidden';
+        mainContent.style.overflowX = 'hidden';
+        
+        // Aplicar largura total a elementos críticos
+        const criticalSelectors = [
+            '.main-content',
+            '.metrics-dashboard',
+            '.main-header',
+            '.filter-section',
+            '.table-section',
+            '.pagination-top',
+            '.pagination-bottom',
+            '.section-header'
+        ];
+        
+        criticalSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                if (el) {
+                    el.style.width = '100%';
+                    el.style.maxWidth = '100%';
+                    el.style.boxSizing = 'border-box';
                 }
             });
         });
-        btnCloseEditModal.addEventListener('click', () => editToolModal.style.display = 'none');
-        window.addEventListener('click', (event) => { if (event.target === editToolModal) editToolModal.style.display = 'none'; });
+        
+        // Correção específica para tabelas
+        const tables = document.querySelectorAll('.table-responsive');
+        tables.forEach(table => {
+            table.style.width = '100%';
+            table.style.overflowX = 'auto';
+        });
     }
+    
+    // ===== SISTEMA DE MODAIS =====
+    function setupModals() {
+        const addModal = document.getElementById('add-tool-modal');
+        const editModal = document.getElementById('edit-tool-modal');
+        const withdrawModal = document.getElementById('withdraw-modal');
+        
+        function openModal(modal) {
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                const firstInput = modal.querySelector('input, select, textarea');
+                if (firstInput) setTimeout(() => firstInput.focus(), 100);
+            }
+        }
+        
+        function closeModal(modal) {
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function closeAllModals() {
+            [addModal, editModal, withdrawModal].forEach(modal => closeModal(modal));
+        }
+        
+        // Modal de Adicionar
+        const btnShowAdd = document.getElementById('btn-show-add-modal');
+        const btnShowAddEmpty = document.getElementById('btn-show-add-modal-empty');
+        const btnCloseAdd = document.getElementById('btn-close-add-modal');
+        const btnCancelAdd = document.getElementById('btn-cancel-add');
+        
+        if (btnShowAdd) btnShowAdd.addEventListener('click', () => openModal(addModal));
+        if (btnShowAddEmpty) btnShowAddEmpty.addEventListener('click', () => openModal(addModal));
+        if (btnCloseAdd) btnCloseAdd.addEventListener('click', () => closeModal(addModal));
+        if (btnCancelAdd) btnCancelAdd.addEventListener('click', () => closeModal(addModal));
+        
+        // Modal de Editar
+        const btnCloseEdit = document.getElementById('btn-close-edit-modal');
+        const btnCancelEdit = document.getElementById('btn-cancel-edit');
+        const editForm = document.getElementById('edit-form');
+        
+        if (btnCloseEdit) btnCloseEdit.addEventListener('click', () => closeModal(editModal));
+        if (btnCancelEdit) btnCancelEdit.addEventListener('click', () => closeModal(editModal));
+        
+        // Botões de edição na tabela
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                try {
+                    const tool = JSON.parse(this.dataset.tool);
+                    if (editForm) {
+                        editForm.action = `/tools/update/${tool.id}`;
+                        
+                        // Preencher campos do formulário
+                        document.getElementById('edit-tool-name').value = tool.name || '';
+                        document.getElementById('edit-tool-code').value = tool.code || '';
+                        document.getElementById('edit-tool-status').value = tool.status || 'Em Estoque';
+                        
+                        openModal(editModal);
+                    }
+                } catch (e) {
+                    console.error("Erro ao carregar dados:", e);
+                    showNotification("Erro ao carregar dados da ferramenta para edição.", 'error');
+                }
+            });
+        });
+        
+        // Modal de Retirada
+        const modalTitle = document.getElementById('withdraw-modal-title');
+        const withdrawForm = document.getElementById('withdraw-form');
+        const btnCloseWithdraw = document.getElementById('btn-close-withdraw-modal');
+        const btnCancelWithdraw = document.getElementById('btn-cancel-withdraw');
+        
+        document.querySelectorAll('.btn-retirar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const toolId = this.dataset.id;
+                const toolName = this.dataset.nome;
+                modalTitle.innerHTML = `<i class="bi bi-box-arrow-up-right"></i> Retirar: ${toolName}`;
+                withdrawForm.action = `/tools/withdraw/${toolId}`;
+                openModal(withdrawModal);
+            });
+        });
+        
+        if (btnCloseWithdraw) btnCloseWithdraw.addEventListener('click', () => closeModal(withdrawModal));
+        if (btnCancelWithdraw) btnCancelWithdraw.addEventListener('click', () => closeModal(withdrawModal));
+        
+        // Fechar modais clicando fora ou com ESC
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeAllModals();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeAllModals();
+        });
+    }
+    
+    // ===== SISTEMA DE NOTIFICAÇÕES =====
+    function setupNotifications() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const error = urlParams.get('error');
+        
+        if (success) {
+            showNotification(getSuccessMessage(success), 'success');
+            cleanUrlParams(['success', 'error']);
+        }
+        
+        if (error) {
+            showNotification(getErrorMessage(error), 'error');
+            cleanUrlParams(['success', 'error']);
+        }
+    }
+    
+    function getSuccessMessage(type) {
+        const messages = {
+            'tool_created': 'Ferramenta criada com sucesso!',
+            'tool_updated': 'Ferramenta atualizada com sucesso!',
+            'tool_withdrawn': 'Ferramenta retirada com sucesso!',
+            'tool_returned': 'Ferramenta devolvida com sucesso!',
+            'tool_deactivated': 'Ferramenta desativada com sucesso!'
+        };
+        return messages[type] || 'Ação realizada com sucesso!';
+    }
+    
+    function getErrorMessage(type) {
+        const messages = {
+            'tool_not_found': 'Ferramenta não encontrada!',
+            'withdraw_failed': 'Erro ao retirar ferramenta!',
+            'return_failed': 'Erro ao devolver ferramenta!',
+            'validation_error': 'Erro de validação. Verifique os dados.',
+            'server_error': 'Erro no servidor. Tente novamente.'
+        };
+        return messages[type] || 'Ocorreu um erro!';
+    }
+    
+    function showNotification(message, type) {
+        // Remover notificações existentes
+        document.querySelectorAll('.notification').forEach(notification => {
+            notification.remove();
+        });
+        
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+            <button class="notification-close">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Adicionar evento para fechar
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', function() {
+            notification.remove();
+        });
+        
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    function cleanUrlParams(paramsToRemove) {
+        const url = new URL(window.location.href);
+        paramsToRemove.forEach(param => url.searchParams.delete(param));
+        window.history.replaceState({}, '', url);
+    }
+    
+    // ===== FUNCIONALIDADES EXTRAS =====
+    function setupAdditionalFeatures() {
+        // Limpar Filtros
+        const btnClearFilters = document.getElementById('btn-clear-filters');
+        if (btnClearFilters) {
+            btnClearFilters.addEventListener('click', function() {
+                window.location.href = '/ferramentas';
+            });
+        }
+        
+        // Exportar Ferramentas
+        const btnExport = document.getElementById('btn-export-tools');
+        if (btnExport) {
+            btnExport.addEventListener('click', function() {
+                if (confirm('Exportar lista de ferramentas para CSV?')) {
+                    const currentUrl = new URL(window.location.href);
+                    const searchParams = new URLSearchParams(currentUrl.search);
+                    searchParams.delete('page');
+                    const exportUrl = `/tools/export?format=csv&${searchParams.toString()}`;
+                    window.open(exportUrl, '_blank');
+                }
+            });
+        }
+        
+        // Auto-foco no campo de busca
+        const filterBusca = document.getElementById('filter-busca');
+        if (filterBusca && !filterBusca.value) {
+            setTimeout(() => filterBusca.focus(), 100);
+        }
+        
+        // Submit do formulário de filtro com Enter
+        const filterForm = document.getElementById('filter-form');
+        if (filterForm) {
+            filterForm.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.submit();
+                }
+            });
+        }
+        
+        // Confirmações para exclusões
+        document.querySelectorAll('form[action*="destroy"]').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!confirm('Tem certeza que deseja desativar esta ferramenta?')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+    
+    // ===== INICIALIZAÇÃO COMPLETA =====
+    function init() {
+        console.log('🚀 Inicializando sistema de gestão de ferramentas...');
+        
+        // 1. Correções de layout imediatas
+        fixWhiteSpace();
+        
+        // 2. Configurar modais
+        setupModals();
+        
+        // 3. Configurar notificações
+        setupNotifications();
+        
+        // 4. Configurar funcionalidades extras
+        setupAdditionalFeatures();
+        
+        // 5. Aplicar correções finais após carregamento completo
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                fixWhiteSpace();
+                console.log('✅ Sistema completamente carregado e otimizado');
+            }, 500);
+        });
+    }
+    
+    // Inicializar o sistema
+    init();
 });
 </script>
+
+<style>
+/* ===== VARIÁVEIS E RESET ===== */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --primary-light: #eef2ff;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
+    --dark: #343a40;
+    --light: #f8f9fa;
+    --white: #ffffff;
+    --border: #e9ecef;
+    --text-dark: #2d3748;
+    --text-light: #718096;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+    --radius: 8px;
+    --radius-lg: 12px;
+}
+
+/* ===== RESET COMPLETO ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100%;
+    overflow-x: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* ===== LAYOUT PRINCIPAL CORRIGIDO ===== */
+.main-container {
+    width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+
+/* Quando sidebar está expandido */
+body.sidebar-expanded .main-content {
+    width: calc(100vw - 250px);
+    margin-left: 250px;
+}
+
+/* Quando sidebar está minimizado */
+body:not(.sidebar-expanded) .main-content {
+    width: 100vw;
+    margin-left: 0;
+}
+
+/* ===== HEADER ===== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    background: var(--light);
+}
+
+.avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* ===== DASHBOARD DE MÉTRICAS ===== */
+.metrics-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 100%;
+}
+
+.metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: inherit;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.metric-icon.success { background: linear-gradient(135deg, var(--success), #20c997); }
+.metric-icon.warning { background: linear-gradient(135deg, var(--warning), #fd7e14); }
+.metric-icon.danger { background: linear-gradient(135deg, var(--danger), #e83e8c); }
+.metric-icon.info { background: linear-gradient(135deg, var(--info), #6f42c1); }
+
+.metric-info {
+    flex: 1;
+}
+
+.metric-value {
+    display: block;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== CABEÇALHO PRINCIPAL ===== */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.header-content h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ===== BOTÕES ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    border: 1px solid;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    background: none;
+    font-family: inherit;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    color: var(--white);
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+.btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dark);
+}
+
+.btn-outline:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    text-decoration: underline;
+    padding: 0.5rem;
+    height: auto;
+}
+
+.btn-link:hover {
+    color: var(--primary-dark);
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ===== SEÇÃO DE FILTROS CORRIGIDA - ALINHAMENTO PERFEITO ===== */
+/* .filter-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+} */
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.filter-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.filter-form {
+    padding: 2rem;
+    width: 100%;
+}
+
+/* CORREÇÃO CRÍTICA - ALINHAMENTO HORIZONTAL DOS FILTROS */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: end;
+    width: 100%;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    min-height: 20px;
+    height: 20px;
+}
+
+.form-label.required::after {
+    content: "*";
+    color: var(--danger);
+    margin-left: 0.25rem;
+}
+
+.form-input, .form-select, .form-textarea {
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: var(--white);
+    font-family: inherit;
+    width: 100%;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-textarea {
+    height: auto;
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Estilo consistente para selects */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Botão de filtro perfeitamente alinhado */
+.btn-filter {
+    align-self: end;
+    height: 48px;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== PAGINAÇÃO ===== */
+.pagination-top, .pagination-bottom {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.pagination-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-bottom {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination-info {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.pagination-btn:hover {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.pagination-current {
+    padding: 0 1rem;
+    color: var(--text-light);
+    font-size: 0.875rem;
+}
+
+.pagination-numbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.pagination-number {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    min-width: 44px;
+    text-align: center;
+    transition: all 0.2s ease;
+    height: auto;
+}
+
+.pagination-number:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+}
+
+.pagination-number.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+/* ===== TABELAS ===== */
+.table-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.data-table th {
+    background: var(--light);
+    padding: 1.25rem 1rem;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.data-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.data-table tr {
+    transition: all 0.2s ease;
+}
+
+.data-table tr:hover {
+    background: var(--primary-light);
+}
+
+/* Estados das linhas */
+.table-row-danger {
+    background: #fff5f5 !important;
+    border-left: 4px solid var(--danger);
+}
+
+.table-row-warning {
+    background: #fffbf0 !important;
+    border-left: 4px solid var(--warning);
+}
+
+.table-row-inactive {
+    background: var(--light) !important;
+    border-left: 4px solid var(--secondary);
+}
+
+.data-table tr.table-row-danger:hover,
+.data-table tr.table-row-warning:hover,
+.data-table tr.table-row-inactive:hover {
+    background: var(--light) !important;
+}
+
+/* Células especiais */
+.sort-link {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.sort-link:hover {
+    color: var(--primary);
+}
+
+.code-cell, .name-cell, .location-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.unit-badge {
+    background: var(--light);
+    color: var(--secondary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.quantity-badge {
+    padding: 0.5rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.badge-success { background: #d4edda; color: #155724; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+
+.value-total {
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    display: inline-block;
+    border: 1px solid #c8e6c9;
+    min-width: 100px;
+}
+
+.department-tag {
+    background: #e7f1ff;
+    color: #004085;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.625rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.status-success { background: #d4edda; color: #155724; }
+.status-warning { background: #fff3cd; color: #856404; }
+.status-danger { background: #f8d7da; color: #721c24; }
+.status-inactive { background: #e9ecef; color: #6c757d; }
+
+/* Ações */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-action {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    background: none;
+}
+
+.btn-edit {
+    background: #e7f1ff;
+    color: var(--primary);
+}
+
+.btn-edit:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+}
+
+.btn-delete {
+    background: #f8d7da;
+    color: var(--danger);
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-restore {
+    background: #d4edda;
+    color: var(--success);
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.btn-restore:hover {
+    background: var(--success);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.action-form {
+    margin: 0;
+    display: inline;
+}
+
+/* ===== ESTADO VAZIO ===== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-light);
+    width: 100%;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.3;
+}
+
+.empty-state h4 {
+    margin: 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-state.small {
+    padding: 2rem;
+}
+
+.empty-state.small i {
+    font-size: 2.5rem;
+}
+
+/* ===== MODAIS ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: auto;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-lg {
+    width: 800px;
+    max-width: 90%;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+.modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+    width: 100%;
+}
+
+.modal-footer {
+    padding: 1.75rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: var(--light);
+    width: 100%;
+}
+
+/* Formulários nos modais */
+.modal-form {
+    overflow-y:auto ;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-section {
+    margin-bottom: 2.5rem;
+    width: 100%;
+}
+
+.form-section-title {
+    font-size: 1.25rem;
+    margin: 0 0 1.5rem 0;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    width: 100%;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ===== NOTIFICAÇÕES ===== */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 1100;
+    animation: notificationSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 300px;
+    border-left: 4px solid;
+    max-width: 90vw;
+}
+
+.notification-success {
+    border-left-color: var(--success);
+}
+
+.notification-error {
+    border-left-color: var(--danger);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.25rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+@keyframes notificationSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== CORREÇÕES ESPECÍFICAS PARA ESPAÇO EM BRANCO ===== */
+
+/* Garantir que todos os elementos section ocupem 100% */
+section, div[class*="section"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Prevenir qualquer overflow horizontal */
+body, html {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Container principal com controle rigoroso */
+.main-content > * {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Correção para quando sidebar está expandido */
+@media (min-width: 1201px) {
+    body.sidebar-expanded .main-content {
+        width: calc(100vw - 250px) !important;
+        margin-left: 250px !important;
+    }
+    
+    body.sidebar-expanded .metrics-dashboard,
+    body.sidebar-expanded .filter-section,
+    body.sidebar-expanded .table-section,
+    body.sidebar-expanded .main-header {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Forçar correção em casos extremos */
+.force-full-width {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.no-scroll-x {
+    overflow-x: hidden !important;
+}
+
+/* ===== RESPONSIVIDADE CORRIGIDA ===== */
+@media (max-width: 1200px) {
+    .main-content {
+        padding: 1.5rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    body.sidebar-expanded .main-content {
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .metrics-dashboard {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .main-header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+        padding: 1.5rem;
+    }
+    
+    .header-content {
+        text-align: center;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 140px;
+    }
+    
+    .filter-form {
+        padding: 1.5rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .btn-filter {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .metrics-dashboard {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .metric-card {
+        padding: 1.5rem;
+    }
+    
+    .pagination-top {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pagination-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .modal {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 0.75rem;
+    }
+    
+    .metric-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.25rem;
+    }
+    
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .pagination-numbers {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .data-table {
+        font-size: 0.8rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.875rem 0.5rem;
+    }
+    
+    .status-badge,
+    .value-total,
+    .department-tag {
+        min-width: auto;
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>

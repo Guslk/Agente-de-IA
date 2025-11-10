@@ -1209,14 +1209,13 @@ body.auth-page {
     box-shadow: 0 4px 15px var(--shadow-color);
     margin-bottom: 20px;
 }
-.filter-form {
+/* .filter-form {
     display: flex;
     align-items: flex-end;
-    gap: 15px;
 }
 .filter-form .form-group {
     flex-grow: 1;
-}
+} */
 /* Estilos para a parte direita do header e notificações */
 .header {
     /* Garante que o justify-content funcione */

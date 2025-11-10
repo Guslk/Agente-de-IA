@@ -17,7 +17,7 @@ module.exports = (sequelize) => {
             type: DataTypes.DECIMAL(10, 2),
             allowNull: false,
             defaultValue: 0.00,
-            field: 'unit_price'
+            field: 'unit_price' // Mapeia 'unitPrice' (JS) para 'unit_price' (SQL)
         },
         supplierId: { type: DataTypes.INTEGER, allowNull: false, field: 'id_supplier' },
         itemId: { type: DataTypes.INTEGER, allowNull: false, field: 'id_item' }

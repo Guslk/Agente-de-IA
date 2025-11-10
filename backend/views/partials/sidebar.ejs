@@ -1,4 +1,4 @@
-<aside class="sidebar">
+<!-- <aside class="sidebar">
     <div class="logo"><i class="bi bi-archive-fill"></i> StockEx</div>
     <nav class="nav-menu">
         <ul>
@@ -52,4 +52,804 @@
             </li>
         </ul>
     </nav>
+</aside> -->
+
+<aside class="sidebar">
+    <!-- Header da Sidebar -->
+    <div class="sidebar-header">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="bi bi-archive-fill"></i>
+            </div>
+            <div class="logo-content">
+                <span class="logo-text">StockEx</span>
+                <span class="logo-subtitle">Inventory System</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu de Navegação -->
+    <nav class="nav-menu">
+        <div class="menu-section">
+            <h3 class="section-title">Principal</h3>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="/" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'ferramentas') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-tools"></i>
+                        </div>
+                        <span class="menu-text">Ferramentas</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/movimentacoes" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'movimentacoes') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-arrow-down-up"></i>
+                        </div>
+                        <span class="menu-text">Movimentações</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Estoque</h3>
+            <ul class="menu-list">
+
+                <li class="menu-item">
+                    <a href="/requisicoes" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'requisicoes') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <span class="menu-text">Reservados</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Cadastros</h3>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="/itens" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'itens') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <span class="menu-text">Itens</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/chapas" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'chapas') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-stack"></i>
+                        </div>
+                        <span class="menu-text">Barras e Chapas</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/fornecedores" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'fornecedores') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <span class="menu-text">Fornecedores</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/funcionarios" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'funcionarios') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <span class="menu-text">Funcionários</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Relatórios</h3>
+            <ul class="menu-list">
+                <li class="menu-item">
+                    <a href="/relatorios" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'relatorios') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-bar-chart-fill"></i>
+                        </div>
+                        <span class="menu-text">Relatórios</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="/manual" class="menu-link <%= (typeof paginaAtiva !== 'undefined' && paginaAtiva === 'manual') ? 'active' : '' %>">
+                        <div class="menu-icon">
+                            <i class="bi bi-question-circle-fill"></i>
+                        </div>
+                        <span class="menu-text">Manual de Uso</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Footer da Sidebar -->
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="user-avatar">
+                <img src="https://i.pravatar.cc/40?u=<%= typeof user !== 'undefined' ? user.email : 'default' %>" alt="Avatar">
+            </div>
+            <div class="user-details">
+                <span class="user-name"><%= typeof user !== 'undefined' ? user.nome || user.name : 'Usuário' %></span>
+                <span class="user-role">Administrador</span>
+            </div>
+            <button class="user-menu-toggle">
+                <i class="bi bi-three-dots"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Overlay para mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 </aside>
+
+<style>
+/* ===== VARIÁVEIS ===== */
+:root {
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 72px;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --sidebar-text: #64748b;
+    --sidebar-text-dark: #1e293b;
+    --sidebar-hover: #f1f5f9;
+    --sidebar-active: #3b82f6;
+    --sidebar-active-bg: #eff6ff;
+    --sidebar-section: #94a3b8;
+    --badge-bg: #ef4444;
+    --badge-text: #ffffff;
+    --badge-new: #10b981;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== SIDEBAR PRINCIPAL ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: var(--transition);
+    border-right: 1px solid var(--sidebar-border);
+    box-shadow: var(--shadow);
+}
+
+/* ===== HEADER DA SIDEBAR ===== */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.25rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--sidebar-active), #60a5fa);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.logo-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-text {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--sidebar-text-dark);
+    line-height: 1.2;
+}
+
+.logo-subtitle {
+    font-size: 0.75rem;
+    color: var(--sidebar-text);
+    font-weight: 500;
+}
+
+.sidebar-toggle {
+    background: var(--sidebar-hover);
+    border: 1px solid var(--sidebar-border);
+    color: var(--sidebar-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    transition: var(--transition);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle:hover {
+    background: var(--sidebar-active);
+    color: white;
+    border-color: var(--sidebar-active);
+    transform: translateX(-2px);
+}
+
+/* ===== MENU DE NAVEGAÇÃO ===== */
+.nav-menu {
+    flex: 1;
+    padding: 1rem 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sidebar-border) transparent;
+}
+
+.nav-menu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+    background: var(--sidebar-border);
+    border-radius: 2px;
+}
+
+.menu-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sidebar-section);
+    padding: 0 1.25rem 0.75rem;
+    margin: 0;
+}
+
+.menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-item {
+    margin: 0.125rem 0;
+}
+
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    transition: var(--transition);
+    position: relative;
+    margin: 0 0.5rem;
+    border-radius: var(--radius);
+}
+
+.menu-link:hover {
+    background: var(--sidebar-hover);
+    color: var(--sidebar-text-dark);
+    transform: translateX(4px);
+}
+
+.menu-link:hover .menu-icon {
+    color: var(--sidebar-active);
+    transform: scale(1.1);
+}
+
+.menu-link.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active);
+    font-weight: 600;
+}
+
+.menu-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: var(--sidebar-active);
+    border-radius: 0 2px 2px 0;
+}
+
+.menu-link.active .menu-icon {
+    color: var(--sidebar-active);
+}
+
+.menu-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    color: var(--sidebar-text);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.menu-text {
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: var(--transition);
+    flex: 1;
+}
+
+.menu-badge {
+    background: var(--badge-bg);
+    color: var(--badge-text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.menu-badge.new {
+    background: var(--badge-new);
+}
+
+.menu-badge[data-badge]:not([data-badge=""])::before {
+    content: attr(data-badge);
+}
+
+/* ===== FOOTER DA SIDEBAR ===== */
+.sidebar-footer {
+    padding: 1.25rem;
+    border-top: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--sidebar-border);
+    transition: var(--transition);
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--sidebar-text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-role {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--sidebar-text);
+}
+
+.user-menu-toggle {
+    background: none;
+    border: none;
+    color: var(--sidebar-text);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: var(--transition);
+    opacity: 0;
+}
+
+.user-info:hover .user-menu-toggle {
+    opacity: 1;
+}
+
+.user-menu-toggle:hover {
+    background: var(--sidebar-hover);
+    color: var(--sidebar-text-dark);
+}
+
+/* ===== OVERLAY PARA MOBILE ===== */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    backdrop-filter: blur(4px);
+}
+
+/* ===== ESTADO COLLAPSED ===== */
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed);
+}
+
+.sidebar.collapsed .logo-content,
+.sidebar.collapsed .menu-text,
+.sidebar.collapsed .section-title,
+.sidebar.collapsed .user-details,
+.sidebar.collapsed .menu-badge {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    position: absolute;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    transform: rotate(180deg);
+}
+
+.sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 1.5rem 0.75rem;
+}
+
+.sidebar.collapsed .logo {
+    justify-content: center;
+}
+
+.sidebar.collapsed .menu-link {
+    justify-content: center;
+    padding: 0.75rem;
+    margin: 0 0.25rem;
+}
+
+.sidebar.collapsed .menu-link:hover .menu-text {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--sidebar-text-dark);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-left: 0.5rem;
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+    height: auto;
+    z-index: 1001;
+    box-shadow: var(--shadow-lg);
+}
+
+.sidebar.collapsed .menu-link:hover .menu-text::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 4px solid var(--sidebar-text-dark);
+}
+
+.sidebar.collapsed .sidebar-footer {
+    padding: 1rem 0.5rem;
+}
+
+.sidebar.collapsed .user-info {
+    justify-content: center;
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar.mobile-open + .sidebar-overlay {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sidebar-toggle {
+        display: flex;
+    }
+
+    .sidebar-header {
+        padding: 1.25rem 1rem;
+    }
+
+    .nav-menu {
+        padding: 0.5rem 0;
+    }
+
+    .menu-link {
+        padding: 0.75rem 1rem;
+        margin: 0 0.25rem;
+    }
+
+    .section-title {
+        padding: 0 1rem 0.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 260px;
+    }
+
+    .sidebar.mobile-open {
+        width: var(--sidebar-width);
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar.mobile-open {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+/* ===== ANIMAÇÕES ===== */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.menu-item {
+    animation: slideIn 0.3s ease forwards;
+}
+
+.menu-item:nth-child(1) { animation-delay: 0.1s; }
+.menu-item:nth-child(2) { animation-delay: 0.15s; }
+.menu-item:nth-child(3) { animation-delay: 0.2s; }
+.menu-item:nth-child(4) { animation-delay: 0.25s; }
+.menu-item:nth-child(5) { animation-delay: 0.3s; }
+
+/* ===== ESTILOS PARA CONTEÚDO PRINCIPAL ===== */
+.main-content {
+    margin-left: var(--sidebar-width);
+    transition: var(--transition);
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.sidebar.collapsed ~ .main-content {
+    margin-left: var(--sidebar-collapsed);
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Tooltip para collapsed state */
+.menu-link {
+    position: relative;
+}
+
+.sidebar.collapsed .menu-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--sidebar-text-dark);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    z-index: 1001;
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+}
+
+.sidebar.collapsed .menu-link:hover::after {
+    opacity: 1;
+    visibility: visible;
+    margin-left: 0.5rem;
+}
+
+.sidebar.collapsed .menu-link::before {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 4px solid var(--sidebar-text-dark);
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    margin-left: -0.25rem;
+}
+
+.sidebar.collapsed .menu-link:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
+    // Adicionar data-tooltip para tooltips
+    const menuLinks = document.querySelectorAll('.menu-link');
+    menuLinks.forEach(link => {
+        const text = link.querySelector('.menu-text').textContent;
+        link.setAttribute('data-tooltip', text);
+    });
+    
+    // Toggle sidebar no desktop/mobile
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            if (window.innerWidth > 1024) {
+                // Desktop: toggle collapsed
+                sidebar.classList.toggle('collapsed');
+            } else {
+                // Mobile: toggle open/close
+                sidebar.classList.toggle('mobile-open');
+            }
+        });
+    }
+    
+    // Fechar sidebar ao clicar no overlay (mobile)
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-open');
+        });
+    }
+    
+    // Fechar sidebar ao clicar em um link (mobile)
+    menuLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 1024) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
+    });
+    
+    // Ajustar comportamento baseado no tamanho da tela
+    function handleResize() {
+        if (window.innerWidth > 1024) {
+            sidebar.classList.remove('mobile-open');
+        } else {
+            sidebar.classList.remove('collapsed');
+        }
+    }
+    
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    
+    // Adicionar classe active baseada na URL atual
+    function setActiveMenu() {
+        const currentPath = window.location.pathname;
+        
+        menuLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active');
+            }
+        });
+    }
+    
+    setActiveMenu();
+    
+    // Adicionar efeito de ripple nos links
+    menuLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = link.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(59, 130, 246, 0.3);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                width: ${size}px;
+                height: ${size}px;
+                left: ${x}px;
+                top: ${y}px;
+                pointer-events: none;
+            `;
+            
+            link.style.position = 'relative';
+            link.style.overflow = 'hidden';
+            link.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+});
+
+// Estilo para efeito ripple
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>

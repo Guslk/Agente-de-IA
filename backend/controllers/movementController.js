@@ -107,6 +107,8 @@ const movementController = {
                 }))
             ];
 
+            console.log(allMovements);
+
 
             // --- 5. Lógica de Ordenação (aplicada no array mesclado) ---
             const sortColumn = sort || 'date';

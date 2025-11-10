@@ -1,34 +1,41 @@
+
 <%- include('partials/header', { title: 'Movimentações', paginaAtiva: 'movimentacoes' }) %>
 
 <%
     // --- Lógica EJS para ajudar a construir os links de ordenação ---
-    const sortColumn = (typeof currentSort !== 'undefined') ? currentSort.column : 'date';
-    const sortOrder = (typeof currentSort !== 'undefined') ? currentSort.order : 'DESC';
+    const sortInfo = typeof currentSort !== 'undefined' ? currentSort : { column: 'date', order: 'DESC' };
+    const pageInfo = typeof pagination !== 'undefined' ? pagination : { currentPage: 1, totalPages: 1, totalItems: 0 }; // Adicionado para futura paginação
+    const filterInfo = typeof filters !== 'undefined' ? filters : {};
 
-    const currentFilters = new URLSearchParams(typeof filters !== 'undefined' ? filters : {});
+    // Construir URL com filtros
+    const currentFilters = new URLSearchParams(filterInfo);
     currentFilters.delete('sort');
     currentFilters.delete('order');
+    currentFilters.delete('page');
     const filterParams = currentFilters.toString();
 
     const createSortUrl = (columnName) => {
         let newOrder = 'ASC';
-        if (columnName === sortColumn) {
-            newOrder = (sortOrder === 'ASC') ? 'DESC' : 'ASC';
+        if (columnName === sortInfo.column) {
+            newOrder = (sortInfo.order === 'ASC') ? 'DESC' : 'ASC';
         }
-        return `/movimentacoes?sort=${columnName}&order=${newOrder}&${filterParams}`;
+        return `/movimentacoes?sort=${columnName}&order=${newOrder}&${filterParams ? filterParams + '&' : ''}page=${pageInfo.currentPage}`;
     };
 
     const getSortIcon = (columnName) => {
-        if (columnName === sortColumn) {
-            return (sortOrder === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        if (columnName === sortInfo.column) {
+            return (sortInfo.order === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
         }
         return '';
     };
+
+    // const createPageUrl = (page) => {
+    //     return `/movimentacoes?${filterParams ? filterParams + '&' : ''}sort=${sortInfo.column}&order=${sortInfo.order}&page=${page}`;
+    // };
 %>
 
 <header class="header">
     <h1 class="header-title">Movimentações de Estoque</h1>
-    <!-- Adicionado header-right para consistência -->
     <div class="header-right">
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
@@ -40,242 +47,1886 @@
 </header>
 
 <main class="main-content">
+
     <div class="main-header">
-        <h2>Histórico de Movimentações</h2>
+        <div class="header-content">
+            <h2>Histórico de Movimentações</h2>
+            <p class="header-subtitle">Visualize todas as entradas e saídas do seu inventário</p>
+        </div>
         <div class="action-buttons">
-             <!-- Botões com classes primárias e cores específicas via style -->
-            <button class="btn-primary" id="btn-show-entry-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle"></i> Registrar Entrada</button>
-            <button class="btn-primary" id="btn-show-output-modal" style="background-color: var(--danger);"><i class="bi bi-dash-circle"></i> Registrar Saída</button>
+            <button class="btn btn-success" id="btn-show-entry-modal">
+                <i class="bi bi-plus-circle"></i> Registrar Entrada
+            </button>
+            <button class="btn btn-danger" id="btn-show-output-modal">
+                <i class="bi bi-dash-circle"></i> Registrar Saída
+            </button>
         </div>
     </div>
 
-    <!-- Filtros com classes corretas -->
     <section class="filter-section">
-        <form action="/movimentacoes" method="GET" class="filter-form">
-            <div class="form-group">
-                <label for="filter-item">Item</label>
-                <select name="itemId" id="filter-item">
-                    <option value="">Todos os Itens</option>
-                    <% if (typeof items !== 'undefined') { %>
-                        <% items.forEach(item => { %>
-                            <option value="<%= item.id %>" <%= (filters.itemId == item.id) ? 'selected' : '' %>>
-                                <%= item.name %>
-                            </option>
-                        <% }); %>
-                    <% } %>
-                </select>
+        <div class="filter-header">
+            <h3><i class="bi bi-funnel"></i> Filtros</h3>
+            <button type="button" class="btn btn-link" id="btn-clear-filters">
+                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+            </button>
+        </div>
+        <form action="/movimentacoes" method="GET" class="filter-form" id="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-item" class="form-label"><i class="bi bi-box-seam"></i> Item</label>
+                    <select name="itemId" id="filter-item" class="form-select">
+                        <option value="">Todos os Itens</option>
+                        <% if (typeof items !== 'undefined') { %>
+                            <% items.forEach(item => { %>
+                                <option value="<%= item.id %>" <%= (filterInfo.itemId == item.id) ? 'selected' : '' %>>
+                                    <%= item.name %>
+                                </option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-supplier" class="form-label"><i class="bi bi-truck"></i> Fornecedor (Entradas)</label>
+                    <select name="supplierId" id="filter-supplier" class="form-select">
+                        <option value="">Todos</option>
+                        <% if (typeof suppliers !== 'undefined') { %>
+                            <% suppliers.forEach(sup => { %>
+                                <option value="<%= sup.id %>" <%= (filterInfo.supplierId == sup.id) ? 'selected' : '' %>>
+                                    <%= sup.name %>
+                                </option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-type" class="form-label"><i class="bi bi-arrows-expand"></i> Tipo de Movimento</label>
+                    <select name="movementType" id="filter-type" class="form-select">
+                        <option value="todos" <%= (!filterInfo.movementType || filterInfo.movementType === 'todos') ? 'selected' : '' %>>Todos os Tipos</option>
+                        <option value="Entrada" <%= (filterInfo.movementType == 'Entrada') ? 'selected' : '' %>>Apenas Entradas</option>
+                        <option value="Saída" <%= (filterInfo.movementType == 'Saída') ? 'selected' : '' %>>Apenas Saídas</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="filter-supplier">Fornecedor (Entradas)</label>
-                <select name="supplierId" id="filter-supplier">
-                    <option value="">Todos</option>
-                    <% if (typeof suppliers !== 'undefined') { %>
-                        <% suppliers.forEach(sup => { %>
-                            <option value="<%= sup.id %>" <%= (filters.supplierId == sup.id) ? 'selected' : '' %>>
-                                <%= sup.name %>
-                            </option>
-                        <% }); %>
-                    <% } %>
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-details" class="form-label"><i class="bi bi-search"></i> OS / NF / Detalhes</label>
+                    <input type="text" name="details" id="filter-details" class="form-input" value="<%= filterInfo.details || '' %>" placeholder="Buscar em OS, NF, Justificativa...">
+                </div>
+                <div class="form-group">
+                    <label for="filter-startDate" class="form-label"><i class="bi bi-calendar-date"></i> Data Início</label>
+                    <input type="date" name="startDate" id="filter-startDate" class="form-input" value="<%= filterInfo.startDate || '' %>">
+                </div>
+                <div class="form-group">
+                    <label for="filter-endDate" class="form-label"><i class="bi bi-calendar-date"></i> Data Fim</label>
+                    <input type="date" name="endDate" id="filter-endDate" class="form-input" value="<%= filterInfo.endDate || '' %>">
+                </div>
             </div>
-            <div class="form-group">
-                <label for="filter-type">Tipo de Movimento</label>
-                <select name="movementType" id="filter-type">
-                    <option value="todos">Todos</option>
-                    <option value="Entrada" <%= (filters.movementType == 'Entrada') ? 'selected' : '' %>>Apenas Entradas</option>
-                    <option value="Saída" <%= (filters.movementType == 'Saída') ? 'selected' : '' %>>Apenas Saídas</option>
-                </select>
+             <div class="form-row">
+                <div class="form-group" style="margin-left: auto;"> <button type="submit" class="btn btn-primary btn-filter">
+                        <i class="bi bi-search"></i> Aplicar Filtros
+                    </button>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="filter-details">OS / Justificativa (Saídas)</label>
-                <input type="text" name="details" id="filter-details" value="<%= filters.details || '' %>" placeholder="Buscar...">
-            </div>
-            <div class="form-group">
-                <label for="filter-startDate">Data Início</label>
-                <input type="date" name="startDate" id="filter-startDate" value="<%= filters.startDate || '' %>">
-            </div>
-            <div class="form-group">
-                <label for="filter-endDate">Data Fim</label>
-                <input type="date" name="endDate" id="filter-endDate" value="<%= filters.endDate || '' %>">
-            </div>
-            <button type="submit" class="btn-primary" style="align-self: end;"><i class="bi bi-search"></i> Filtrar</button>
         </form>
     </section>
 
-    <!-- Tabela com classe correta -->
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <!-- Links de ordenação -->
-                    <th><a href="<%= createSortUrl('date') %>">Data<%- getSortIcon('date') %></a></th>
-                    <th><a href="<%= createSortUrl('item') %>">Item<%- getSortIcon('item') %></a></th>
-                    <th><a href="<%= createSortUrl('quantity') %>">Quantidade<%- getSortIcon('quantity') %></a></th>
-                    <th><a href="<%= createSortUrl('unitPrice') %>">Valor Unitário<%- getSortIcon('unitPrice') %></a></th>
-                    <th>Detalhes</th> <!-- Sem ordenação -->
-                    <th><a href="<%= createSortUrl('type') %>">Tipo<%- getSortIcon('type') %></a></th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (movements.length > 0) { %>
-                    <% movements.forEach(mov => { %>
-                        <!-- Classes stock-in/stock-out já corretas -->
-                        <tr class="<%= mov.type === 'Entrada' ? 'stock-in' : 'stock-out' %>">
-                            <td><%= new Date(mov.date).toLocaleString('pt-BR') %></td>
-                            <td><strong><%= mov.item %></strong></td>
-                            <td><%= mov.quantity %></td>
-                             <!-- Formatando valor monetário -->
-                            <td><%= typeof mov.unitPrice === 'number' ? `R$ ${mov.unitPrice.toFixed(2)}` : 'N/A' %></td>
-                            <td><%= mov.details %></td>
-                            <td><%= mov.type %></td>
+    <section class="table-section">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="180"><a href="<%= createSortUrl('date') %>" class="sort-link">Data<%- getSortIcon('date') %></a></th>
+                        <th><a href="<%= createSortUrl('item') %>" class="sort-link">Item<%- getSortIcon('item') %></a></th>
+                        <th width="120" class="text-center"><a href="<%= createSortUrl('quantity') %>" class="sort-link">Quantidade<%- getSortIcon('quantity') %></a></th>
+                        <th width="150" class="text-center"><a href="<%= createSortUrl('unitPrice') %>" class="sort-link">Valor Unitário<%- getSortIcon('unitPrice') %></a></th>
+                        <th>Detalhes (OS, NF, Fornecedor...)</th>
+                        <th width="150" class="text-center"><a href="<%= createSortUrl('type') %>" class="sort-link">Tipo<%- getSortIcon('type') %></a></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (movements.length > 0) { %>
+                        <% movements.forEach(mov => { %>
+                            <% const isEntry = mov.type === 'Entrada'; %>
+                            <tr class_="<%= isEntry ? 'row-success' : 'row-danger' %>">
+                                <td><%= new Date(mov.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) %></td>
+                                <td>
+                                    <div class="name-cell">
+                                        <strong class="item-name"><%= mov.item %></strong>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="quantity-badge <%= isEntry ? 'badge-success' : 'badge-danger' %>">
+                                        <%= isEntry ? '+' : '-' %><%= mov.quantity %>
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <% if (mov.unitPrice > 0) { %>
+                                        <span class="value-total" style="min-width: 100px; padding: 0.5rem 0.75rem;">
+                                            R$ <%= mov.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                                        </span>
+                                    <% } else { %>
+                                        <span class="text-muted">R$<%= mov.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+                                    <% } %>
+                                </td>
+                                <td class="description-cell" title="<%= mov.details || '' %>">
+                                    <%= mov.details || '—' %>
+                                </td>
+                                <td class="text-center">
+                                    <span class="status-badge <%= isEntry ? 'status-success' : 'status-danger' %>">
+                                        <i class="bi <%= isEntry ? 'bi-arrow-up-circle' : 'bi-arrow-down-circle' %>"></i>
+                                        <%= mov.type %>
+                                    </span>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox"></i>
+                                    <h4>Nenhuma movimentação encontrada</h4>
+                                    <p>Tente ajustar os filtros ou registrar uma nova movimentação.</p>
+                                </div>
+                            </td>
                         </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr><td colspan="6" style="text-align: center;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>
-                <% } %>
-            </tbody>
-        </table>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
-</main>
 
-<!-- Modal de Entrada - Estrutura atualizada -->
+    </main>
+
 <div class="modal-overlay" id="entry-modal">
-    <div class="modal"> <!-- Tamanho padrão -->
+    <div class="modal">
         <div class="modal-header">
-            <h3>Registrar Entrada</h3>
+            <h3><i class="bi bi-plus-circle"></i> Registrar Entrada</h3>
             <button class="close-button" id="btn-close-entry-modal">&times;</button>
         </div>
-        <form action="/entries" method="POST">
+        <form action="/entries" method="POST" class="modal-form">
             <div class="modal-body">
-                <!-- Usando form-grid para layout -->
-                <div class="form-grid">
-                    <div class="form-group full-width"> <!-- full-width para ocupar as duas colunas -->
-                        <label for="entry-itemId">Item</label>
-                        <select name="itemId" id="entry-itemId" required>
-                            <option value="" disabled selected>Selecione um item...</option>
-                            <% if(typeof items !== 'undefined') { items.forEach(item => { %>
-                                <option value="<%= item.id %>"><%= item.name %></option>
-                            <% }); } %>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="entry-quantity">Quantidade</label>
-                        <!-- Corrigido para type="number" -->
-                        <input type="number" id="entry-quantity" name="quantity" min="0.01" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="entry-unitPrice">Preço Unitário (R$)</label>
-                        <input type="number" id="entry-unitPrice" name="unitPrice" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="entry-supplierId">Fornecedor</label>
-                        <select name="supplierId" id="entry-supplierId" required>
-                            <option value="" disabled selected>Selecione...</option>
-                            <% if(typeof suppliers !== 'undefined') { suppliers.forEach(s => { %>
-                                <option value="<%= s.id %>"><%= s.name %></option>
-                            <% }); } %>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="entry-invoiceNumber">Número da Nota Fiscal</label>
-                        <input type="text" id="entry-invoiceNumber" name="invoiceNumber">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Detalhes da Entrada
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="entry-itemId" class="form-label required">Item</label>
+                            <select name="itemId" id="entry-itemId" class="form-select" required>
+                                <option value="" disabled selected>Selecione um item...</option>
+                                <% if(typeof items !== 'undefined') { items.forEach(item => { %>
+                                    <option value="<%= item.id %>"><%= item.name %></option>
+                                <% }); } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="entry-quantity" class="form-label required">Quantidade</label>
+                            <input type="number" id="entry-quantity" name="quantity" class="form-input" min="0.01" step="any" required>
+                            <div class="form-hint">Use "." para casas decimais (ex: 1.5)</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="entry-unitPrice" class="form-label required">Preço Unitário (R$)</label>
+                            <input type="number" id="entry-unitPrice" name="unitPrice" class="form-input" step="0.01" min="0" required>
+                            <div class="form-hint">Valor de compra do item</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="entry-supplierId" class="form-label required">Fornecedor</label>
+                            <select name="supplierId" id="entry-supplierId" class="form-select" required>
+                                <option value="" disabled selected>Selecione...</option>
+                                <% if(typeof suppliers !== 'undefined') { suppliers.forEach(s => { %>
+                                    <option value="<%= s.id %>"><%= s.name %></option>
+                                <% }); } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="entry-invoiceNumber" class="form-label">Número da Nota Fiscal</label>
+                            <input type="text" id="entry-invoiceNumber" name="invoiceNumber" class="form-input" placeholder="Opcional">
+                            <div class="form-hint">Para referência</div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn-primary">Confirmar Entrada</button>
+                <button type="button" class="btn btn-secondary btn-cancel-modal">Cancelar</button>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> Confirmar Entrada
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Modal de Saída - Estrutura atualizada -->
 <div class="modal-overlay" id="output-modal">
-    <div class="modal"> <!-- Tamanho padrão -->
+    <div class="modal">
         <div class="modal-header">
-            <h3>Registrar Saída</h3>
+            <h3><i class="bi bi-dash-circle"></i> Registrar Saída</h3>
             <button class="close-button" id="btn-close-output-modal">&times;</button>
         </div>
-        <form action="/outputs" method="POST">
+        <form action="/outputs" method="POST" class="modal-form">
             <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group full-width">
-                        <label for="output-itemId">Item</label>
-                        <select name="itemId" id="output-itemId" required>
-                            <option value="" disabled selected>Selecione um item...</option>
-                            <% if(typeof items !== 'undefined') { items.forEach(item => { %>
-                                <!-- Mostra quantidade disponível -->
-                                <option value="<%= item.id %>"><%= item.name %> (Disponível: <%= item.quantity || 0 %>)</option>
-                            <% }); } %>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="output-quantity">Quantidade</label>
-                        <input type="number" id="output-quantity" name="quantity" min="1" required>
-                    </div>
-                     <div class="form-group">
-                        <label for="output-productionOrder">Ordem de Produção (OS)</label>
-                        <input type="text" id="output-productionOrder" name="productionOrder">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="output-justification">Justificativa / Observação</label>
-                        <input type="text" id="output-justification" name="justification">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Detalhes da Saída
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="output-itemId" class="form-label required">Item</label>
+                            <select name="itemId" id="output-itemId" class="form-select" required>
+                                <option value="" disabled selected>Selecione um item...</option>
+                                <% if(typeof items !== 'undefined') { items.forEach(item => { %>
+                                    <option value="<%= item.id %>"><%= item.name %> (Disponível: <%= item.quantity || 0 %>)</option>
+                                <% }); } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="output-quantity" class="form-label required">Quantidade</label>
+                            <input type="number" id="output-quantity" name="quantity" class="form-input" min="0.01" step="any" required>
+                             <div class="form-hint">Use "." para casas decimais (ex: 1.5)</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="output-productionOrder" class="form-label">Ordem de Produção (OS)</label>
+                            <input type="text" id="output-productionOrder" name="productionOrder" class="form-input" placeholder="Ex: OS-12345">
+                            <div class="form-hint">Opcional - para rastreio</div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="output-justification" class="form-label">Justificativa / Observação</label>
+                            <input type="text" id="output-justification" name="justification" class="form-input" placeholder="Ex: Manutenção Corretiva C-15">
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <!-- Usando btn-primary com cor danger -->
-                <button type="submit" class="btn-primary" style="background-color: var(--danger);">Confirmar Saída</button>
+                <button type="button" class="btn btn-secondary btn-cancel-modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-check-lg"></i> Confirmar Saída
+                </button>
             </div>
         </form>
     </div>
 </div>
-
-<!-- Script JS existente (IDs foram mantidos) -->
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const entryModal = document.getElementById('entry-modal');
-        const outputModal = document.getElementById('output-modal');
-        const btnShowEntry = document.getElementById('btn-show-entry-modal');
-        const btnCloseEntry = document.getElementById('btn-close-entry-modal');
-        const btnShowOutput = document.getElementById('btn-show-output-modal');
-        const btnCloseOutput = document.getElementById('btn-close-output-modal');
-
-        if(entryModal && btnShowEntry && btnCloseEntry) {
-            btnShowEntry.addEventListener('click', () => entryModal.style.display = 'flex');
-            btnCloseEntry.addEventListener('click', () => entryModal.style.display = 'none');
-            window.addEventListener('click', (e) => {
-                if (e.target === entryModal) entryModal.style.display = 'none';
-            });
-        }
-        
-        if(outputModal && btnShowOutput && btnCloseOutput) {
-            btnShowOutput.addEventListener('click', () => outputModal.style.display = 'flex');
-            btnCloseOutput.addEventListener('click', () => outputModal.style.display = 'none');
-            window.addEventListener('click', (e) => {
-                if (e.target === outputModal) outputModal.style.display = 'none';
-            });
-        }
-    });
-</script>
 
 <%- include('partials/footer') %>
 
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ===== CONTROLE DO ESPAÇO EM BRANCO =====
+    function fixWhiteSpace() {
+        const mainContent = document.querySelector('.main-content');
+        const body = document.body;
+        const html = document.documentElement;
+        
+        if (!mainContent) return;
+        
+        const viewportWidth = window.innerWidth;
+        
+        // Correções imediatas
+        body.style.overflowX = 'hidden';
+        html.style.overflowX = 'hidden';
+        mainContent.style.overflowX = 'hidden';
+        
+        // Aplicar largura total a elementos críticos
+        const criticalSelectors = [
+            '.main-content',
+            '.main-header',
+            '.filter-section',
+            '.table-section',
+            '.section-header'
+        ];
+        
+        criticalSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                if (el) {
+                    el.style.width = '100%';
+                    el.style.maxWidth = '100%';
+                    el.style.boxSizing = 'border-box';
+                }
+            });
+        });
+        
+        // Correção específica para tabelas
+        const tables = document.querySelectorAll('.table-responsive');
+        tables.forEach(table => {
+            table.style.width = '100%';
+            table.style.overflowX = 'auto';
+        });
+        
+        // Verificar se ainda há espaço em branco
+        setTimeout(() => {
+            const newScrollWidth = document.documentElement.scrollWidth;
+            if (newScrollWidth > viewportWidth) {
+                console.warn('⚠️ Ainda há overflow horizontal. Aplicando correções extras...');
+                applyEmergencyFixes();
+            }
+        }, 100);
+    }
+    
+    function applyEmergencyFixes() {
+        document.body.style.minWidth = '0';
+        document.documentElement.style.minWidth = '0';
+        
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (parseInt(style.minWidth) > 1000) {
+                el.style.minWidth = '0';
+            }
+        });
+        window.dispatchEvent(new Event('resize'));
+    }
+    
+    // ===== CONTROLE DO SIDEBAR =====
+    function setupSidebarControl() {
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (!sidebar || !mainContent) return;
+        
+        function updateSidebarLayout() {
+            setTimeout(fixWhiteSpace, 150);
+        }
+        
+        const observer = new MutationObserver(function(mutations) {
+            let shouldUpdate = false;
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && 
+                   (mutation.attributeName === 'class' || mutation.attributeName === 'style')) {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(updateSidebarLayout, 50);
+            }
+        });
+        
+        if (sidebar) {
+            observer.observe(sidebar, { 
+                attributes: true, 
+                attributeFilter: ['class', 'style'] 
+            });
+        }
+        
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(updateSidebarLayout, 200);
+        });
+        
+        updateSidebarLayout();
+    }
+    
+    // ===== SISTEMA DE MODAIS =====
+    function setupModals() {
+        const entryModal = document.getElementById('entry-modal');
+        const outputModal = document.getElementById('output-modal');
+        
+        function openModal(modal) {
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                const firstInput = modal.querySelector('input, select, textarea');
+                if (firstInput) setTimeout(() => firstInput.focus(), 100);
+            }
+        }
+        
+        function closeModal(modal) {
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function closeAllModals() {
+            [entryModal, outputModal].forEach(modal => closeModal(modal));
+        }
+        
+        // Modal de Entrada
+        const btnShowEntry = document.getElementById('btn-show-entry-modal');
+        const btnCloseEntry = document.getElementById('btn-close-entry-modal');
+        
+        if (btnShowEntry) btnShowEntry.addEventListener('click', () => openModal(entryModal));
+        if (btnCloseEntry) btnCloseEntry.addEventListener('click', () => closeModal(entryModal));
+        
+        // Modal de Saída
+        const btnShowOutput = document.getElementById('btn-show-output-modal');
+        const btnCloseOutput = document.getElementById('btn-close-output-modal');
+
+        if (btnShowOutput) btnShowOutput.addEventListener('click', () => openModal(outputModal));
+        if (btnCloseOutput) btnCloseOutput.addEventListener('click', () => closeModal(outputModal));
+
+        // Botões de Cancelar universais
+        document.querySelectorAll('.btn-cancel-modal').forEach(btn => {
+            btn.addEventListener('click', () => closeAllModals());
+        });
+        
+        // Fechar modais clicando fora ou com ESC
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeAllModals();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeAllModals();
+        });
+    }
+    
+    // ===== SISTEMA DE NOTIFICAÇÕES =====
+    function setupNotifications() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const error = urlParams.get('error');
+        
+        if (success) {
+            showNotification(getSuccessMessage(success), 'success');
+            cleanUrlParams(['success', 'error']);
+        }
+        
+        if (error) {
+            showNotification(getErrorMessage(error), 'error');
+            cleanUrlParams(['success', 'error']);
+        }
+    }
+    
+    function getSuccessMessage(type) {
+        const messages = {
+            'mov_created': 'Movimentação registrada com sucesso!',
+            'entry_created': 'Entrada registrada com sucesso!',
+            'output_created': 'Saída registrada com sucesso!',
+            // Adicione outras mensagens de sucesso aqui
+        };
+        return messages[type] || 'Ação realizada com sucesso!';
+    }
+    
+    function getErrorMessage(type) {
+        const messages = {
+            'not_found': 'Registro não encontrado!',
+            'validation_error': 'Erro de validação. Verifique os dados.',
+            'server_error': 'Erro no servidor. Tente novamente.',
+            'insufficient_stock': 'Estoque insuficiente para esta saída!'
+            // Adicione outras mensagens de erro aqui
+        };
+        return messages[type] || 'Ocorreu um erro!';
+    }
+    
+    function showNotification(message, type) {
+        document.querySelectorAll('.notification').forEach(notification => {
+            notification.remove();
+        });
+        
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+            <button class="notification-close">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', function() {
+            notification.remove();
+        });
+        
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    function cleanUrlParams(paramsToRemove) {
+        const url = new URL(window.location.href);
+        paramsToRemove.forEach(param => url.searchParams.delete(param));
+        window.history.replaceState({}, '', url);
+    }
+    
+    // ===== FUNCIONALIDADES EXTRAS =====
+    function setupAdditionalFeatures() {
+        // Limpar Filtros
+        const btnClearFilters = document.getElementById('btn-clear-filters');
+        if (btnClearFilters) {
+            btnClearFilters.addEventListener('click', function() {
+                window.location.href = '/movimentacoes'; // Corrigido para /movimentacoes
+            });
+        }
+        
+        // Submit do formulário de filtro com Enter
+        const filterForm = document.getElementById('filter-form');
+        if (filterForm) {
+            filterForm.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    this.submit();
+                }
+            });
+        }
+    }
+    
+    // ===== INICIALIZAÇÃO COMPLETA =====
+    function init() {
+        console.log('🚀 Inicializando sistema de movimentações...');
+        
+        // 1. Correções de layout imediatas
+        fixWhiteSpace();
+        
+        // 2. Configurar controle do sidebar
+        setupSidebarControl();
+        
+        // 3. Configurar modais
+        setupModals();
+        
+        // 4. Configurar notificações
+        setupNotifications();
+        
+        // 5. Configurar funcionalidades extras
+        setupAdditionalFeatures();
+        
+        // 6. Aplicar correções finais após carregamento completo
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                fixWhiteSpace();
+                console.log('✅ Sistema completamente carregado e otimizado');
+            }, 500);
+        });
+        
+        // 7. Monitorar continuamente por problemas de layout
+        setInterval(fixWhiteSpace, 5000);
+    }
+    
+    // Inicializar o sistema
+    init();
+});
+
+// ===== FUNÇÕES GLOBAIS PARA DEPURAÇÃO =====
+window.debugLayout = function() {
+    const mainContent = document.querySelector('.main-content');
+    const body = document.body;
+    
+    console.log('🔧 Debug de Layout:');
+    console.log('- Viewport width:', window.innerWidth);
+    console.log('- Body width:', body.offsetWidth);
+    console.log('- Main content width:', mainContent?.offsetWidth);
+    console.log('- Scroll width:', document.documentElement.scrollWidth);
+    console.log('- Sidebar expanded:', body.classList.contains('sidebar-expanded'));
+    
+    const wideElements = document.querySelectorAll('*');
+    wideElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > window.innerWidth) {
+            console.warn('Elemento muito largo:', el);
+            el.style.outline = '2px solid red';
+        }
+    });
+};
+
+window.fixLayoutNow = function() {
+    const event = new Event('resize');
+    window.dispatchEvent(event);
+    console.log('🛠️ Layout forçado a atualizar');
+};
+</script>
+
+
 <style>
-    .inventory-table th a {
-        color: inherit; /* Usa a cor padrão do texto do cabeçalho */
-        text-decoration: none; /* Remove o sublinhado */
-        display: block; /* Garante que o link ocupe toda a célula */
+/* ===== VARIÁVEIS E RESET ===== */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --primary-light: #eef2ff;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
+    --dark: #343a40;
+    --light: #f8f9fa;
+    --white: #ffffff;
+    --border: #e9ecef;
+    --text-dark: #2d3748;
+    --text-light: #718096;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+    --radius: 8px;
+    --radius-lg: 12px;
+}
+
+/* ===== RESET COMPLETO ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100%;
+    overflow-x: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* ===== LAYOUT PRINCIPAL CORRIGIDO ===== */
+.main-container {
+    width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+
+/* Quando sidebar está expandido */
+body.sidebar-expanded .main-content {
+    width: calc(100vw - 250px);
+    margin-left: 250px;
+}
+
+/* Quando sidebar está minimizado */
+body:not(.sidebar-expanded) .main-content {
+    width: 100vw;
+    margin-left: 0;
+}
+
+/* ===== HEADER ===== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    background: var(--light);
+}
+
+.avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* ===== DASHBOARD DE MÉTRICAS ===== */
+.metrics-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 100%;
+}
+
+.metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: inherit;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.metric-icon.success { background: linear-gradient(135deg, var(--success), #20c997); }
+.metric-icon.warning { background: linear-gradient(135deg, var(--warning), #fd7e14); }
+.metric-icon.danger { background: linear-gradient(135deg, var(--danger), #e83e8c); }
+.metric-icon.info { background: linear-gradient(135deg, var(--info), #6f42c1); }
+
+.metric-info {
+    flex: 1;
+}
+
+.metric-value {
+    display: block;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== CABEÇALHO PRINCIPAL ===== */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.header-content {
+    flex: 1;
+}
+
+.header-content h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+/* ===== BOTÕES ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    border: 1px solid;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    background: none;
+    font-family: inherit;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    color: var(--white);
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Botões de Sucesso e Perigo (Adicionados para Movimentações) */
+.btn-success {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--white);
+}
+.btn-success:hover {
+    background: #218838;
+    border-color: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--white);
+}
+.btn-danger:hover {
+    background: #c82333;
+    border-color: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+
+.btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dark);
+}
+
+.btn-outline:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    text-decoration: none;
+    padding: 0.5rem;
+    height: auto;
+}
+
+.btn-link:hover {
+    color: var(--primary-dark);
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+    text-decoration: underline;
+}
+
+/* ===== SEÇÃO DE FILTROS CORRIGIDA - ALINHAMENTO PERFEITO ===== */
+.filter-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.filter-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-dark);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-form {
+    padding: 2rem;
+    width: 100%;
+}
+
+/* CORREÇÃO CRÍTICA - ALINHAMENTO HORIZONTAL DOS FILTROS */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: end;
+    width: 100%;
+}
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    min-height: 20px;
+    height: 20px;
+}
+
+.form-label.required::after {
+    content: "*";
+    color: var(--danger);
+    margin-left: 0.25rem;
+}
+
+.form-input, .form-select, .form-textarea {
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: var(--white);
+    font-family: inherit;
+    width: 100%;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-textarea {
+    height: auto;
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Estilo consistente para selects */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Botão de filtro perfeitamente alinhado */
+.btn-filter {
+    align-self: end;
+    height: 48px;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== PAGINAÇÃO ===== */
+.pagination-top, .pagination-bottom {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.pagination-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-bottom {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination-info {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.pagination-btn:hover {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.pagination-current {
+    padding: 0 1rem;
+    color: var(--text-light);
+    font-size: 0.875rem;
+}
+
+.pagination-numbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.pagination-number {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    min-width: 44px;
+    text-align: center;
+    transition: all 0.2s ease;
+    height: auto;
+}
+
+.pagination-number:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+}
+
+.pagination-number.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+/* ===== TABELAS ===== */
+.table-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.data-table th {
+    background: var(--light);
+    padding: 1.25rem 1rem;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.data-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.data-table tr {
+    transition: all 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    background: var(--primary-light);
+}
+
+/* Estados das linhas */
+.table-row-danger, .row-danger {
+    background: #fff5f5;
+    border-left: 4px solid var(--danger);
+}
+
+.table-row-warning, .row-warning {
+    background: #fffbf0;
+    border-left: 4px solid var(--warning);
+}
+
+/* Adicionado para Movimentações */
+.row-success {
+    background: #f0fff4;
+    border-left: 4px solid var(--success);
+}
+
+.table-row-inactive {
+    background: var(--light) !important;
+    border-left: 4px solid var(--secondary);
+}
+
+.data-table tr.table-row-danger:hover,
+.data-table tr.row-danger:hover,
+.data-table tr.table-row-warning:hover,
+.data-table tr.row-warning:hover,
+.data-table tr.row-success:hover,
+.data-table tr.table-row-inactive:hover {
+    background: var(--light) !important;
+}
+
+/* Células especiais */
+.sort-link {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.sort-link:hover {
+    color: var(--primary);
+}
+
+.code-cell, .name-cell, .location-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.item-name {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.description-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+    color: var(--text-light);
+}
+
+.text-center {
+    text-align: center;
+}
+.text-muted {
+
+    font-weight: 700;
+    color: #721c24;
+    background: #f8d7da;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    display: inline-block;
+    border: 1px solid #e6c8c8;
+    min-width: 100px;
+}
+.py-5 {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.unit-badge {
+    background: var(--light);
+    color: var(--secondary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.quantity-badge {
+    padding: 0.5rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.badge-success { background: #d4edda; color: #155724; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+
+.value-total {
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    display: inline-block;
+    border: 1px solid #c8e6c9;
+    min-width: 100px;
+}
+.value-total {
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    display: inline-block;
+    border: 1px solid #c8e6c9;
+    min-width: 100px;
+}
+
+
+.department-tag {
+    background: #e7f1ff;
+    color: #004085;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.625rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.status-success { background: #d4edda; color: #155724; }
+.status-warning { background: #fff3cd; color: #856404; }
+.status-danger { background: #f8d7da; color: #721c24; }
+.status-inactive { background: #e9ecef; color: #6c757d; }
+
+/* Ações */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-action {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    background: none;
+}
+
+.btn-edit {
+    background: #e7f1ff;
+    color: var(--primary);
+}
+
+.btn-edit:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+}
+
+.btn-delete {
+    background: #f8d7da;
+    color: var(--danger);
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-restore {
+    background: #d4edda;
+    color: var(--success);
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.btn-restore:hover {
+    background: var(--success);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.action-form {
+    margin: 0;
+    display: inline;
+}
+
+/* ===== ESTADO VAZIO ===== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-light);
+    width: 100%;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.3;
+}
+
+.empty-state h4 {
+    margin: 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-state.small {
+    padding: 2rem;
+}
+
+.empty-state.small i {
+    font-size: 2.5rem;
+}
+
+/* ===== MODAIS ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 600px; /* Tamanho padrão para modais de movimetação */
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-lg {
+    width: 800px;
+    max-width: 90%;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+.modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+    width: 100%;
+}
+
+.modal-footer {
+    padding: 1.75rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: var(--light);
+    width: 100%;
+}
+
+/* Formulários nos modais */
+.modal-form {
+    overflow-y:auto ;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-section {
+    margin-bottom: 2.5rem;
+    width: 100%;
+}
+.form-section:last-child {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 1.25rem;
+    margin: 0 0 1.5rem 0;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    width: 100%;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ===== NOTIFICAÇÕES ===== */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 1100;
+    animation: notificationSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 300px;
+    border-left: 4px solid;
+    max-width: 90vw;
+}
+
+.notification-success {
+    border-left-color: var(--success);
+}
+
+.notification-error {
+    border-left-color: var(--danger);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.25rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+@keyframes notificationSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== CORREÇÕES ESPECÍFICAS PARA ESPAÇO EM BRANCO ===== */
+
+/* Garantir que todos os elementos section ocupem 100% */
+section, div[class*="section"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Prevenir qualquer overflow horizontal */
+body, html {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Container principal com controle rigoroso */
+.main-content > * {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Correção para quando sidebar está expandido */
+@media (min-width: 1201px) {
+    body.sidebar-expanded .main-content {
+        width: calc(100vw - 250px) !important;
+        margin-left: 250px !important;
+    }
+    
+    body.sidebar-expanded .metrics-dashboard,
+    body.sidebar-expanded .filter-section,
+    body.sidebar-expanded .table-section,
+    body.sidebar-expanded .main-header {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Forçar correção em casos extremos */
+.force-full-width {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.no-scroll-x {
+    overflow-x: hidden !important;
+}
+
+/* ===== RESPONSIVIDADE CORRIGIDA ===== */
+@media (max-width: 1200px) {
+    .main-content {
+        padding: 1.5rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    body.sidebar-expanded .main-content {
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .metrics-dashboard {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .main-header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+        padding: 1.5rem;
+    }
+    
+    .header-content {
+        text-align: center;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 140px;
+    }
+    
+    .filter-form {
+        padding: 1.5rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .btn-filter {
         width: 100%;
-        transition: color 0.2s ease; /* Adiciona uma transição suave */
+        margin-top: 0.5rem;
     }
-    .inventory-table th a:hover {
-        color: var(--primary-color); /* Muda a cor ao passar o mouse (opcional) */
-         /* text-decoration: underline; */ /* Adiciona sublinhado ao passar o mouse (opcional) */
+    
+    .metrics-dashboard {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
-     .inventory-table th a i {
-         /* Ajusta ligeiramente a aparência do ícone de ordenação */
-        font-size: 0.9em;
-        opacity: 0.7;
-     }
+    
+    .metric-card {
+        padding: 1.5rem;
+    }
+    
+    .pagination-top {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pagination-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .modal {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+        width: calc(100% - 1rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 0.75rem;
+    }
+    
+    .metric-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.25rem;
+    }
+    
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .pagination-numbers {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .data-table {
+        font-size: 0.8rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.875rem 0.5rem;
+    }
+    
+    .status-badge,
+    .value-total,
+    .department-tag {
+        min-width: auto;
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
 </style>
