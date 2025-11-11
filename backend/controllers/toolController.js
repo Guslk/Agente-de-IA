@@ -76,25 +76,48 @@ const toolController = {
     /**
      * Cria uma nova ferramenta.
      */
-    create: async (req, res) => {
-        const { tenantId } = req;
-        const { name, code } = req.body;
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Tool } = db.initialize(sequelize);
+create: async (req, res) => {
+    const { tenantId } = req;
+    const { name, code } = req.body;
+    
+    // Validação básica
+    if (!name || !code) {
+        return res.redirect('/tools?error=missing_fields');
+    }
+    
+    try {
+        const sequelize = await getTenantDB(tenantId);
+        const { Tool } = db.initialize(sequelize);
 
-            await Tool.create({
-                name: name, // O modelo mapeia 'name' para 'name_tool'
-                code: code, // O modelo mapeia 'code' para 'code_tools'
-                status: 'Em estoque'
-            });
-
-            res.redirect('/tools?success=tool_created');
-        } catch (error) {
-            console.error("Error creating tool:", error);
-            res.status(500).send(`Error creating tool: ${error.message}`);
+        // Verificar se o código já existe (opcional - para feedback mais rápido)
+        const existingTool = await Tool.findOne({ where: { code } });
+        if (existingTool) {
+            return res.redirect('/tools?error=duplicate_code&code=' + encodeURIComponent(code));
         }
-    },
+
+        await Tool.create({
+            name: name.trim(),
+            code: code.trim(),
+            status: 'Em estoque'
+        });
+
+        res.redirect('/tools?success=tool_created');
+    } catch (error) {
+        console.error("Error creating tool:", error);
+        
+        // TRATAMENTO ESPECÍFICO PARA CÓDIGO DUPLICADO
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.redirect('/tools?error=duplicate_code&code=' + encodeURIComponent(code));
+        }
+        
+        // Outros erros de validação
+        if (error.name === 'SequelizeValidationError') {
+            return res.redirect('/tools?error=validation_error');
+        }
+        
+        res.redirect('/tools?error=create_failed');
+    }
+},
 
     /**
      * Registra uma RETIRADA (Saída) de ferramenta

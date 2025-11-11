@@ -55,107 +55,135 @@
 
     <div class="content-card">
         <section class="table-container">
-            <table class="modern-table">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Solicitante</th>
-                        <th>Itens Requisitados</th>
-                        <th>Observações</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% if (typeof requests !== 'undefined' && requests.length > 0) { %>
-                        <% requests.forEach(req => { %>
-                            <%
-                                let rowClass = '';
-                                if (req.status === 'Pendente') rowClass = 'pending-row';
-                                if (req.status === 'Cancelado') rowClass = 'cancelled-row';
-                            %>
-                            <tr class="<%= rowClass %>">
-                                <td>
-                                    <div class="date-cell">
-                                        <span class="date"><%= new Date(req.created_at).toLocaleDateString('pt-BR') %></span>
-                                        <span class="time"><%= new Date(req.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) %></span>
+ <table class="modern-table">
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Solicitante</th>
+            <th>Notificado</th>
+            <th>Itens Requisitados</th>
+            <th>Observações</th>
+            <th>Status</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (typeof requests !== 'undefined' && requests.length > 0) { %>
+            <% requests.forEach(req => { %>
+                <%
+                    let rowClass = '';
+                    if (req.status === 'Pendente') rowClass = 'pending-row';
+                    if (req.status === 'Cancelado') rowClass = 'cancelled-row';
+                %>
+                <tr class="<%= rowClass %>">
+                    <td>
+                        <div class="date-cell">
+                            <span class="date"><%= new Date(req.created_at).toLocaleDateString('pt-BR') %></span>
+                            <span class="time"><%= new Date(req.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) %></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="requester-cell">
+                            <div class="avatar-small">
+                                <% if (req.requester && req.requester.photo) { %>
+                                    <img src="<%= req.requester.photo %>" 
+                                         alt="<%= req.requester.name %>" 
+                                         class="employee-photo">
+                                <% } else { %>
+                                    <div class="avatar-placeholder">
+                                        <%= req.requester ? req.requester.name.charAt(0).toUpperCase() : '?' %>
                                     </div>
-                                </td>
-                                <td>
-                                    <div class="requester-cell">
-                                        <div class="avatar-small">
-                                            <img src="https://i.pravatar.cc/32?u=<%= req.requester ? req.requester.email : 'unknown' %>" alt="Avatar">
-                                        </div>
-                                        <span><%= req.requester ? req.requester.name : 'N/A' %></span>
+                                <% } %>
+                            </div>
+                            <span><%= req.requester ? req.requester.name : 'N/A' %></span>
+                        </div>
+                    </td>
+                    <td>
+
+
+                        
+   <% if (req.approver) { %>
+                   <div class="requester-cell">
+                            <div class="avatar-small">
+                                <% if (req.approver && req.approver.photo) { %>
+                                    <img src="<%= req.approver.photo %>" 
+                                         alt="<%= req.approver.name %>" 
+                                         class="employee-photo">
+                                <% } else { %>
+                                    <div class="avatar-placeholder">
+                                        <%= req.approver ? req.approver.name.charAt(0).toUpperCase() : '?' %>
                                     </div>
-                                </td>
-                                <td>
-                                    <div class="items-list">
-                                        <% req.items.forEach(it => { %>
-                                            <div class="item-row">
-                                                <span class="item-quantity"><%= it.quantityRequested %>x</span>
-                                                <span class="item-name"><%= it.item ? it.item.name : '(Item Deletado)' %></span>
-                                            </div>
-                                        <% }); %>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="notes-cell">
-                                        <%= req.notes || '-' %>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="status-badge <%= 
-                                        req.status === 'Pendente' ? 'status-pending' : 
-                                        (req.status === 'Finalizado' ? 'status-completed' : 'status-cancelled') 
-                                    %>">
-                                        <span class="status-dot"></span>
-                                        <%= req.status %>
-                                    </span>
-                                </td>
-       <td>
-    <div class="actions-cell">
-        <% if (req.status === 'Pendente') { %>
-            <% if (user.role === 'Administrador') { %>
-                <form action="/requisicoes/<%= req.id %>/approve" method="POST" class="inline-form">
-                    <button type="submit" class="btn-success btn-sm" onclick="return confirm('Deseja aprovar e dar baixa no estoque?');">
-                        <i class="bi bi-check-lg"></i> Aprovar
-                    </button>
-                </form>
-            <% } %>
-            <form action="/requisicoes/<%= req.id %>/cancel" method="POST" class="inline-form">
-                <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Deseja cancelar esta requisição? Os itens retornarão ao estoque.');">
-                    <i class="bi bi-x-lg"></i> Cancelar
-                </button>
-            </form>
-<% } else if (req.status === 'Finalizado') { %>
-    <a href="/requisicoes/devolucao/<%= req.id %>" class="btn-success btn-sm">
-        <i class="bi bi-arrow-return-left"></i> Devolver
-    </a>
-<% } else { %>
-            <span class="no-actions">-</span>
-        <% } %>
-        
-    </div>
-</td>
-                            </tr>
-                        <% }); %>
-                    <% } else { %>
-                        <tr>
-                            <td colspan="6">
-                                <div class="empty-state">
-                                    <i class="bi bi-inbox"></i>
-                                    <h3>Nenhuma requisição encontrada</h3>
-                                    <p>Quando houver requisições, elas aparecerão aqui.</p>
-                                    <a href="/requisicoes/nova" class="btn-primary">
-                                        <i class="bi bi-plus-circle-fill"></i> Criar Primeira Requisição
-                                    </a>
+                                <% } %>
+                            </div>
+                            <span><%= req.requester ? req.approver.name : 'N/A' %></span>
+<% } %>
+                    </td>
+                    <td>
+                        <div class="items-list">
+                            <% req.items.forEach(it => { %>
+                                <div class="item-row">
+                                    <span class="item-quantity"><%= it.quantityRequested %>x</span>
+                                    <span class="item-name"><%= it.item ? it.item.name : '(Item Deletado)' %></span>
                                 </div>
-                            </td>
-                        </tr>
-                    <% } %>
-                </tbody>
-            </table>
+                            <% }); %>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="notes-cell">
+                            <%= req.notes || '-' %>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge <%= 
+                            req.status === 'Pendente' ? 'status-pending' : 
+                            (req.status === 'Finalizado' ? 'status-completed' : 'status-cancelled') 
+                        %>">
+                            <span class="status-dot"></span>
+                            <%= req.status %>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="actions-cell">
+                            <% if (req.status === 'Pendente') { %>
+                                <% if (user.role === 'Administrador') { %>
+                                    <form action="/requisicoes/<%= req.id %>/approve" method="POST" class="inline-form">
+                                        <button type="submit" class="btn-success btn-sm" onclick="return confirm('Deseja aprovar e dar baixa no estoque?');">
+                                            <i class="bi bi-check-lg"></i> Aprovar
+                                        </button>
+                                    </form>
+                                <% } %>
+                                <form action="/requisicoes/<%= req.id %>/cancel" method="POST" class="inline-form">
+                                    <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Deseja cancelar esta requisição? Os itens retornarão ao estoque.');">
+                                        <i class="bi bi-x-lg"></i> Cancelar
+                                    </button>
+                                </form>
+                            <% } else if (req.status === 'Finalizado') { %>
+                                <a href="/requisicoes/devolucao/<%= req.id %>" class="btn-success btn-sm">
+                                    <i class="bi bi-arrow-return-left"></i> Devolver
+                                </a>
+                            <% } else { %>
+                                <span class="no-actions">-</span>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+            <% }); %>
+        <% } else { %>
+            <tr>
+                <td colspan="6">
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h3>Nenhuma requisição encontrada</h3>
+                        <p>Quando houver requisições, elas aparecerão aqui.</p>
+                        <a href="/requisicoes/nova" class="btn-primary">
+                            <i class="bi bi-plus-circle-fill"></i> Criar Primeira Requisição
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        <% } %>
+    </tbody>
+</table>
         </section>
     </div>
 </main>
@@ -525,4 +553,211 @@
             font-size: 0.75rem;
         }
     }
+
+
+.avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.employee-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    border-radius: 50%;
+}
+
+.requester-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Ajustes para a tabela */
+.modern-table td {
+    vertical-align: middle;
+    padding: 12px 8px;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-completed {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-pending .status-dot {
+    background-color: #ffc107;
+}
+
+.status-completed .status-dot {
+    background-color: #17a2b8;
+}
+
+.status-cancelled .status-dot {
+    background-color: #dc3545;
+}
+/* Estilos para as fotos BLOB */
+.avatar-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.employee-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #e9ecef;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    border-radius: 50%;
+    border: 2px solid #e9ecef;
+}
+
+.requester-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.requester-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.requester-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.approver-info {
+    font-size: 11px;
+    color: #28a745;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.approver-info i {
+    font-size: 10px;
+}
+
+/* Ajustes para a tabela */
+.modern-table td {
+    vertical-align: middle;
+    padding: 12px 8px;
+}
+
+/* Status badges - mantém o mesmo */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-completed {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.status-cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-pending .status-dot {
+    background-color: #ffc107;
+}
+
+.status-completed .status-dot {
+    background-color: #17a2b8;
+}
+
+.status-cancelled .status-dot {
+    background-color: #dc3545;
+}
 </style>

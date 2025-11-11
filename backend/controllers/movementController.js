@@ -95,7 +95,7 @@ const movementController = {
                     quantity: e.quantity,
                     unitPrice: e.unitPrice,
                     item: e.item ? e.item.name : 'Item Deletado',
-                    details: e.supplier ? e.supplier.name : `NF: ${e.invoiceNumber}`
+                    details: e.invoiceNumber ?  `NF: ${e.invoiceNumber}` : e.supplier.name
                 })),
                 ...outputs.map(o => ({
                     type: 'Saída',
@@ -103,7 +103,7 @@ const movementController = {
                     quantity: -Math.abs(o.quantity),
                     unitPrice: -Math.abs(o.unitPrice),
                     item: o.item ? o.item.name : 'Item Deletado',
-                    details: o.justification || `OS: ${o.productionOrder}`
+                    details: o.productionOrder ? `OS: ${o.productionOrder}` : o.justification
                 }))
             ];
 
