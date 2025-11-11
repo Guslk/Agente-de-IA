@@ -33,7 +33,14 @@
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
             <% } %>
         </div>
     </div>
@@ -70,7 +77,8 @@
                     <option value="">Todos</option>
                     <% if (typeof allEmployees !== 'undefined' && allEmployees.length > 0) { %>
                         <% allEmployees.forEach(emp => { %>
-                            <option value="<%= emp.id_employee %>" <%= (filters.employeeId == emp.id_empl0yee) ? 'selected' : '' %>>
+                            <!-- CORREÇÃO: Usar emp.id em vez de emp.id_employee -->
+                            <option value="<%= emp.id %>" <%= (filters.employeeId == emp.id) ? 'selected' : '' %>>
                                 <%= emp.name %>
                             </option>
                         <% }); %>
@@ -117,7 +125,8 @@
                             <td><%= mov.movementType %></td>
                             <td><strong><%= mov.tool.name %></strong></td>
                             <td><code><%= mov.tool.code %></code></td>
-                            <td><%= mov.employee.name %></td>
+                            <!-- CORREÇÃO: Verificar se employee existe antes de acessar .name -->
+                            <td><%= mov.employee ? mov.employee.name : 'N/A' %></td>
                             <td><%= mov.notes || '-' %></td>
                         </tr>
                     <% }); %>
@@ -132,16 +141,22 @@
 <%- include('partials/footer') %>
 
 <style>
-    .main-content {
-    padding: 2rem;
-    width: 100%;
-    min-height: 100vh;
-    transition: all 0.3s ease;
-    background: #f5f7fa;
-    margin-left: 0;
-    position: relative;
-    left: 0;
+    .header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
 }
+    .main-content {
+        padding: 2rem;
+        width: 100%;
+        min-height: 100vh;
+        transition: all 0.3s ease;
+        background: #f5f7fa;
+        margin-left: 0;
+        position: relative;
+        left: 0;
+    }
     .inventory-table th a {
         color: inherit;
         text-decoration: none;

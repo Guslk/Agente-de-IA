@@ -45,7 +45,14 @@
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.nome || user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
             <% } %>
         </div>
     </div>
@@ -108,49 +115,6 @@
             </a>
         </div>
     </div>
-
-    <!-- Seção de Filtros -->
-    <section class="filter-section">
-        <div class="filter-header">
-            <h3><i class="bi bi-funnel"></i> Filtros</h3>
-            <button type="button" class="btn btn-link" id="btn-clear-filters">
-                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
-            </button>
-        </div>
-        <form action="/ferramentas" method="GET" class="filter-form" id="filter-form">
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="filter-busca" class="form-label">
-                        <i class="bi bi-search"></i> Nome da Ferramenta
-                    </label>
-                    <input type="text" id="filter-busca" name="busca" class="form-input" 
-                           placeholder="Buscar por nome..." value="<%= filterInfo.busca || '' %>">
-                </div>
-                <div class="form-group">
-                    <label for="filter-code" class="form-label">
-                        <i class="bi bi-upc-scan"></i> Código
-                    </label>
-                    <input type="text" id="filter-code" name="code" class="form-input" 
-                           placeholder="Buscar por código..." value="<%= filterInfo.code || '' %>">
-                </div>
-                <div class="form-group">
-                    <label for="filter-status" class="form-label">Status</label>
-                    <select id="filter-status" name="status" class="form-select">
-                        <option value="todos" <%= (!filterInfo.status || filterInfo.status === 'todos') ? 'selected' : '' %>>Todos os Status</option>
-                        <option value="Em Estoque" <%= (filterInfo.status === 'Em Estoque') ? 'selected' : '' %>>Disponíveis</option>
-                        <option value="Em Uso" <%= (filterInfo.status === 'Em Uso') ? 'selected' : '' %>>Em Uso</option>
-                        <option value="Em manutenção" <%= (filterInfo.status === 'Em manutenção') ? 'selected' : '' %>>Manutenção</option>
-                        <option value="Desativada" <%= (filterInfo.status === 'Desativada') ? 'selected' : '' %>>Desativadas</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-filter">
-                        <i class="bi bi-search"></i> Aplicar Filtros
-                    </button>
-                </div>
-            </div>
-        </form>
-    </section>
 
     <!-- Paginação Top -->
     <% if (pageInfo.totalPages > 1) { %>
@@ -1029,7 +993,7 @@ body:not(.sidebar-expanded) .main-content {
 }
 
 .header-title {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-dark);
     margin: 0;

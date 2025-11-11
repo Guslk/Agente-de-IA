@@ -1,6 +1,12 @@
 <%- include('partials/header', { title: 'Controle de Materiais', paginaAtiva: 'chapas' }) %>
 
 <style>
+.header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
   /* Navegação de Abas (Chapas/Barras) */
   .nav-tabs {
     display: flex;
@@ -89,7 +95,26 @@
 </style>
 
 <header class="header">
-    <h1 class="header-title">Controle Geométrico de Materiais</h1> <!-- Título atualizado -->
+    <h1 class="header-title">Controle Geométrico de Materiais</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<!-- <header class="header">
+    <h1 class="header-title">Controle Geométrico de Materiais</h1> 
     <div class="header-right"> 
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
@@ -98,7 +123,7 @@
             <% } %>
         </div>
     </div>
-</header>
+</header> -->
 
 <main class="main-content">
     

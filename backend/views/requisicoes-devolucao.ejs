@@ -1,5 +1,4 @@
 
-
 <%- include('partials/header', { title: 'Devolução de Itens', paginaAtiva: 'requisicoes' }) %>
 
 <%
@@ -47,13 +46,22 @@ const getInputMin = (unitOfMeasure) => {
 };
 %>
 
+
+
 <header class="header">
     <h1 class="header-title">Devolução de Itens</h1>
     <div class="header-right">
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo && user.photo !== null) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='../usuario.jpg'">
+    <% } else { %>
+        <img src="../usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
             <% } %>
         </div>
     </div>
@@ -215,6 +223,12 @@ const getInputMin = (unitOfMeasure) => {
 <%- include('partials/footer') %>
 
 <style>
+    .header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
     .return-section {
         margin-bottom: 2rem;
     }

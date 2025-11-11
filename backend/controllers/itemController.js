@@ -806,59 +806,273 @@ const itemController = {
     },
 
     // 📤 EXPORTAR ITENS (CSV)
-    exportItems: async (req, res) => {
-        const { tenantId } = req;
-        const { format = 'csv' } = req.query;
+exportItems: async (req, res) => {
+    const { tenantId } = req;
+    const { format = 'csv', includeHeaders = 'true' } = req.query;
 
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Item, Stock } = db.initialize(sequelize);
+    try {
+        const sequelize = await getTenantDB(tenantId);
+        const { Item, Stock } = db.initialize(sequelize);
 
-            const items = await Item.findAll({
-                where: { status: { [Op.in]: ['Ativo', 'Desativado'] } },
-                include: [{
-                    model: Stock,
-                    as: 'stock',
-                    attributes: ['name']
-                }],
-                order: [['name', 'ASC']],
-                raw: true,
-                nest: true
-            });
+        // Funções auxiliares de formatação
+        const formatUnitOfMeasure = (unit) => {
+            const units = {
+                'un': 'Unidade',
+                'cx': 'Caixa',
+                'kg': 'Quilograma',
+                'g': 'Grama',
+                'l': 'Litro',
+                'ml': 'Mililitro',
+                'm': 'Metro',
+                'cm': 'Centímetro'
+            };
+            return units[unit] || unit;
+        };
 
-            if (format === 'csv') {
-                res.setHeader('Content-Type', 'text/csv');
-                res.setHeader('Content-Disposition', `attachment; filename=itens_${Date.now()}.csv`);
+        const formatCurrency = (value) => {
+            const numValue = parseFloat(value) || 0;
+            return `R$ ${numValue.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        };
+
+        const getStockStatus = (item) => {
+            if (item.quantity <= 0) return '🔴 ESGOTADO';
+            if (item.quantity < item.minimumQuantity) return '🟡 ESTOQUE BAIXO';
+            if (item.maximumQuantity && item.quantity > item.maximumQuantity) return '🟢 ACIMA DO MÁXIMO';
+            return '🟢 NORMAL';
+        };
+
+        const getStatusIcon = (status) => {
+            return status === 'Ativo' ? '✅ ATIVO' : '⏸️ DESATIVADO';
+        };
+
+        // Buscar dados
+        const items = await Item.findAll({
+            where: { 
+                status: { 
+                    [Op.in]: ['Ativo', 'Desativado'] 
+                } 
+            },
+            include: [{
+                model: Stock,
+                as: 'stock',
+                attributes: ['name']
+            }],
+            order: [['name', 'ASC']],
+            raw: true,
+            nest: true
+        });
+
+        if (format === 'csv') {
+            const timestamp = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            const filename = `📊_RELATORIO_ESTOQUE_${timestamp}.csv`;
+            
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Pragma', 'no-cache');
+
+            // BOM para Excel
+            res.write('\uFEFF');
+            
+            // ===== CABEÇALHO PROFISSIONAL =====
+            if (includeHeaders !== 'false') {
+                // Cabeçalho principal
+                res.write('"RELATÓRIO DE ESTOQUE - STOCKEX INVENTORY MANAGEMENT";\n');
+                res.write(`"Data de emissão: ${new Date().toLocaleString('pt-BR')}";\n`);
+                res.write('"";\n');
                 
-                // Cabeçalho CSV
-                res.write('Nome,Código,Descrição,Quantidade,Quantidade Mínima,Quantidade Máxima,Departamento,Localização,Status,Unidade Medida\n');
-                
-                // Dados
-                items.forEach(item => {
-                    const row = [
-                        `"${item.name || ''}"`,
-                        `"${item.code || ''}"`,
-                        `"${item.description || ''}"`,
-                        item.quantity || 0,
-                        item.minimumQuantity || 0,
-                        item.maximumQuantity || '',
-                        `"${item.stock?.name || ''}"`,
-                        `"${item.position || ''}"`,
-                        item.status,
-                        item.unitOfMeasure
-                    ].join(',');
-                    res.write(row + '\n');
-                });
-                
-                res.end();
-            } else {
-                res.status(400).json({ error: 'Formato não suportado' });
+                // Cabeçalho das colunas
+                const headers = [
+                    '📋 ID ITEM',
+                    '🏷️ NOME DO PRODUTO',
+                    '📟 CÓDIGO',
+                    '📝 DESCRIÇÃO',
+                    '📦 QUANTIDADE ATUAL',
+                    '📉 QTD. MÍNIMA',
+                    '📈 QTD. MÁXIMA',
+                    '🏢 DEPARTAMENTO',
+                    '📍 LOCALIZAÇÃO',
+                    '🔄 STATUS',
+                    '⚖️ UNID. MEDIDA',
+                    '💰 VALOR TOTAL',
+                    '🚨 SITUAÇÃO ESTOQUE'
+                ];
+                res.write(headers.map(header => `"${header}"`).join(';') + '\n');
             }
-        } catch (error) {
-            console.error("Erro ao exportar itens:", error);
-            res.status(500).json({ error: 'Erro na exportação' });
+            
+            // ===== DADOS FORMATADOS =====
+            let totalValorEstoque = 0;
+            let itensComProblema = 0;
+            
+            items.forEach(item => {
+                const valorItem = parseFloat(item.totalValue) || 0;
+                totalValorEstoque += valorItem;
+                
+                if (item.quantity <= 0 || item.quantity < item.minimumQuantity) {
+                    itensComProblema++;
+                }
+
+                const row = [
+                    // 📋 ID ITEM
+                    `"${item.id}"`,
+                    
+                    // 🏷️ NOME DO PRODUTO
+                    `"${(item.name || 'NÃO INFORMADO').replace(/"/g, '""')}"`,
+                    
+                    // 📟 CÓDIGO
+                    `"${(item.code || 'SEM CÓDIGO').replace(/"/g, '""')}"`,
+                    
+                    // 📝 DESCRIÇÃO
+                    `"${(item.description || 'Sem descrição cadastrada').replace(/"/g, '""')}"`,
+                    
+                    // 📦 QUANTIDADE ATUAL
+                    item.quantity || 0,
+                    
+                    // 📉 QTD. MÍNIMA
+                    item.minimumQuantity || 0,
+                    
+                    // 📈 QTD. MÁXIMA
+                    item.maximumQuantity || 'N/D',
+                    
+                    // 🏢 DEPARTAMENTO
+                    `"${(item.stock?.name || 'NÃO DEFINIDO').replace(/"/g, '""')}"`,
+                    
+                    // 📍 LOCALIZAÇÃO
+                    `"${(item.position || 'NÃO LOCALIZADO').replace(/"/g, '""')}"`,
+                    
+                    // 🔄 STATUS
+                    `"${getStatusIcon(item.status)}"`,
+                    
+                    // ⚖️ UNID. MEDIDA
+                    `"${formatUnitOfMeasure(item.unitOfMeasure)}"`,
+                    
+                    // 💰 VALOR TOTAL
+                    `"${formatCurrency(item.totalValue)}"`,
+                    
+                    // 🚨 SITUAÇÃO ESTOQUE
+                    `"${getStockStatus(item)}"`
+                ].join(';');
+                
+                res.write(row + '\n');
+            });
+            
+            // ===== RODAPÉ COM MÉTRICAS =====
+            const totalItens = items.length;
+            const itensAtivos = items.filter(item => item.status === 'Ativo').length;
+            const itensDesativados = items.filter(item => item.status === 'Desativado').length;
+            const estoqueBaixo = items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length;
+            const estoqueEsgotado = items.filter(item => item.quantity <= 0).length;
+            const estoqueNormal = items.filter(item => 
+                item.quantity >= item.minimumQuantity && 
+                item.quantity > 0
+            ).length;
+
+            res.write('\n');
+            res.write('"📈 RESUMO ESTATÍSTICO DO ESTOQUE";""\n');
+            res.write('"----------------------------------------";""\n');
+            res.write(`"📊 TOTAL DE ITENS CADASTRADOS";"${totalItens}"\n`);
+            res.write(`"✅ ITENS ATIVOS";"${itensAtivos}"\n`);
+            res.write(`"⏸️ ITENS DESATIVADOS";"${itensDesativados}"\n`);
+            res.write(`"🟢 ESTOQUE NORMAL";"${estoqueNormal}"\n`);
+            res.write(`"🟡 ESTOQUE BAIXO";"${estoqueBaixo}"\n`);
+            res.write(`"🔴 ESTOQUE ESGOTADO";"${estoqueEsgotado}"\n`);
+            res.write(`"⚠️  ITENS COM PROBLEMAS";"${itensComProblema}"\n`);
+            res.write(`"💰 VALOR TOTAL DO ESTOQUE";"${formatCurrency(totalValorEstoque)}"\n`);
+            res.write('"";""\n');
+            res.write('"----------------------------------------";""\n');
+            res.write(`"📅 RELATÓRIO GERADO EM";"${new Date().toLocaleString('pt-BR')}"\n`);
+            res.write(`"💻 SISTEMA";"StockEx Inventory Management v2.0"\n`);
+            res.write(`"👤 USUÁRIO";"${req.user?.nome || 'Sistema'}"\n`);
+            
+            res.end();
+            
+        } else if (format === 'json') {
+            // JSON formatado profissionalmente
+            const exportData = {
+                metadata: {
+                    relatorio: "Estoque Completo - StockEx",
+                    dataEmissao: new Date().toISOString(),
+                    dataEmissaoFormatada: new Date().toLocaleString('pt-BR'),
+                    totalRegistros: items.length,
+                    formato: "JSON",
+                    sistema: "StockEx Inventory Management v2.0",
+                    usuario: req.user?.nome || 'Sistema'
+                },
+                metricas: {
+                    totalItens: items.length,
+                    itensAtivos: items.filter(item => item.status === 'Ativo').length,
+                    itensInativos: items.filter(item => item.status === 'Desativado').length,
+                    estoqueNormal: items.filter(item => item.quantity >= item.minimumQuantity && item.quantity > 0).length,
+                    estoqueBaixo: items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length,
+                    estoqueEsgotado: items.filter(item => item.quantity <= 0).length,
+                    valorTotalEstoque: items.reduce((sum, item) => sum + (parseFloat(item.totalValue) || 0), 0)
+                },
+                itens: items.map(item => ({
+                    id: item.id,
+                    informacoesBasicas: {
+                        nome: item.name,
+                        codigo: item.code,
+                        descricao: item.description,
+                        unidadeMedida: formatUnitOfMeasure(item.unitOfMeasure)
+                    },
+                    estoque: {
+                        quantidadeAtual: item.quantity,
+                        quantidadeMinima: item.minimumQuantity,
+                        quantidadeMaxima: item.maximumQuantity,
+                        situacao: getStockStatus(item).replace(/[🔴🟡🟢]/g, '').trim()
+                    },
+                    localizacao: {
+                        departamento: item.stock?.name,
+                        posicao: item.position
+                    },
+                    status: {
+                        situacao: item.status,
+                        icone: getStatusIcon(item.status)
+                    },
+                    financeiro: {
+                        valorTotal: parseFloat(item.totalValue) || 0,
+                        valorTotalFormatado: formatCurrency(item.totalValue)
+                    },
+                    datas: {
+                        criacao: item.createdAt,
+                        atualizacao: item.updatedAt
+                    }
+                }))
+            };
+            
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="relatorio_estoque_${new Date().toISOString().split('T')[0]}.json"`);
+            res.json(exportData);
+            
+        } else {
+            res.status(400).json({ 
+                success: false,
+                error: '❌ Formato não suportado',
+                message: 'Utilize CSV ou JSON para exportação',
+                formatos_disponiveis: [
+                    { formato: 'csv', descricao: 'Excel/Planilhas' },
+                    { formato: 'json', descricao: 'API/Integração' }
+                ]
+            });
+        }
+        
+    } catch (error) {
+        console.error("❌ Erro ao exportar itens:", error);
+        
+        if (!res.headersSent) {
+            res.status(500).json({ 
+                success: false,
+                error: '📊 Falha na geração do relatório',
+                message: 'Não foi possível processar a exportação',
+                detalhes: process.env.NODE_ENV === 'development' ? error.message : 'Contate o administrador do sistema',
+                sugestao: 'Verifique os filtros aplicados e tente novamente'
+            });
+        } else {
+            console.error('⚠️  Headers já enviados, não é possível enviar resposta de erro');
         }
     }
+}
 
 };
 

@@ -39,12 +39,20 @@
     <div class="header-right">
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.nome || user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
             <% } %>
         </div>
     </div>
 </header>
+
 
 <main class="main-content">
     
@@ -1265,7 +1273,7 @@ body:not(.sidebar-expanded) .main-content {
 }
 
 .header-title {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-dark);
     margin: 0;
