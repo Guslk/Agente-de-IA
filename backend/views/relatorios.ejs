@@ -4,82 +4,227 @@
     <h1 class="header-title">Relatórios e Análises</h1>
     <div class="header-right">
         <div class="user-profile">
-            <span>Bem-vindo, <%= user.nome %></span>
-            <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome || user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            <% } %>
         </div>
     </div>
 </header>
 
 <main class="main-content">
+    
+    <!-- 1. Indicadores Chave (KPIs) -->
+    <!-- Os dados agora vêm do objeto 'kpis' -->
     <div class="kpi-grid">
         <div class="kpi-card">
             <h3>Valor Total do Estoque</h3>
-            <span class="kpi-value"><%= kpis.valorTotalEstoque %></span>
+            <span class="kpi-value"><%= (typeof kpis !== 'undefined' ? kpis.valorTotalEstoque : 'R$ 0,00') %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens Únicos (SKUs)</h3>
-            <span class="kpi-value"><%= kpis.totalItemsUnicos %></span>
+            <span class="kpi-value"><%= (typeof kpis !== 'undefined' ? kpis.totalItemsUnicos : 0) %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens com Estoque Baixo</h3>
-            <span class="kpi-value warning"><%= kpis.itensEstoqueBaixo %></span>
+            <span class="kpi-value warning"><%= (typeof kpis !== 'undefined' ? kpis.itensEstoqueBaixo : 0) %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens Esgotados</h3>
-            <span class="kpi-value danger"><%= kpis.itensEsgotados %></span>
+            <span class="kpi-value danger"><%= (typeof kpis !== 'undefined' ? kpis.itensEsgotados : 0) %></span>
         </div>
     </div>
 
+    <!-- 2. Grade de Gráficos -->
     <div class="reports-grid" style="margin-top: 30px;">
+        
+        <!-- Gráfico de Curva ABC -->
         <div class="report-card">
-            <h3>Itens por Categoria</h3>
+            <h3>Curva ABC (Top 20 Itens por Valor)</h3>
+            <canvas id="abcChart"></canvas>
+        </div>
+
+        <!-- Gráfico de Itens por Categoria (Rosca) -->
+        <div class="report-card">
+            <h3>Itens por Departamento (SKUs)</h3>
             <canvas id="itensPorCategoriaChart"></canvas>
         </div>
+
+        <!-- Gráfico de Valor por Categoria (Barras Horizontais) -->
         <div class="report-card">
-            <h3>Outro Relatório</h3>
-            <div class="placeholder-chart">Espaço para um futuro gráfico</div>
+            <h3>Valor por Departamento (R$)</h3>
+            <canvas id="valorPorCategoriaChart"></canvas>
         </div>
     </div>
+
+     <!-- 3. Tabela de Itens Obsoletos/Parados -->
+     <div class="main-header" style="margin-top: 30px;">
+        <h2>Itens Parados (Sem Saída há > 90 dias)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Qtd. Atual</th>
+                    <th>Valor em Estoque</th>
+                    <th>Última Saída</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dados agora vêm de kpis.itensParados -->
+                <% if (typeof kpis !== 'undefined' && kpis.itensParados && kpis.itensParados.length > 0) { %>
+                    <% kpis.itensParados.forEach(item => { %>
+                        <tr class="stock-planned"> <!-- Classe de alerta (amarelo) -->
+                            <td><code><%= item.code %></code></td>
+                            <td><strong><%= item.name %></strong></td>
+                            <td><%= item.quantity %></td>
+                            <!-- Corrigido para verificar se totalValue é um número -->
+                            <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${item.totalValue.toFixed(2)}` : 'N/A' %></td>
+                            <td><%= item.ultimaSaida ? new Date(item.ultimaSaida).toLocaleDateString('pt-BR') : 'Nunca' %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhum item parado encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
 </main>
 
 <%- include('partials/footer') %>
 
+<!-- Chart.js (essencial para os gráficos) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 2. Pega os dados que o controller enviou e os transforma em um objeto JavaScript
-    const categoriaData = JSON.parse('<%- JSON.stringify(itensPorCategoriaData) %>');
-
-    // 3. Configura e desenha o gráfico de pizza
-    const ctx = document.getElementById('itensPorCategoriaChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'doughnut', // Tipo do gráfico: 'doughnut' (rosquinha) ou 'pie' (pizza)
+    
+    // --- 1. Gráfico de Rosca: Itens por Departamento ---
+    // Pega os dados do kpis.itensPorCategoria
+    const categoriaData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.itensPorCategoria : { labels: [], data: [] }) %>;
+    const ctxCategoria = document.getElementById('itensPorCategoriaChart');
+    
+    if (ctxCategoria && categoriaData.labels && categoriaData.labels.length > 0) {
+        new Chart(ctxCategoria, {
+            type: 'doughnut',
             data: {
-                labels: categoriaData.labels, // Ex: ['Hardware', 'Periféricos']
+                labels: categoriaData.labels, 
                 datasets: [{
                     label: 'Nº de Itens',
-                    data: categoriaData.data, // Ex: [2, 2]
-                    backgroundColor: [
-                        '#3e4e88',
-                        '#fb8b24',
-                        '#85d874',
-                        '#e43f42',
-                        '#6c757d'
-                    ],
+                    data: categoriaData.data, 
+                    backgroundColor: ['#3e4e88', '#fb8b24', '#85d874', '#e43f42', '#6c757d', '#17a2b8'],
                     hoverOffset: 4
                 }]
             },
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
+    } else if (ctxCategoria) {
+        const ctx = ctxCategoria.getContext('2d');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px "Poppins"';
+        ctx.fillText('Nenhum dado de categoria', ctxCategoria.width / 2, ctxCategoria.height / 2);
+    }
+
+    // --- 2. Gráfico de Barras: Valor por Departamento ---
+    // Pega os dados de kpis.valorPorCategoria
+    const valorCategoriaData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.valorPorCategoria : { labels: [], data: [] }) %>;
+    const ctxValorCategoria = document.getElementById('valorPorCategoriaChart');
+
+    if (ctxValorCategoria && valorCategoriaData.labels && valorCategoriaData.labels.length > 0) {
+        new Chart(ctxValorCategoria, {
+            type: 'bar', 
+            data: {
+                labels: valorCategoriaData.labels,
+                datasets: [{
+                    label: 'Valor Total (R$)',
+                    data: valorCategoriaData.data,
+                    backgroundColor: '#3e4e88',
+                }]
+            },
             options: {
+                indexAxis: 'y', // <-- Barras horizontais
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'top',
+                    legend: { display: false } 
+                }
+            }
+        });
+    } else if (ctxValorCategoria) {
+         const ctx = ctxValorCategoria.getContext('2d');
+         ctx.textAlign = 'center';
+         ctx.textBaseline = 'middle';
+         ctx.fillStyle = '#aaa';
+         ctx.font = '16px "Poppins"';
+         ctx.fillText('Nenhum dado de valor', ctxValorCategoria.width / 2, ctxValorCategoria.height / 2);
+    }
+
+    // --- 3. Gráfico de Curva ABC ---
+    // Pega os dados de kpis.curvaABC
+    const abcData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.curvaABC : { labels: [], dataValor: [], dataAcumulado: [] }) %>;
+    const ctxABC = document.getElementById('abcChart');
+
+    if (ctxABC && abcData.labels && abcData.labels.length > 0) {
+        new Chart(ctxABC, {
+            type: 'bar', // Gráfico combinado
+            data: {
+                labels: abcData.labels, // Ex: ['Item 1', 'Item 2', ...]
+                datasets: [
+                    {
+                        type: 'bar', // Barras (Valor)
+                        label: 'Valor Individual (R$)',
+                        data: abcData.dataValor,
+                        backgroundColor: '#6c757d'
+                    },
+                    {
+                        type: 'line', // Linha (Acumulado %)
+                        label: '% Acumulada',
+                        data: abcData.dataAcumulado,
+                        borderColor: '#e43f42',
+                        backgroundColor: '#e43f42',
+                        tension: 0.1,
+                        yAxisID: 'yAcumulado' // Eixo Y secundário
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { // Eixo Y primário (R$)
+                        beginAtZero: true,
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Valor em Estoque (R$)' }
+                    },
+                    yAcumulado: { // Eixo Y secundário (%)
+                        beginAtZero: true,
+                        max: 100,
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: '% Acumulada' },
+                        grid: {
+                            drawOnChartArea: false, // Não desenha a grade sobre as barras
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%'
+                            }
+                        }
                     }
                 }
             }
         });
+    } else if (ctxABC) {
+        const ctx = ctxABC.getContext('2d');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px "Poppins"';
+        ctx.fillText('Nenhum dado de valor de item', ctxABC.width / 2, ctxABC.height / 2);
     }
 });
 </script>
