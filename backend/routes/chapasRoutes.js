@@ -27,6 +27,9 @@ router.post('/api/plates', chapasController.createPlate);
 // Busca todos os cortes salvos para uma chapa específica.
 router.get('/api/plates/:id/cuts', chapasController.getCuts);
 
+// Busca o histórico de itens (peças) criados a partir desta chapa.
+router.get('/api/plates/:id/history', chapasController.getPlateHistory);
+
 // POST /chapas/api/plates/:id/cuts
 // Deleta os cortes antigos e salva os novos cortes para uma chapa.
 router.post('/api/plates/:id/cuts', chapasController.saveCuts);

@@ -5,6 +5,7 @@ const API_URL = '/chapas/api';
 let canvas, ctx, currentWidthInput, currentHeightInput;
 let currentPlate = null;
 let finishedCuts = [];
+let originalCutCount = 0;
 
 let renderScale = 1.0; // Fator de escala (mm -> pixels)
 let offsetX = 0;       // Deslocamento X para centralizar
@@ -452,10 +453,13 @@ function handleMouseUp() {
 }
 
 function undoLastCut() {
-    if (finishedCuts.length > 0) {
+    
+    if (finishedCuts.length > originalCutCount) {
         finishedCuts.pop();
-        setStatusMessage('Último corte desfeito.', 'orange');
+        setStatusMessage('Último corte (novo) desfeito.', 'orange');
         redrawCanvas();
+    } else {
+        setStatusMessage('Não é possível desfazer cortes que já estavam salvos.', 'red');
     }
 }
 
@@ -496,6 +500,7 @@ async function fetchPlates() {
 async function loadCutsForPlate(plateId) {
     if (!plateId) {
         finishedCuts = [];
+        originalCutCount = 0;
         redrawCanvas();
         return;
     }
@@ -522,9 +527,11 @@ async function loadCutsForPlate(plateId) {
                      return null;
                 }
             }).filter(cut => cut !== null);
+            originalCutCount = finishedCuts.length;
         } else {
             console.warn("API retornou dados de cortes inválidos:", result);
             finishedCuts = [];
+            originalCutCount = 0;
         }
 
         redrawCanvas();
@@ -532,7 +539,76 @@ async function loadCutsForPlate(plateId) {
         console.error("Erro ao carregar ou processar os cortes:", error);
         setStatusMessage('Erro ao carregar os cortes da chapa.', 'red');
         finishedCuts = [];
+        originalCutCount = 0;
         redrawCanvas();
+    }
+}
+
+async function loadPlateHistory(plateId) {
+    const tableBody = document.getElementById('plate-history-tablebody');
+    const container = document.getElementById('plate-history-container');
+    if (!tableBody || !container) return;
+
+    // Use o colspan correto (5)
+    const colspan = 5;
+
+    if (!plateId) {
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center;">Selecione uma chapa para ver o histórico.</td></tr>`;
+        container.style.display = 'none';
+        return;
+    }
+    
+    try {
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center;">Carregando histórico...</td></tr>`;
+        container.style.display = 'block';
+
+        const response = await fetch(`${API_URL}/plates/${plateId}/history`); 
+        if (!response.ok) throw new Error('Falha ao carregar histórico de peças.');
+        
+        const result = await response.json();
+        
+        if (result.data && result.data.length > 0) {
+            tableBody.innerHTML = ''; 
+            result.data.forEach(item => {
+                // Extrai dimensões
+                const dimMatch = item.description.match(/Peça de (.*?) \(/);
+                const dimensions = dimMatch ? dimMatch[1] : 'N/A';
+                
+                // Extrai data do código
+                let creationDate = "Data N/A";
+                if (item.code) {
+                    const parts = item.code.split('-');
+                    if (parts.length >= 3) {
+                        const timestamp = Number(parts[2]);
+                        if (!isNaN(timestamp)) {
+                            creationDate = new Date(timestamp).toLocaleString('pt-BR', {
+                                dateStyle: 'short', 
+                                timeStyle: 'short'
+                            });
+                        }
+                    }
+                }
+                
+                // --- INÍCIO DA NOVA LÓGICA (EXTRAIR USUÁRIO) ---
+                const userMatch = item.description.match(/Criado por: (.*?)\./);
+                const userName = userMatch ? userMatch[1] : 'N/A';
+                // --- FIM DA NOVA LÓGICA ---
+                
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${creationDate}</td>
+                        <td>${item.name}</td>
+                        <td>${dimensions}</td>
+                        <td>${userName}</td> <td><code>${item.code}</code></td>
+                    </tr>
+                `;
+            });
+        } else {
+            tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center;">Nenhuma peça de estoque foi criada a partir desta chapa.</td></tr>`;
+        }
+    } catch (error) {
+        console.error("Erro ao carregar histórico da chapa:", error);
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" style="text-align: center; color: red;">${error.message}</td></tr>`;
     }
 }
 
@@ -551,17 +627,45 @@ async function handleSaveCuts() {
         return;
     }
 
+    const createItemsCheckbox = document.getElementById('plate-create-item-check');
+    const shouldCreateItems = createItemsCheckbox ? createItemsCheckbox.checked : false;
+
+    let payload = {
+        cuts: finishedCuts, // Sempre envia a lista completa de cortes para salvar
+        createItems: false,
+        cutsToCreateItemsFor: [] // Por padrão, não cria itens
+    };
+
+    if (shouldCreateItems) {
+        // Pega apenas os cortes que foram adicionados *depois* dos que foram carregados
+        const newCuts = finishedCuts.slice(originalCutCount);
+        
+        if (newCuts.length === 0) {
+            setStatusMessage('Você marcou "Criar itens", mas não há novos cortes para adicionar.', 'orange');
+            // Continua para salvar (caso o usuário tenha desfeito cortes), mas sem criar itens
+            payload.createItems = false;
+        } else {
+            payload.createItems = true;
+            payload.cutsToCreateItemsFor = newCuts;
+            // O backend saberá que precisa criar "newCuts.length" itens
+        }
+    }
+
     try {
         const response = await fetch(`${API_URL}/plates/${currentPlate.id}/cuts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cuts: finishedCuts })
+            // CORRIGIDO: Envia o objeto 'payload' completo
+            body: JSON.stringify(payload)
         });
         if (!response.ok) {
              const errorData = await response.json().catch(() => ({ error: 'Falha na resposta da API sem JSON.' }));
              throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         const result = await response.json();
+        if (payload.createItems && payload.cutsToCreateItemsFor.length > 0) {
+             originalCutCount = finishedCuts.length; 
+        }
         setStatusMessage(result.message || 'Cortes salvos com sucesso!', 'green');
     } catch (error) {
         console.error("Erro ao salvar cortes:", error);
@@ -725,13 +829,18 @@ async function handleConsumeBar(event) {
          return;
     }
 
+    const createItemCheckbox = document.getElementById('bar-create-item-check');
+    const shouldCreateItem = createItemCheckbox ? createItemCheckbox.checked : false;
+
     try {
         const response = await fetch(`${API_URL}/bars/consume`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // 2. ADICIONE O "createItem" AO BODY
             body: JSON.stringify({ 
                 barId: barId, 
-                consumedLength: lengthToConsume 
+                consumedLength: lengthToConsume,
+                createItem: shouldCreateItem
             })
         });
         
@@ -745,6 +854,8 @@ async function handleConsumeBar(event) {
         
         const barForm = document.getElementById('bar-consume-form');
         if(barForm) barForm.reset();
+
+        if(createItemCheckbox) createItemCheckbox.checked = false;
         
         await fetchBars(); // Espera as barras recarregarem
         
@@ -859,7 +970,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const chapasView = document.getElementById('chapas-view');
     const barrasView = document.getElementById('barras-view');
     const btnAddChapa = document.getElementById('open-plate-modal-btn'); // ID Alterado
-    const btnAddBarra = document.getElementById('open-bar-modal-btn'); 
+    const btnAddBarra = document.getElementById('open-bar-modal-btn');
+    const plateHistoryContainer = document.getElementById('plate-history-container');
 
     if (btnViewChapas && btnViewBarras && chapasView && barrasView) {
         btnViewChapas.addEventListener('click', () => {
@@ -870,6 +982,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(btnAddChapa) btnAddChapa.style.display = 'inline-flex';
             if(btnAddBarra) btnAddBarra.style.display = 'none';
+            const plateSelector = document.getElementById('plate-selector');
+            if (plateHistoryContainer && plateSelector && plateSelector.value) {
+                plateHistoryContainer.style.display = 'block';}
         });
 
         btnViewBarras.addEventListener('click', () => {
@@ -880,6 +995,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(btnAddChapa) btnAddChapa.style.display = 'none';
             if(btnAddBarra) btnAddBarra.style.display = 'inline-flex';
+            if (plateHistoryContainer) {
+                plateHistoryContainer.style.display = 'none';
+            }
 
             const barSelector = document.getElementById('bar-selector');
             if (barSelector && barSelector.options.length <= 1) {
@@ -933,9 +1051,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentPlate = null;
                  if(plateDimensionsEl) plateDimensionsEl.textContent = '';
                 finishedCuts = [];
+                originalCutCount = 0;
                 redrawCanvas();
                 if(currentWidthInput) currentWidthInput.value = '0.0';
                 if(currentHeightInput) currentHeightInput.value = '0.0';
+                loadPlateHistory(null);
                 return;
             }
             if (selectedOption.dataset && selectedOption.dataset.width && selectedOption.dataset.height) {
@@ -950,12 +1070,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadCutsForPlate(currentPlate.id);
                  if(currentWidthInput) currentWidthInput.value = '0.0';
                  if(currentHeightInput) currentHeightInput.value = '0.0';
+                loadPlateHistory(currentPlate.id);
             } else {
                  console.error("Opção selecionada não contém dimensões:", selectedOption);
                  currentPlate = null;
                  finishedCuts = [];
                  redrawCanvas();
                  if(setStatusMessage) setStatusMessage("Erro ao ler dimensões da chapa selecionada.", "red");
+                 loadPlateHistory(null);
             }
         });
     } else {

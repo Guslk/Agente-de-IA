@@ -353,7 +353,7 @@ const chapasController = {
      * API: Lista todas as chapas cadastradas.
      * Rota: GET /chapas/api/plates
      */
-    listPlates: async (req, res) => {
+   listPlates: async (req, res) => {
         const { tenantId } = req;
         try {
             const sequelize = await getTenantDB(tenantId);
@@ -363,11 +363,13 @@ const chapasController = {
                 throw new Error("O modelo 'Plate' não foi inicializado. Verifique 'models/index.js'.");
             }
 
+            // Esta é a lógica correta: apenas buscar todas as chapas
             const plates = await Plate.findAll({ order: [['name', 'ASC']] });
             res.json({ message: "success", data: plates });
-        } catch (err) {
-            console.error("Erro em [listPlates]:", err);
-            res.status(500).json({ error: err.message });
+            
+        } catch (err) { 
+            console.error("Erro em [listPlates]:", err); 
+            res.status(500).json({ error: err.message }); 
         }
     },
 
@@ -399,6 +401,38 @@ const chapasController = {
         } catch (err) {
             console.error("Erro em [createPlate]:", err);
             res.status(400).json({ error: err.message });
+        }
+    },
+
+    getPlateHistory: async (req, res) => {
+        const { tenantId } = req;
+        const plateId = req.params.id;
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            // Precisamos do Item e do Stock para esta consulta
+            const { Item, Stock } = db.initialize(sequelize);
+
+            // Filtra itens cujo código comece com 'CHP-<ID_DA_CHAPA>-'
+            const plateItems = await Item.findAll({
+                where: {
+                    code: {
+                        [Op.like]: `CHP-${plateId}-%`
+                    }
+                },
+                include: [{
+                    model: Stock,
+                    as: 'stock',
+                    attributes: ['name']
+                }],
+                order: [['id', 'DESC']] // Mostra os mais recentes primeiro
+            });
+
+            res.json({ message: "success", data: plateItems });
+
+        } catch (err) {
+            console.error("Erro em [getPlateHistory]:", err);
+            res.status(500).json({ error: err.message });
         }
     },
 
@@ -477,7 +511,7 @@ const chapasController = {
         }
     },
 
-    listBars: async (req, res) => {
+   listBars: async (req, res) => {
         const { tenantId } = req;
         try {
             const sequelize = await getTenantDB(tenantId);
@@ -509,8 +543,11 @@ const chapasController = {
     saveCuts: async (req, res) => {
         const { tenantId } = req;
         const plateId = req.params.id;
-        const { cuts, createItems = false, itemPrefix = "Corte Chapa" } = req.body;
+        const { cuts, createItems = false, cutsToCreateItemsFor = [], itemPrefix = "Corte Chapa" } = req.body;
         let transaction;
+        const consumedByUser = (req.session.user && (req.session.user.name || req.session.user.nome))
+            ? (req.session.user.name || req.session.user.nome)
+            : "Usuário (Sistema)";
 
         try {
             const sequelize = await getTenantDB(tenantId);
@@ -550,11 +587,21 @@ const chapasController = {
 
             // 4. SE solicitado, cria itens no estoque para cada corte
             let createdItems = [];
-            if (createItems && createdCuts.length > 0) {
-                createdItems = await this._createPlateCutItems(
-                    createdCuts,
+            // vvv CONDIÇÃO ATUALIZADA vvv
+            if (createItems && createdCuts.length > 0 && cutsToCreateItemsFor.length > 0) {
+                
+                // Pega o número de itens a criar (enviado pelo front)
+                const newItemCount = cutsToCreateItemsFor.length;
+                
+                // Pega os *últimos* N itens da lista de cortes recém-criados no DB
+                // (Assumindo que a ordem do bulkCreate é mantida)
+                const cutsForItems = createdCuts.slice(-newItemCount);
+
+                createdItems = await chapasController._createPlateCutItems(
+                    cutsForItems,
                     plate,
                     itemPrefix,
+                    consumedByUser, // <-- Passe o nome do usuário aqui
                     { Item, Stock, transaction }
                 );
             }
@@ -581,11 +628,7 @@ const chapasController = {
         }
     },
 
-    /**
-     * Método auxiliar: Cria itens no estoque para cortes de chapa
-     * USANDO APENAS CAMPOS EXISTENTES NO MODELO ITEM
-     */
-    _createPlateCutItems: async (cuts, plate, itemPrefix, { Item, Stock, transaction }) => {
+    _createPlateCutItems: async (cuts, plate, itemPrefix, userName, { Item, Stock, transaction }) => {
         try {
             // Encontra ou cria um stock padrão para chapas cortadas
             let stock = await Stock.findOne({
@@ -603,21 +646,33 @@ const chapasController = {
 
             // Cria um item para cada corte usando apenas campos existentes
             const itemsToCreate = cuts.map((cut, index) => {
-                const area = this._calculateCutArea(cut.coordinates);
+                const area = chapasController._calculateCutArea(cut.coordinates);
                 const itemName = `${itemPrefix} ${plate.name} - Peça ${index + 1}`;
+
+                let cutWidth = 0;
+                let cutHeight = 0;
+                let cutDimensions = "Dimensões N/A"; 
+
+                if (cut.coordinates && cut.coordinates.length === 4 && cut.coordinates[0] && cut.coordinates[1] && cut.coordinates[3]) {
+                    cutWidth = Math.abs(cut.coordinates[1].x - cut.coordinates[0].x);
+                    cutHeight = Math.abs(cut.coordinates[3].y - cut.coordinates[0].y);
+                    cutDimensions = `${cutWidth.toFixed(1)}mm x ${cutHeight.toFixed(1)}mm`;
+                }
 
                 return {
                     stockId: stock.id,
                     name: itemName,
-                    quantity: 1, // Cada corte vira 1 unidade
-                    description: `Corte da chapa ${plate.name} (${plate.original_width_mm}x${plate.original_height_mm}mm). Área aproximada: ${area} mm². Corte ID: ${cut.id}`,
+                    quantity: 1,
+                    
+                    // --- DESCRIÇÃO ATUALIZADA (INCLUI O USUÁRIO) ---
+                    description: `Peça de ${cutDimensions} (corte da chapa ${plate.name}). Área aproximada: ${area} mm². Criado por: ${userName || 'N/A'}. Corte ID: ${cut.id}`,
+                    
                     position: `CHAPA-${plate.id}-C${index + 1}`,
                     code: `CHP-${plate.id}-${Date.now()}-${index}`,
                     unitOfMeasure: 'un',
                     minimumQuantity: 0,
                     status: 'Ativo',
-                    // Usando campos existentes para armazenar informações adicionais no description
-                    totalValue: 0.00, // Pode ser calculado se tiver custo da chapa
+                    totalValue: 0.00,
                     reservedQuantity: 0.00
                 };
             });
@@ -707,7 +762,7 @@ const chapasController = {
             // 5. SE solicitado, cria item no estoque
             let createdItem = null;
             if (createItem) {
-                createdItem = await this._createBarCutItem(
+                createdItem = await chapasController._createBarCutItem(
                     barCut,
                     bar,
                     consumedLength,

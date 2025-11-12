@@ -1,6 +1,22 @@
 <%- include('partials/header', { title: 'Controle de Materiais', paginaAtiva: 'chapas' }) %>
 
 <style>
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+}
+.form-group-inline input[type="checkbox"] {
+    width: auto;
+    height: 18px;
+    margin: 0;
+}
+.form-group-inline label {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-dark);
+}
 .header-title {
     font-size: 1.8rem;
     font-weight: 700;
@@ -190,35 +206,58 @@
         </div>
 
         <div class="report-card" style="padding: 10px; margin-top: 20px;">
-            <div class="chapa-controls" style="display: flex; gap: 10px; padding: 15px; border-bottom: 1px solid var(--border-color);">
+            <div class="chapa-controls" style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-color); align-items: center;">
                 <button id="btn-undo-cut" class="btn-secondary">Desfazer Último Corte</button>
-                <button id="btn-save-cuts" class="btn-primary" style="background-color: var(--success);">Salvar Consumo na Chapa</button>
+                <button id="btn-save-cuts" class="btn-primary" style="background-color: var(--success);">Salvar Consumo</button>
+                
+                <div class="form-group-inline" style="margin-left: auto;">
+                    <input type="checkbox" id="plate-create-item-check">
+                    <label for="plate-create-item-check">Criar itens de estoque</label>
+                </div>
             </div>
             <p id="status-message" style="padding: 15px; margin: 0;">Para iniciar um corte, clique e arraste a partir de uma borda disponível.</p>
-        </div>
+            </div>
+        </div>  <div id="plate-history-container" style="margin-top: 20px; display: none;">
+        <h4>Histórico de Peças Criadas da Chapa</h4>
+        <section class="inventory-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data (Criação)</th>
+                        <th>Nome / ID da Peça</th>
+                        <th>Dimensões</th> <th>Usuário</th> <th>Código</th>
+                    </tr>
+                </thead>
+                <tbody id="plate-history-tablebody">
+                   <tr><td colspan="5" style="text-align: center;">Selecione uma chapa para ver o histórico de peças.</td></tr>
+                </tbody>
+            </table>
+        </section>
     </div>
-    
-    <!-- VIEW DE BARRAS (escondida por padrão) -->
+   
     <div id="barras-view" style="display: none;">
         <div class="report-card">
             <h3>Controle de Consumo de Barras</h3>
             <p id="bar-status-message" style="min-height: 20px; font-weight: 500;"></p>
             
             <div class="filter-section" style="margin-top: 20px;">
-                <!-- ID ADICIONADO AO FORMULÁRIO -->
-                <form id="bar-consume-form" class="filter-form">
+                <form id="bar-consume-form" class="filter-form" style="align-items: end;">
                     <div class="form-group" style="flex-grow: 2;">
-                        <label for="bar-selector">Selecionar Barra</label>
-                        <select id="bar-selector" required>
-                            <option value="">-- Carregando barras... --</option>
-                            <!-- Barras serão carregadas pelo JS -->
-                        </select>
-                         <p id="bar-dimensions" style="margin-top: 5px; font-size: 0.85rem; color: var(--text-light);"></p>
+                         <label for="bar-selector">Selecionar Barra</label>
+                         <select id="bar-selector" required> ... </select>
+                         <p id="bar-dimensions" ...></p>
                     </div>
                      <div class="form-group" style="flex-grow: 1;">
                         <label for="bar-consume-length">Consumir (mm)</label>
                         <input type="number" id="bar-consume-length" placeholder="Ex: 500" required>
                     </div>
+
+                    <div class="form-group" style="flex-grow: 1; justify-content: center;">
+                         <div class="form-group-inline" style="padding-bottom: 12px;"> <input type="checkbox" id="bar-create-item-check">
+                            <label for="bar-create-item-check">Criar item</label>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn-primary" style="align-self: end; background-color: var(--danger);">Registrar Consumo</button>
                 </form>
             </div>
