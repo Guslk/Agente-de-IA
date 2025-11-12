@@ -20,7 +20,7 @@ const movementController = {
 
         try {
             const sequelize = await getTenantDB(tenantId);
-            const { Entry, Output, Item, Supplier, Employee } = db.initialize(sequelize);
+            const { Entry, Output, Item, Supplier, Employee ,Stock} = db.initialize(sequelize);
 
             // --- 2. Lógica de Filtro (Where) ---
             const entryWhere = {};
@@ -130,10 +130,34 @@ const movementController = {
             });
 
             // 6. Busca dados para os Filtros e Modais
-            const items = await Item.findAll({
-                where: { status: 'Ativo' },
-                order: [['name', 'ASC']]
-            });
+            // const items = await Item.findAll({
+            //     where: { status: 'Ativo' },
+            //     order: [['name', 'ASC']]
+            // });
+const departamentos = await Stock.findAll({
+    where: {
+        name: {
+            [Op.in]: ['Barras Cortadas', 'Chapas Cortadas']
+        }
+    },
+    attributes: ['id'] // Apenas os IDs
+});
+
+// Extrai os IDs
+const idsDepartamentos = departamentos.map(depto => depto.id);
+
+// Agora busca os itens excluindo esses IDs
+const items = await Item.findAll({
+    where: { 
+        status: 'Ativo',
+        id_stock: {
+            [Op.notIn]: idsDepartamentos
+        }
+    },
+    order: [['name', 'ASC']]
+});
+            
+            
             const suppliers = await Supplier.findAll({
                 where: { status: 'Ativo' },
                 order: [['name', 'ASC']]
