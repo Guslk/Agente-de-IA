@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 1. Gráfico de Rosca: Itens por Departamento ---
     // Pega os dados do kpis.itensPorCategoria
-    const categoriaData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.itensPorCategoria : { labels: [], data: [] }) %>;
+    const categoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.itensPorCategoria : { labels: [], data: [] }) %>`);
     const ctxCategoria = document.getElementById('itensPorCategoriaChart');
     
     if (ctxCategoria && categoriaData.labels && categoriaData.labels.length > 0) {
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. Gráfico de Barras: Valor por Departamento ---
     // Pega os dados de kpis.valorPorCategoria
-    const valorCategoriaData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.valorPorCategoria : { labels: [], data: [] }) %>;
+    const valorCategoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.valorPorCategoria : { labels: [], data: [] }) %>`);
     const ctxValorCategoria = document.getElementById('valorPorCategoriaChart');
 
     if (ctxValorCategoria && valorCategoriaData.labels && valorCategoriaData.labels.length > 0) {
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 3. Gráfico de Curva ABC ---
     // Pega os dados de kpis.curvaABC
-    const abcData = <%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.curvaABC : { labels: [], dataValor: [], dataAcumulado: [] }) %>;
+    const abcData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.curvaABC : { labels: [], dataValor: [], dataAcumulado: [] }) %>`);
     const ctxABC = document.getElementById('abcChart');
 
     if (ctxABC && abcData.labels && abcData.labels.length > 0) {
