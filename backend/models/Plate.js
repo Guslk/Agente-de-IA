@@ -36,7 +36,13 @@ module.exports = (sequelize, DataTypes) => {
     original_height_mm: {
       type: DataTypes.FLOAT,
       allowNull: false
+    },
+    cost: {
+      type: DataTypes.DECIMAL(10, 2), // Ex: 1250.50
+      allowNull: true,
+      defaultValue: 0.00
     }
+    
   }, {
     sequelize,
     modelName: 'Plate',  // Nome do modelo em JavaScript
