@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
         material: {
             type: DataTypes.STRING(100),
             allowNull: true
+        },
+        cost_per_mm: {
+            type: DataTypes.DECIMAL(10, 4), // Ex: 0.15 (15 centavos por mm)
+            allowNull: true,
+            defaultValue: 0.00
         }
     }, {
         tableName: 'bars', // Nome exato da tabela no MySQL

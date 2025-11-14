@@ -678,10 +678,12 @@ async function handleNewPlateSubmit(event) {
     const nameInput = document.getElementById('plate-name');
     const widthInput = document.getElementById('plate-width');
     const heightInput = document.getElementById('plate-height');
+    const costInput = document.getElementById('plate-cost'); // <-- 1. Ler o novo input
 
     const name = nameInput ? nameInput.value : null;
     const width = widthInput ? parseFloat(widthInput.value) : NaN;
     const height = heightInput ? parseFloat(heightInput.value) : NaN;
+    const cost = (costInput && costInput.value) ? parseFloat(costInput.value) : 0; // <-- 2. Obter o valor
 
     if (!name || isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
         setStatusMessage('Por favor, preencha todos os campos com valores válidos.', 'red');
@@ -692,7 +694,7 @@ async function handleNewPlateSubmit(event) {
         const response = await fetch(`${API_URL}/plates`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, width, height })
+            body: JSON.stringify({ name, width, height, cost }) // <-- 3. Enviar o custo
         });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Erro ao criar chapa sem JSON.' }));
@@ -755,11 +757,13 @@ async function handleNewBarSubmit(event) {
     const lengthInput = document.getElementById('bar-length');
     const diameterInput = document.getElementById('bar-diameter');
     const materialInput = document.getElementById('bar-material');
+    const costInput = document.getElementById('bar-cost'); // <-- 1. Ler o novo input
 
     const name = nameInput ? nameInput.value : null;
     const length = lengthInput ? parseFloat(lengthInput.value) : NaN;
     const diameter = diameterInput && diameterInput.value ? parseFloat(diameterInput.value) : null;
     const material = materialInput ? materialInput.value : null;
+    const cost = (costInput && costInput.value) ? parseFloat(costInput.value) : 0; // <-- 2. Obter o valor
 
     if (!name || isNaN(length) || length <= 0) {
         // Usa a mensagem de status da aba de barras
@@ -776,7 +780,8 @@ async function handleNewBarSubmit(event) {
                 name, 
                 length, 
                 diameter: isNaN(diameter) ? null : diameter, 
-                material 
+                material,
+                cost // <-- 3. Enviar o custo
             })
         });
         if (!response.ok) {

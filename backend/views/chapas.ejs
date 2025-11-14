@@ -312,7 +312,14 @@
                         <input type="number" id="plate-height" placeholder="Ex: 1500" required>
                     </div>
                 </div>
-            </div>
+                
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label for="plate-cost">Custo Total (R$) (Opcional)</label>
+                        <input type="number" id="plate-cost" step="0.01" placeholder="Ex: 1250.50">
+                    </div>
+                </div>
+                </div>
             
             <div class="modal-footer">
                 <button type="submit" class="btn-primary">Cadastrar Chapa</button>
@@ -330,27 +337,32 @@
         </div>
         
         <form id="new-bar-form">
-            <div class="modal-body">
-                 <div class="form-group full-width">
+            <div class="modal-body"> <div class="form-group full-width">
                     <label for="bar-name">Nome/ID da Barra</label>
                     <input type="text" id="bar-name" name="name" placeholder="Ex: Barra Aço 1020 1 pol" required>
                 </div>
-                <div class="form-grid">
+
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
                     <div class="form-group">
                         <label for="bar-length">Comprimento Original (mm)</label>
                         <input type="number" id="bar-length" name="length" placeholder="Ex: 6000" required>
                     </div>
                     <div class="form-group">
-                        <label for="bar-diameter">Diâmetro (mm) (Opcional)</label>
-                        <input type="number" id="bar-diameter" name="diameter" step="0.01" placeholder="Ex: 25.4">
-                    </div>
-                     <div class="form-group full-width">
-                        <label for="bar-material">Material (Opcional)</label>
-                        <input type="text" id="bar-material" name="material" placeholder="Ex: Aço 1020">
+                        <label for="bar-diameter">Diâmetro (mm) (Opc)</label>
+                        <input type="number" id="bar-diameter" name="diameter" placeholder="Ex: 25.4">
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
+                <div class="form-group full-width">
+                        <label for="bar-material">Material (Opcional)</label>
+                        <input type="text" id="bar-material" name="material" placeholder="Ex: Aço 1020">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="bar-cost">Custo Total da Barra (R$) (Opcional)</label>
+                    <input type="number" id="bar-cost" name="cost" step="0.01" placeholder="Ex: 300.00">
+                </div>
+
+            </div> <div class="modal-footer">
                 <button type="submit" class="btn-primary" style="background-color: #17a2b8;">Cadastrar Barra</button>
             </div>
         </form>

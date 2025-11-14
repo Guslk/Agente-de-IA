@@ -385,7 +385,8 @@ const chapasController = {
 
             if (!Plate) { throw new Error("O modelo 'Plate' não foi inicializado."); }
 
-            const { name, width, height } = req.body;
+            // 1. Receber 'cost' do body
+            const { name, width, height, cost } = req.body;
 
             if (!name || width == null || height == null) {
                 return res.status(400).json({ "error": "Campos obrigatórios: name, width, height." });
@@ -394,7 +395,8 @@ const chapasController = {
             const newPlate = await Plate.create({
                 name,
                 original_width_mm: width,
-                original_height_mm: height
+                original_height_mm: height,
+                cost: cost || 0 // 2. Salvar o custo
             });
             res.status(201).json({ message: "success", data: newPlate });
 
@@ -448,18 +450,25 @@ const chapasController = {
                 throw new Error("O modelo 'Bar' não foi inicializado.");
             }
 
-            const { name, length, diameter, material } = req.body;
+            // 1. Receber 'cost' (custo total) do body perfeito
+            const { name, length, diameter, material, cost } = req.body;
 
             if (!name || length == null || isNaN(parseFloat(length)) || length <= 0) {
                 return res.status(400).json({ "error": "Campos obrigatórios: name, length." });
             }
 
+            // 2. Calcular o custo por milímetro 
+            const totalCost = parseFloat(cost) || 0;
+            const totalLength = parseFloat(length);
+            const costPerMm = (totalCost > 0 && totalLength > 0) ? (totalCost / totalLength) : 0;
+
             const newBar = await Bar.create({
                 name,
                 original_length_mm: length,
-                remaining_length_mm: length, // No cadastro, o restante é igual ao original
+                remaining_length_mm: length,
                 diameter_mm: diameter || null,
-                material: material || null
+                material: material || null,
+                cost_per_mm: costPerMm // 
             });
             res.status(201).json({ message: "success", data: newBar });
 
@@ -630,7 +639,7 @@ const chapasController = {
 
     _createPlateCutItems: async (cuts, plate, itemPrefix, userName, { Item, Stock, transaction }) => {
         try {
-            // Encontra ou cria um stock padrão para chapas cortadas
+            // ... (lógica do 'stock' continua a mesma)
             let stock = await Stock.findOne({
                 where: { name: 'Chapas Cortadas' },
                 transaction
@@ -644,11 +653,25 @@ const chapasController = {
                 }, { transaction });
             }
 
-            // Cria um item para cada corte usando apenas campos existentes
+            // --- INÍCIO DA LÓGICA DE CUSTO ---
+            const plateTotalCost = parseFloat(plate.cost) || 0;
+            const plateTotalArea = parseFloat(plate.original_width_mm) * parseFloat(plate.original_height_mm);
+            
+            // Calcula o custo por mm², evitando divisão por zero
+            const costPerSqMm = (plateTotalCost > 0 && plateTotalArea > 0) 
+                              ? (plateTotalCost / plateTotalArea) 
+                              : 0;
+            // --- FIM DA LÓGICA DE CUSTO ---
+
+
             const itemsToCreate = cuts.map((cut, index) => {
                 const area = chapasController._calculateCutArea(cut.coordinates);
                 const itemName = `${itemPrefix} ${plate.name} - Peça ${index + 1}`;
 
+                // --- Calcula o valor final do item ---
+                const finalItemValue = costPerSqMm * parseFloat(area);
+
+                // ... (lógica das 'cutDimensions' continua a mesma)
                 let cutWidth = 0;
                 let cutHeight = 0;
                 let cutDimensions = "Dimensões N/A"; 
@@ -662,17 +685,17 @@ const chapasController = {
                 return {
                     stockId: stock.id,
                     name: itemName,
-                    quantity: 1,
-                    
-                    // --- DESCRIÇÃO ATUALIZADA (INCLUI O USUÁRIO) ---
+                    quantity: 1, 
                     description: `Peça de ${cutDimensions} (corte da chapa ${plate.name}). Área aproximada: ${area} mm². Criado por: ${userName || 'N/A'}. Corte ID: ${cut.id}`,
-                    
                     position: `CHAPA-${plate.id}-C${index + 1}`,
                     code: `CHP-${plate.id}-${Date.now()}-${index}`,
                     unitOfMeasure: 'un',
                     minimumQuantity: 0,
                     status: 'Ativo',
-                    totalValue: 0.00,
+                    
+                    // --- VALOR ATRIBUÍDO AQUI ---
+                    totalValue: finalItemValue.toFixed(2), // Arredonda para 2 casas decimais**
+                    
                     reservedQuantity: 0.00
                 };
             });
@@ -801,7 +824,7 @@ const chapasController = {
      */
     _createBarCutItem: async (barCut, bar, consumedLength, itemName, itemCode, itemDescription, { Item, Stock, transaction }) => {
         try {
-            // Encontra ou cria stock para barras cortadas
+            // ... (lógica do 'stock' continua a mesma)
             let stock = await Stock.findOne({
                 where: { name: 'Barras Cortadas' },
                 transaction
@@ -815,7 +838,15 @@ const chapasController = {
                 }, { transaction });
             }
 
-            // Prepara dados do item usando campos existentes
+            // --- INÍCIO DA LÓGICA DE CUSTO ---
+            const barCostPerMm = parseFloat(bar.cost_per_mm) || 0;
+            const cutLength = parseFloat(consumedLength) || 0;
+            
+            // Calcula o valor final do item
+            const finalItemValue = barCostPerMm * cutLength;
+            // --- FIM DA LÓGICA DE CUSTO ---
+
+            // Prepara dados do item
             const finalItemName = itemName || `Barra ${bar.name} - ${consumedLength}mm`;
             const finalItemCode = itemCode || `BAR-${bar.id}-${Date.now()}`;
             const finalDescription = itemDescription ||
@@ -826,14 +857,17 @@ const chapasController = {
             const newItem = await Item.create({
                 stockId: stock.id,
                 name: finalItemName,
-                quantity: 1, // Cada corte vira 1 unidade
+                quantity: 1, 
                 description: finalDescription,
                 position: `BARRA-${bar.id}-C${barCut.id}`,
                 code: finalItemCode,
                 unitOfMeasure: 'un',
                 minimumQuantity: 0,
                 status: 'Ativo',
-                totalValue: 0.00, // Pode ser calculado se tiver custo da barra
+                
+                // --- VALOR ATRIBUÍDO AQUI ---
+                totalValue: finalItemValue.toFixed(2), // Arredonda para 2 casas decimais**
+                
                 reservedQuantity: 0.00
             }, { transaction });
 
