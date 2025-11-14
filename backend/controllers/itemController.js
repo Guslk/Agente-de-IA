@@ -113,7 +113,7 @@
 //                     exclude: ['stockId'],
 //                     include: [
 //                         [Sequelize.col('stock.name_stock'), 'department']
-                        
+
 //                     ]
 //                 },
 //                 order: finalOrder, // <-- Aplica a ordenação dinâmica
@@ -276,7 +276,7 @@
 //             });
 
 //             res.json(results); // Envia a lista de itens como JSON
-        
+
 //         } catch (error) {
 //             console.error("Error searching items:", error);
 //             res.status(500).json({ error: "Erro ao buscar itens." });
@@ -330,7 +330,7 @@ const itemController = {
 
     // 📋 FORMULÁRIO DE CRIAÇÃO
     showCreateForm: (req, res) => {
-        res.render('itens/novo', { 
+        res.render('itens/novo', {
             error: null,
             formData: null,
             success: null
@@ -340,10 +340,10 @@ const itemController = {
     // ➕ CRIAR ITEM
     create: async (req, res) => {
         const { tenantId } = req;
-        const { 
-            nome, id_stock, codigo_barras, descricao, 
+        const {
+            nome, id_stock, codigo_barras, descricao,
             unidade_medida, quantidade_minima, maximumQuantity,
-            loc_corredor, loc_prateleira, loc_posicao 
+            loc_corredor, loc_prateleira, loc_posicao
         } = req.body;
 
         try {
@@ -369,7 +369,7 @@ const itemController = {
 
             // Verificar se código já existe
             if (codigo_barras) {
-                const existingItem = await Item.findOne({ 
+                const existingItem = await Item.findOne({
                     where: { code: codigo_barras, status: { [Op.in]: ['Ativo', 'Desativado'] } }
                 });
                 if (existingItem) {
@@ -452,15 +452,15 @@ const itemController = {
                         [Op.lt]: Sequelize.col('minimum_quantity')
                     };
                 } else if (filtroStatus === 'normal') {
-                    whereClause.quantity = { 
-                        [Op.gte]: Sequelize.col('minimum_quantity') 
+                    whereClause.quantity = {
+                        [Op.gte]: Sequelize.col('minimum_quantity')
                     };
                 }
             }
 
             // Ordenação
-            const allowedSortColumns = ['name', 'quantity', 'code', 'description', 
-                                      'minimumQuantity', 'maximumQuantity', 'position', 'status'];
+            const allowedSortColumns = ['name', 'quantity', 'code', 'description',
+                'minimumQuantity', 'maximumQuantity', 'position', 'status'];
             let sortColumn = allowedSortColumns.includes(sort) ? sort : 'name';
             let sortOrder = order && ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'ASC';
 
@@ -475,7 +475,6 @@ const itemController = {
             const pageLimit = parseInt(limit);
             const offset = (currentPage - 1) * pageLimit;
 
-            // Buscar dados - ATENÇÃO: removido reservedQuantity
             // const { count, rows: items } = await Item.findAndCountAll({
             //     where: whereClause,
             //     include: [{
@@ -487,9 +486,9 @@ const itemController = {
             //         exclude: ['stockId'],
             //         include: [
             //             [Sequelize.col('stock.name_stock'), 'department'],
-            //             // Removido reservedQuantity já que não existe
-            //             [Sequelize.literal('(quantity)'), 'availableQuantity'], // Usando quantity direto
-            //             [Sequelize.literal('(quantity * 1)'), 'totalValue'] // Ajuste conforme seu cálculo de valor
+            //             [Sequelize.literal('(quantity)'), 'availableQuantity'],
+            //             // Inclua o total_value diretamente do banco
+            //             [Sequelize.col('total_value'), 'totalValue']
             //         ]
             //     },
             //     order: finalOrder,
@@ -499,19 +498,40 @@ const itemController = {
             //     nest: true
             // });
 
- const { count, rows: items } = await Item.findAndCountAll({
-    where: whereClause,
+const { count, rows: items } = await Item.findAndCountAll({
+    where: {
+        ...whereClause,
+        [Op.or]: [
+            // Para os stocks específicos: quantidade > 0
+            {
+                '$stock.name_stock$': {
+                    [Op.in]: ['Barras Cortadas', 'Chapas Cortadas']
+                },
+                quantity: { [Op.gt]: 0 }
+            },
+            // Para todos os outros stocks: sem filtro de quantidade
+            {
+                '$stock.name_stock$': {
+                    [Op.notIn]: ['Barras Cortadas', 'Chapas Cortadas']
+                }
+            },
+            // Para itens sem stock
+            {
+                '$stock.name_stock$': null
+            }
+        ]
+    },
     include: [{
         model: Stock,
         as: 'stock',
-        attributes: []
+        attributes: [],
+        required: false
     }],
     attributes: {
         exclude: ['stockId'],
         include: [
             [Sequelize.col('stock.name_stock'), 'department'],
             [Sequelize.literal('(quantity)'), 'availableQuantity'],
-            // Inclua o total_value diretamente do banco
             [Sequelize.col('total_value'), 'totalValue']
         ]
     },
@@ -530,10 +550,10 @@ const itemController = {
 
             const excludedItems = await Item.findAll({
                 where: excludedWhere,
-                include: [{ 
-                    model: Stock, 
-                    as: 'stock', 
-                    attributes: ['name'] 
+                include: [{
+                    model: Stock,
+                    as: 'stock',
+                    attributes: ['name']
                 }],
                 order: [['name', 'ASC']], // Alterado para ordenar por nome em vez de updatedAt
                 raw: true,
@@ -541,24 +561,28 @@ const itemController = {
             });
 
             // Departamentos para filtros
-            const stocks = await Stock.findAll({ 
-                order: [['name', 'ASC']] 
+            const stocks = await Stock.findAll({
+                order: [['name', 'ASC']]
             });
 
             // Calcular métricas para dashboard
             const metrics = await Promise.all([
                 Item.count({ where: { status: 'Ativo' } }),
-                Item.count({ where: { 
-                    quantity: { [Op.lte]: 0 },
-                    status: 'Ativo' 
-                }}),
-                Item.count({ where: { 
-                    quantity: { 
-                        [Op.gt]: 0, 
-                        [Op.lt]: Sequelize.col('minimum_quantity') 
-                    },
-                    status: 'Ativo'
-                }})
+                Item.count({
+                    where: {
+                        quantity: { [Op.lte]: 0 },
+                        status: 'Ativo'
+                    }
+                }),
+                Item.count({
+                    where: {
+                        quantity: {
+                            [Op.gt]: 0,
+                            [Op.lt]: Sequelize.col('minimum_quantity')
+                        },
+                        status: 'Ativo'
+                    }
+                })
             ]);
 
             res.render('itens', {
@@ -603,7 +627,7 @@ const itemController = {
                 return res.redirect('/itens?error=item_not_found');
             }
 
-            await item.update({ 
+            await item.update({
                 status: 'Ativo',
                 quantity: 0 // Reset para segurança
             });
@@ -642,10 +666,10 @@ const itemController = {
                 posicao: positionParts[2] || ''
             };
 
-            res.render('itens/editar', { 
+            res.render('itens/editar', {
                 item: { ...item.get(), ...positionData },
                 stocks,
-                error: null 
+                error: null
             });
 
         } catch (error) {
@@ -676,7 +700,7 @@ const itemController = {
             if (req.body.quantidade_minima < 0) {
                 errors.push('Quantidade mínima não pode ser negativa');
             }
-            if (req.body.maximumQuantity && 
+            if (req.body.maximumQuantity &&
                 parseFloat(req.body.maximumQuantity) < parseFloat(req.body.quantidade_minima)) {
                 errors.push('Quantidade máxima não pode ser menor que a mínima');
             }
@@ -693,7 +717,7 @@ const itemController = {
             // Verificar código duplicado
             if (req.body.codigo_barras) {
                 const existingItem = await Item.findOne({
-                    where: { 
+                    where: {
                         code: req.body.codigo_barras,
                         id: { [Op.ne]: id },
                         status: { [Op.in]: ['Ativo', 'Desativado'] }
@@ -793,7 +817,7 @@ const itemController = {
                 return res.redirect('/itens?error=item_not_found');
             }
 
-            await item.update({ 
+            await item.update({
                 status: 'Excluido',
                 quantity: 0 // Zera a quantidade ao excluir
             });
@@ -806,273 +830,273 @@ const itemController = {
     },
 
     // 📤 EXPORTAR ITENS (CSV)
-exportItems: async (req, res) => {
-    const { tenantId } = req;
-    const { format = 'csv', includeHeaders = 'true' } = req.query;
+    exportItems: async (req, res) => {
+        const { tenantId } = req;
+        const { format = 'csv', includeHeaders = 'true' } = req.query;
 
-    try {
-        const sequelize = await getTenantDB(tenantId);
-        const { Item, Stock } = db.initialize(sequelize);
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item, Stock } = db.initialize(sequelize);
 
-        // Funções auxiliares de formatação
-        const formatUnitOfMeasure = (unit) => {
-            const units = {
-                'un': 'Unidade',
-                'cx': 'Caixa',
-                'kg': 'Quilograma',
-                'g': 'Grama',
-                'l': 'Litro',
-                'ml': 'Mililitro',
-                'm': 'Metro',
-                'cm': 'Centímetro'
+            // Funções auxiliares de formatação
+            const formatUnitOfMeasure = (unit) => {
+                const units = {
+                    'un': 'Unidade',
+                    'cx': 'Caixa',
+                    'kg': 'Quilograma',
+                    'g': 'Grama',
+                    'l': 'Litro',
+                    'ml': 'Mililitro',
+                    'm': 'Metro',
+                    'cm': 'Centímetro'
+                };
+                return units[unit] || unit;
             };
-            return units[unit] || unit;
-        };
 
-        const formatCurrency = (value) => {
-            const numValue = parseFloat(value) || 0;
-            return `R$ ${numValue.toLocaleString('pt-BR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })}`;
-        };
+            const formatCurrency = (value) => {
+                const numValue = parseFloat(value) || 0;
+                return `R$ ${numValue.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            };
 
-        const getStockStatus = (item) => {
-            if (item.quantity <= 0) return '🔴 ESGOTADO';
-            if (item.quantity < item.minimumQuantity) return '🟡 ESTOQUE BAIXO';
-            if (item.maximumQuantity && item.quantity > item.maximumQuantity) return '🟢 ACIMA DO MÁXIMO';
-            return '🟢 NORMAL';
-        };
+            const getStockStatus = (item) => {
+                if (item.quantity <= 0) return '🔴 ESGOTADO';
+                if (item.quantity < item.minimumQuantity) return '🟡 ESTOQUE BAIXO';
+                if (item.maximumQuantity && item.quantity > item.maximumQuantity) return '🟢 ACIMA DO MÁXIMO';
+                return '🟢 NORMAL';
+            };
 
-        const getStatusIcon = (status) => {
-            return status === 'Ativo' ? '✅ ATIVO' : '⏸️ DESATIVADO';
-        };
+            const getStatusIcon = (status) => {
+                return status === 'Ativo' ? '✅ ATIVO' : '⏸️ DESATIVADO';
+            };
 
-        // Buscar dados
-        const items = await Item.findAll({
-            where: { 
-                status: { 
-                    [Op.in]: ['Ativo', 'Desativado'] 
-                } 
-            },
-            include: [{
-                model: Stock,
-                as: 'stock',
-                attributes: ['name']
-            }],
-            order: [['name', 'ASC']],
-            raw: true,
-            nest: true
-        });
+            // Buscar dados
+            const items = await Item.findAll({
+                where: {
+                    status: {
+                        [Op.in]: ['Ativo', 'Desativado']
+                    }
+                },
+                include: [{
+                    model: Stock,
+                    as: 'stock',
+                    attributes: ['name']
+                }],
+                order: [['name', 'ASC']],
+                raw: true,
+                nest: true
+            });
 
-        if (format === 'csv') {
-            const timestamp = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-            const filename = `📊_RELATORIO_ESTOQUE_${timestamp}.csv`;
-            
-            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-            res.setHeader('Pragma', 'no-cache');
+            if (format === 'csv') {
+                const timestamp = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+                const filename = `📊_RELATORIO_ESTOQUE_${timestamp}.csv`;
 
-            // BOM para Excel
-            res.write('\uFEFF');
-            
-            // ===== CABEÇALHO PROFISSIONAL =====
-            if (includeHeaders !== 'false') {
-                // Cabeçalho principal
-                res.write('"RELATÓRIO DE ESTOQUE - STOCKEX INVENTORY MANAGEMENT";\n');
-                res.write(`"Data de emissão: ${new Date().toLocaleString('pt-BR')}";\n`);
-                res.write('"";\n');
-                
-                // Cabeçalho das colunas
-                const headers = [
-                    '📋 ID ITEM',
-                    '🏷️ NOME DO PRODUTO',
-                    '📟 CÓDIGO',
-                    '📝 DESCRIÇÃO',
-                    '📦 QUANTIDADE ATUAL',
-                    '📉 QTD. MÍNIMA',
-                    '📈 QTD. MÁXIMA',
-                    '🏢 DEPARTAMENTO',
-                    '📍 LOCALIZAÇÃO',
-                    '🔄 STATUS',
-                    '⚖️ UNID. MEDIDA',
-                    '💰 VALOR TOTAL',
-                    '🚨 SITUAÇÃO ESTOQUE'
-                ];
-                res.write(headers.map(header => `"${header}"`).join(';') + '\n');
-            }
-            
-            // ===== DADOS FORMATADOS =====
-            let totalValorEstoque = 0;
-            let itensComProblema = 0;
-            
-            items.forEach(item => {
-                const valorItem = parseFloat(item.totalValue) || 0;
-                totalValorEstoque += valorItem;
-                
-                if (item.quantity <= 0 || item.quantity < item.minimumQuantity) {
-                    itensComProblema++;
+                res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+                res.setHeader('Pragma', 'no-cache');
+
+                // BOM para Excel
+                res.write('\uFEFF');
+
+                // ===== CABEÇALHO PROFISSIONAL =====
+                if (includeHeaders !== 'false') {
+                    // Cabeçalho principal
+                    res.write('"RELATÓRIO DE ESTOQUE - STOCKEX INVENTORY MANAGEMENT";\n');
+                    res.write(`"Data de emissão: ${new Date().toLocaleString('pt-BR')}";\n`);
+                    res.write('"";\n');
+
+                    // Cabeçalho das colunas
+                    const headers = [
+                        '📋 ID ITEM',
+                        '🏷️ NOME DO PRODUTO',
+                        '📟 CÓDIGO',
+                        '📝 DESCRIÇÃO',
+                        '📦 QUANTIDADE ATUAL',
+                        '📉 QTD. MÍNIMA',
+                        '📈 QTD. MÁXIMA',
+                        '🏢 DEPARTAMENTO',
+                        '📍 LOCALIZAÇÃO',
+                        '🔄 STATUS',
+                        '⚖️ UNID. MEDIDA',
+                        '💰 VALOR TOTAL',
+                        '🚨 SITUAÇÃO ESTOQUE'
+                    ];
+                    res.write(headers.map(header => `"${header}"`).join(';') + '\n');
                 }
 
-                const row = [
-                    // 📋 ID ITEM
-                    `"${item.id}"`,
-                    
-                    // 🏷️ NOME DO PRODUTO
-                    `"${(item.name || 'NÃO INFORMADO').replace(/"/g, '""')}"`,
-                    
-                    // 📟 CÓDIGO
-                    `"${(item.code || 'SEM CÓDIGO').replace(/"/g, '""')}"`,
-                    
-                    // 📝 DESCRIÇÃO
-                    `"${(item.description || 'Sem descrição cadastrada').replace(/"/g, '""')}"`,
-                    
-                    // 📦 QUANTIDADE ATUAL
-                    item.quantity || 0,
-                    
-                    // 📉 QTD. MÍNIMA
-                    item.minimumQuantity || 0,
-                    
-                    // 📈 QTD. MÁXIMA
-                    item.maximumQuantity || 'N/D',
-                    
-                    // 🏢 DEPARTAMENTO
-                    `"${(item.stock?.name || 'NÃO DEFINIDO').replace(/"/g, '""')}"`,
-                    
-                    // 📍 LOCALIZAÇÃO
-                    `"${(item.position || 'NÃO LOCALIZADO').replace(/"/g, '""')}"`,
-                    
-                    // 🔄 STATUS
-                    `"${getStatusIcon(item.status)}"`,
-                    
-                    // ⚖️ UNID. MEDIDA
-                    `"${formatUnitOfMeasure(item.unitOfMeasure)}"`,
-                    
-                    // 💰 VALOR TOTAL
-                    `"${formatCurrency(item.totalValue)}"`,
-                    
-                    // 🚨 SITUAÇÃO ESTOQUE
-                    `"${getStockStatus(item)}"`
-                ].join(';');
-                
-                res.write(row + '\n');
-            });
-            
-            // ===== RODAPÉ COM MÉTRICAS =====
-            const totalItens = items.length;
-            const itensAtivos = items.filter(item => item.status === 'Ativo').length;
-            const itensDesativados = items.filter(item => item.status === 'Desativado').length;
-            const estoqueBaixo = items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length;
-            const estoqueEsgotado = items.filter(item => item.quantity <= 0).length;
-            const estoqueNormal = items.filter(item => 
-                item.quantity >= item.minimumQuantity && 
-                item.quantity > 0
-            ).length;
+                // ===== DADOS FORMATADOS =====
+                let totalValorEstoque = 0;
+                let itensComProblema = 0;
 
-            res.write('\n');
-            res.write('"📈 RESUMO ESTATÍSTICO DO ESTOQUE";""\n');
-            res.write('"----------------------------------------";""\n');
-            res.write(`"📊 TOTAL DE ITENS CADASTRADOS";"${totalItens}"\n`);
-            res.write(`"✅ ITENS ATIVOS";"${itensAtivos}"\n`);
-            res.write(`"⏸️ ITENS DESATIVADOS";"${itensDesativados}"\n`);
-            res.write(`"🟢 ESTOQUE NORMAL";"${estoqueNormal}"\n`);
-            res.write(`"🟡 ESTOQUE BAIXO";"${estoqueBaixo}"\n`);
-            res.write(`"🔴 ESTOQUE ESGOTADO";"${estoqueEsgotado}"\n`);
-            res.write(`"⚠️  ITENS COM PROBLEMAS";"${itensComProblema}"\n`);
-            res.write(`"💰 VALOR TOTAL DO ESTOQUE";"${formatCurrency(totalValorEstoque)}"\n`);
-            res.write('"";""\n');
-            res.write('"----------------------------------------";""\n');
-            res.write(`"📅 RELATÓRIO GERADO EM";"${new Date().toLocaleString('pt-BR')}"\n`);
-            res.write(`"💻 SISTEMA";"StockEx Inventory Management v2.0"\n`);
-            res.write(`"👤 USUÁRIO";"${req.user?.nome || 'Sistema'}"\n`);
-            
-            res.end();
-            
-        } else if (format === 'json') {
-            // JSON formatado profissionalmente
-            const exportData = {
-                metadata: {
-                    relatorio: "Estoque Completo - StockEx",
-                    dataEmissao: new Date().toISOString(),
-                    dataEmissaoFormatada: new Date().toLocaleString('pt-BR'),
-                    totalRegistros: items.length,
-                    formato: "JSON",
-                    sistema: "StockEx Inventory Management v2.0",
-                    usuario: req.user?.nome || 'Sistema'
-                },
-                metricas: {
-                    totalItens: items.length,
-                    itensAtivos: items.filter(item => item.status === 'Ativo').length,
-                    itensInativos: items.filter(item => item.status === 'Desativado').length,
-                    estoqueNormal: items.filter(item => item.quantity >= item.minimumQuantity && item.quantity > 0).length,
-                    estoqueBaixo: items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length,
-                    estoqueEsgotado: items.filter(item => item.quantity <= 0).length,
-                    valorTotalEstoque: items.reduce((sum, item) => sum + (parseFloat(item.totalValue) || 0), 0)
-                },
-                itens: items.map(item => ({
-                    id: item.id,
-                    informacoesBasicas: {
-                        nome: item.name,
-                        codigo: item.code,
-                        descricao: item.description,
-                        unidadeMedida: formatUnitOfMeasure(item.unitOfMeasure)
-                    },
-                    estoque: {
-                        quantidadeAtual: item.quantity,
-                        quantidadeMinima: item.minimumQuantity,
-                        quantidadeMaxima: item.maximumQuantity,
-                        situacao: getStockStatus(item).replace(/[🔴🟡🟢]/g, '').trim()
-                    },
-                    localizacao: {
-                        departamento: item.stock?.name,
-                        posicao: item.position
-                    },
-                    status: {
-                        situacao: item.status,
-                        icone: getStatusIcon(item.status)
-                    },
-                    financeiro: {
-                        valorTotal: parseFloat(item.totalValue) || 0,
-                        valorTotalFormatado: formatCurrency(item.totalValue)
-                    },
-                    datas: {
-                        criacao: item.createdAt,
-                        atualizacao: item.updatedAt
+                items.forEach(item => {
+                    const valorItem = parseFloat(item.totalValue) || 0;
+                    totalValorEstoque += valorItem;
+
+                    if (item.quantity <= 0 || item.quantity < item.minimumQuantity) {
+                        itensComProblema++;
                     }
-                }))
-            };
-            
-            res.setHeader('Content-Type', 'application/json; charset=utf-8');
-            res.setHeader('Content-Disposition', `attachment; filename="relatorio_estoque_${new Date().toISOString().split('T')[0]}.json"`);
-            res.json(exportData);
-            
-        } else {
-            res.status(400).json({ 
-                success: false,
-                error: '❌ Formato não suportado',
-                message: 'Utilize CSV ou JSON para exportação',
-                formatos_disponiveis: [
-                    { formato: 'csv', descricao: 'Excel/Planilhas' },
-                    { formato: 'json', descricao: 'API/Integração' }
-                ]
-            });
-        }
-        
-    } catch (error) {
-        console.error("❌ Erro ao exportar itens:", error);
-        
-        if (!res.headersSent) {
-            res.status(500).json({ 
-                success: false,
-                error: '📊 Falha na geração do relatório',
-                message: 'Não foi possível processar a exportação',
-                detalhes: process.env.NODE_ENV === 'development' ? error.message : 'Contate o administrador do sistema',
-                sugestao: 'Verifique os filtros aplicados e tente novamente'
-            });
-        } else {
-            console.error('⚠️  Headers já enviados, não é possível enviar resposta de erro');
+
+                    const row = [
+                        // 📋 ID ITEM
+                        `"${item.id}"`,
+
+                        // 🏷️ NOME DO PRODUTO
+                        `"${(item.name || 'NÃO INFORMADO').replace(/"/g, '""')}"`,
+
+                        // 📟 CÓDIGO
+                        `"${(item.code || 'SEM CÓDIGO').replace(/"/g, '""')}"`,
+
+                        // 📝 DESCRIÇÃO
+                        `"${(item.description || 'Sem descrição cadastrada').replace(/"/g, '""')}"`,
+
+                        // 📦 QUANTIDADE ATUAL
+                        item.quantity || 0,
+
+                        // 📉 QTD. MÍNIMA
+                        item.minimumQuantity || 0,
+
+                        // 📈 QTD. MÁXIMA
+                        item.maximumQuantity || 'N/D',
+
+                        // 🏢 DEPARTAMENTO
+                        `"${(item.stock?.name || 'NÃO DEFINIDO').replace(/"/g, '""')}"`,
+
+                        // 📍 LOCALIZAÇÃO
+                        `"${(item.position || 'NÃO LOCALIZADO').replace(/"/g, '""')}"`,
+
+                        // 🔄 STATUS
+                        `"${getStatusIcon(item.status)}"`,
+
+                        // ⚖️ UNID. MEDIDA
+                        `"${formatUnitOfMeasure(item.unitOfMeasure)}"`,
+
+                        // 💰 VALOR TOTAL
+                        `"${formatCurrency(item.totalValue)}"`,
+
+                        // 🚨 SITUAÇÃO ESTOQUE
+                        `"${getStockStatus(item)}"`
+                    ].join(';');
+
+                    res.write(row + '\n');
+                });
+
+                // ===== RODAPÉ COM MÉTRICAS =====
+                const totalItens = items.length;
+                const itensAtivos = items.filter(item => item.status === 'Ativo').length;
+                const itensDesativados = items.filter(item => item.status === 'Desativado').length;
+                const estoqueBaixo = items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length;
+                const estoqueEsgotado = items.filter(item => item.quantity <= 0).length;
+                const estoqueNormal = items.filter(item =>
+                    item.quantity >= item.minimumQuantity &&
+                    item.quantity > 0
+                ).length;
+
+                res.write('\n');
+                res.write('"📈 RESUMO ESTATÍSTICO DO ESTOQUE";""\n');
+                res.write('"----------------------------------------";""\n');
+                res.write(`"📊 TOTAL DE ITENS CADASTRADOS";"${totalItens}"\n`);
+                res.write(`"✅ ITENS ATIVOS";"${itensAtivos}"\n`);
+                res.write(`"⏸️ ITENS DESATIVADOS";"${itensDesativados}"\n`);
+                res.write(`"🟢 ESTOQUE NORMAL";"${estoqueNormal}"\n`);
+                res.write(`"🟡 ESTOQUE BAIXO";"${estoqueBaixo}"\n`);
+                res.write(`"🔴 ESTOQUE ESGOTADO";"${estoqueEsgotado}"\n`);
+                res.write(`"⚠️  ITENS COM PROBLEMAS";"${itensComProblema}"\n`);
+                res.write(`"💰 VALOR TOTAL DO ESTOQUE";"${formatCurrency(totalValorEstoque)}"\n`);
+                res.write('"";""\n');
+                res.write('"----------------------------------------";""\n');
+                res.write(`"📅 RELATÓRIO GERADO EM";"${new Date().toLocaleString('pt-BR')}"\n`);
+                res.write(`"💻 SISTEMA";"StockEx Inventory Management v2.0"\n`);
+                res.write(`"👤 USUÁRIO";"${req.user?.nome || 'Sistema'}"\n`);
+
+                res.end();
+
+            } else if (format === 'json') {
+                // JSON formatado profissionalmente
+                const exportData = {
+                    metadata: {
+                        relatorio: "Estoque Completo - StockEx",
+                        dataEmissao: new Date().toISOString(),
+                        dataEmissaoFormatada: new Date().toLocaleString('pt-BR'),
+                        totalRegistros: items.length,
+                        formato: "JSON",
+                        sistema: "StockEx Inventory Management v2.0",
+                        usuario: req.user?.nome || 'Sistema'
+                    },
+                    metricas: {
+                        totalItens: items.length,
+                        itensAtivos: items.filter(item => item.status === 'Ativo').length,
+                        itensInativos: items.filter(item => item.status === 'Desativado').length,
+                        estoqueNormal: items.filter(item => item.quantity >= item.minimumQuantity && item.quantity > 0).length,
+                        estoqueBaixo: items.filter(item => item.quantity > 0 && item.quantity < item.minimumQuantity).length,
+                        estoqueEsgotado: items.filter(item => item.quantity <= 0).length,
+                        valorTotalEstoque: items.reduce((sum, item) => sum + (parseFloat(item.totalValue) || 0), 0)
+                    },
+                    itens: items.map(item => ({
+                        id: item.id,
+                        informacoesBasicas: {
+                            nome: item.name,
+                            codigo: item.code,
+                            descricao: item.description,
+                            unidadeMedida: formatUnitOfMeasure(item.unitOfMeasure)
+                        },
+                        estoque: {
+                            quantidadeAtual: item.quantity,
+                            quantidadeMinima: item.minimumQuantity,
+                            quantidadeMaxima: item.maximumQuantity,
+                            situacao: getStockStatus(item).replace(/[🔴🟡🟢]/g, '').trim()
+                        },
+                        localizacao: {
+                            departamento: item.stock?.name,
+                            posicao: item.position
+                        },
+                        status: {
+                            situacao: item.status,
+                            icone: getStatusIcon(item.status)
+                        },
+                        financeiro: {
+                            valorTotal: parseFloat(item.totalValue) || 0,
+                            valorTotalFormatado: formatCurrency(item.totalValue)
+                        },
+                        datas: {
+                            criacao: item.createdAt,
+                            atualizacao: item.updatedAt
+                        }
+                    }))
+                };
+
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.setHeader('Content-Disposition', `attachment; filename="relatorio_estoque_${new Date().toISOString().split('T')[0]}.json"`);
+                res.json(exportData);
+
+            } else {
+                res.status(400).json({
+                    success: false,
+                    error: '❌ Formato não suportado',
+                    message: 'Utilize CSV ou JSON para exportação',
+                    formatos_disponiveis: [
+                        { formato: 'csv', descricao: 'Excel/Planilhas' },
+                        { formato: 'json', descricao: 'API/Integração' }
+                    ]
+                });
+            }
+
+        } catch (error) {
+            console.error("❌ Erro ao exportar itens:", error);
+
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    error: '📊 Falha na geração do relatório',
+                    message: 'Não foi possível processar a exportação',
+                    detalhes: process.env.NODE_ENV === 'development' ? error.message : 'Contate o administrador do sistema',
+                    sugestao: 'Verifique os filtros aplicados e tente novamente'
+                });
+            } else {
+                console.error('⚠️  Headers já enviados, não é possível enviar resposta de erro');
+            }
         }
     }
-}
 
 };
 
