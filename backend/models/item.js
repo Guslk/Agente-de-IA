@@ -31,6 +31,7 @@ module.exports = (sequelize) => {
             defaultValue: 0.00,
             field: 'total_value'
         },
+        lastModified: { type: DataTypes.DATE, allowNull: true, field: 'last_modified' },
         description: { type: DataTypes.TEXT, allowNull: true },
         position: { type: DataTypes.STRING, allowNull: false },
         code: { type: DataTypes.STRING(100), allowNull: true },

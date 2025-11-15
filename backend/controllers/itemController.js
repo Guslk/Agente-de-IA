@@ -405,213 +405,391 @@ const itemController = {
         }
     },
 
-    // 📊 LISTAR TODOS OS ITENS (CORRIGIDO - SEM updatedAt)
+    // // 📊 LISTAR TODOS OS ITENS (CORRIGIDO - SEM updatedAt)
+    // getAll: async (req, res) => {
+    //     const { tenantId } = req;
+    //     const {
+    //         busca, code, position, status, filtroStatus,
+    //         sort, order, page = 1, limit = 50,
+    //         quantidade_min, quantidade_max, departamentos
+    //     } = req.query;
+
+    //     try {
+    //         const sequelize = await getTenantDB(tenantId);
+    //         const { Item, Stock } = db.initialize(sequelize);
+
+    //         // Construir WHERE clause
+    //         const whereClause = {
+    //             status: { [Op.in]: ['Ativo', 'Desativado'] }
+    //         };
+
+    //         // Filtros de texto
+    //         if (busca) whereClause.name = { [Op.like]: `%${busca}%` };
+    //         if (code) whereClause.code = { [Op.like]: `%${code}%` };
+    //         if (position) whereClause.position = { [Op.like]: `%${position}%` };
+    //         if (status && status !== 'todos') whereClause.status = status;
+
+    //         // Filtro de quantidade
+    //         if (quantidade_min || quantidade_max) {
+    //             whereClause.quantity = {};
+    //             if (quantidade_min) whereClause.quantity[Op.gte] = quantidade_min;
+    //             if (quantidade_max) whereClause.quantity[Op.lte] = quantidade_max;
+    //         }
+
+    //         // Filtro de departamentos
+    //         if (departamentos) {
+    //             const deptArray = Array.isArray(departamentos) ? departamentos : [departamentos];
+    //             whereClause.stockId = { [Op.in]: deptArray };
+    //         }
+
+    //         // Filtro de status de estoque
+    //         if (filtroStatus && filtroStatus !== 'todos') {
+    //             if (filtroStatus === 'esgotado') {
+    //                 whereClause.quantity = { [Op.lte]: 0 };
+    //             } else if (filtroStatus === 'baixo') {
+    //                 whereClause.quantity = {
+    //                     [Op.gt]: 0,
+    //                     [Op.lt]: Sequelize.col('minimum_quantity')
+    //                 };
+    //             } else if (filtroStatus === 'normal') {
+    //                 whereClause.quantity = {
+    //                     [Op.gte]: Sequelize.col('minimum_quantity')
+    //                 };
+    //             }
+    //         }
+
+    //         // Ordenação
+    //         const allowedSortColumns = ['name', 'quantity', 'code', 'description',
+    //             'minimumQuantity', 'maximumQuantity', 'position', 'status', 'lastModified'];
+    //         let sortColumn = allowedSortColumns.includes(sort) ? sort : 'name';
+    //         let sortOrder = order && ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'ASC';
+
+    //         // Ordenação especial para department
+    //         let finalOrder = [[sortColumn, sortOrder]];
+    //         if (sortColumn === 'department') {
+    //             finalOrder = [[Sequelize.col('stock.name_stock'), sortOrder]];
+    //         }
+
+    //         // Paginação
+    //         const currentPage = parseInt(page);
+    //         const pageLimit = parseInt(limit);
+    //         const offset = (currentPage - 1) * pageLimit;
+
+
+
+    //         const { count, rows: items } = await Item.findAndCountAll({
+    //             where: {
+    //                 ...whereClause,
+    //                 [Op.or]: [
+    //                     // Para os stocks específicos: quantidade > 0
+    //                     {
+    //                         '$stock.name_stock$': {
+    //                             [Op.in]: ['Barras Cortadas', 'Chapas Cortadas']
+    //                         },
+    //                         quantity: { [Op.gt]: 0 }
+    //                     },
+    //                     // Para todos os outros stocks: sem filtro de quantidade
+    //                     {
+    //                         '$stock.name_stock$': {
+    //                             [Op.notIn]: ['Barras Cortadas', 'Chapas Cortadas']
+    //                         }
+    //                     },
+    //                     // Para itens sem stock
+    //                     {
+    //                         '$stock.name_stock$': null
+    //                     }
+    //                 ]
+    //             },
+    //             include: [{
+    //                 model: Stock,
+    //                 as: 'stock',
+    //                 attributes: [],
+    //                 required: false
+    //             }],
+    //             attributes: {
+    //                 exclude: ['stockId'],
+    //                 include: [
+    //                     [Sequelize.col('stock.name_stock'), 'department'],
+    //                     [Sequelize.literal('(quantity)'), 'availableQuantity'],
+    //                     [Sequelize.col('total_value'), 'totalValue'],
+    //                 ]
+    //             },
+    //             order: finalOrder,
+    //             limit: pageLimit,
+    //             offset: offset,
+    //             raw: true,
+    //             nest: true
+    //         });
+
+    //         // Itens excluídos (sem paginação) - CORRIGIDO: removido updatedAt
+    //         const excludedWhere = { status: 'Excluido' };
+    //         if (busca) excludedWhere.name = { [Op.like]: `%${busca}%` };
+    //         if (code) excludedWhere.code = { [Op.like]: `%${code}%` };
+    //         if (position) excludedWhere.position = { [Op.like]: `%${position}%` };
+
+    //         const excludedItems = await Item.findAll({
+    //             where: excludedWhere,
+    //             include: [{
+    //                 model: Stock,
+    //                 as: 'stock',
+    //                 attributes: ['name']
+    //             }],
+    //             order: [['name', 'ASC']], // Alterado para ordenar por nome em vez de updatedAt
+    //             raw: true,
+    //             nest: true
+    //         });
+
+    //         // Departamentos para filtros
+    //         const stocks = await Stock.findAll({
+    //             order: [['name', 'ASC']]
+    //         });
+
+    //         // Calcular métricas para dashboard
+    //         const metrics = await Promise.all([
+    //             Item.count({ where: { status: 'Ativo' } }),
+    //             Item.count({
+    //                 where: {
+    //                     quantity: { [Op.lte]: 0 },
+    //                     status: 'Ativo'
+    //                 }
+    //             }),
+    //             Item.count({
+    //                 where: {
+    //                     quantity: {
+    //                         [Op.gt]: 0,
+    //                         [Op.lt]: Sequelize.col('minimum_quantity')
+    //                     },
+    //                     status: 'Ativo'
+    //                 }
+    //             })
+    //         ]);
+
+    //         res.render('itens', {
+    //             items,
+    //             excludedItems,
+    //             stocks,
+    //             user: req.session.user,
+    //             filters: req.query,
+    //             currentSort: { column: sortColumn, order: sortOrder },
+    //             pagination: {
+    //                 currentPage,
+    //                 totalPages: Math.ceil(count / pageLimit),
+    //                 totalItems: count,
+    //                 hasPrev: currentPage > 1,
+    //                 hasNext: currentPage < Math.ceil(count / pageLimit)
+    //             },
+    //             metrics: {
+    //                 totalAtivos: metrics[0],
+    //                 totalEsgotados: metrics[1],
+    //                 totalEstoqueBaixo: metrics[2]
+    //             }
+    //         });
+
+    //     } catch (error) {
+    //         console.error("Erro ao buscar itens:", error);
+    //         // Corrigido: usando res.send em vez de res.render para view que não existe
+    //         res.status(500).send(`Erro ao buscar itens: ${error.message}`);
+    //     }
+    // },
+
     getAll: async (req, res) => {
-        const { tenantId } = req;
-        const {
-            busca, code, position, status, filtroStatus,
-            sort, order, page = 1, limit = 50,
-            quantidade_min, quantidade_max, departamentos
-        } = req.query;
+    const { tenantId } = req;
+    const {
+        busca, code, position, status, filtroStatus,
+        sort, order, page = 1, limit = 50,
+        quantidade_min, quantidade_max, departamentos
+    } = req.query;
 
-        try {
-            const sequelize = await getTenantDB(tenantId);
-            const { Item, Stock } = db.initialize(sequelize);
+    try {
+        const sequelize = await getTenantDB(tenantId);
+        const { Item, Stock } = db.initialize(sequelize);
 
-            // Construir WHERE clause
-            const whereClause = {
-                status: { [Op.in]: ['Ativo', 'Desativado'] }
-            };
+        // Construir WHERE clause
+        const whereClause = {
+            status: { [Op.in]: ['Ativo', 'Desativado'] }
+        };
 
-            // Filtros de texto
-            if (busca) whereClause.name = { [Op.like]: `%${busca}%` };
-            if (code) whereClause.code = { [Op.like]: `%${code}%` };
-            if (position) whereClause.position = { [Op.like]: `%${position}%` };
-            if (status && status !== 'todos') whereClause.status = status;
+        // Filtros de texto
+        if (busca) whereClause.name = { [Op.like]: `%${busca}%` };
+        if (code) whereClause.code = { [Op.like]: `%${code}%` };
+        if (position) whereClause.position = { [Op.like]: `%${position}%` };
+        if (status && status !== 'todos') whereClause.status = status;
 
-            // Filtro de quantidade
-            if (quantidade_min || quantidade_max) {
-                whereClause.quantity = {};
-                if (quantidade_min) whereClause.quantity[Op.gte] = quantidade_min;
-                if (quantidade_max) whereClause.quantity[Op.lte] = quantidade_max;
+        // Filtro de quantidade
+        if (quantidade_min || quantidade_max) {
+            whereClause.quantity = {};
+            if (quantidade_min) whereClause.quantity[Op.gte] = quantidade_min;
+            if (quantidade_max) whereClause.quantity[Op.lte] = quantidade_max;
+        }
+
+        // Filtro de departamentos
+        if (departamentos) {
+            const deptArray = Array.isArray(departamentos) ? departamentos : [departamentos];
+            whereClause.stockId = { [Op.in]: deptArray };
+        }
+
+        // Filtro de status de estoque
+        if (filtroStatus && filtroStatus !== 'todos') {
+            if (filtroStatus === 'esgotado') {
+                whereClause.quantity = { [Op.lte]: 0 };
+            } else if (filtroStatus === 'baixo') {
+                whereClause.quantity = {
+                    [Op.gt]: 0,
+                    [Op.lt]: Sequelize.col('minimum_quantity')
+                };
+            } else if (filtroStatus === 'normal') {
+                whereClause.quantity = {
+                    [Op.gte]: Sequelize.col('minimum_quantity')
+                };
             }
+        }
 
-            // Filtro de departamentos
-            if (departamentos) {
-                const deptArray = Array.isArray(departamentos) ? departamentos : [departamentos];
-                whereClause.stockId = { [Op.in]: deptArray };
-            }
+        // Ordenação
+        const allowedSortColumns = ['name', 'quantity', 'code', 'description',
+            'minimumQuantity', 'maximumQuantity', 'position', 'status', 'lastModified']; // ← ADICIONADO lastModified
+        let sortColumn = allowedSortColumns.includes(sort) ? sort : 'name';
+        let sortOrder = order && ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'ASC';
 
-            // Filtro de status de estoque
-            if (filtroStatus && filtroStatus !== 'todos') {
-                if (filtroStatus === 'esgotado') {
-                    whereClause.quantity = { [Op.lte]: 0 };
-                } else if (filtroStatus === 'baixo') {
-                    whereClause.quantity = {
+        // Ordenação especial para department
+        let finalOrder = [[sortColumn, sortOrder]];
+        if (sortColumn === 'department') {
+            finalOrder = [[Sequelize.col('stock.name_stock'), sortOrder]];
+        }
+
+        // Paginação
+        const currentPage = parseInt(page);
+        const pageLimit = parseInt(limit);
+        const offset = (currentPage - 1) * pageLimit;
+
+        const { count, rows: items } = await Item.findAndCountAll({
+            where: {
+                ...whereClause,
+                [Op.or]: [
+                    // Para os stocks específicos: quantidade > 0
+                    {
+                        '$stock.name_stock$': {
+                            [Op.in]: ['Barras Cortadas', 'Chapas Cortadas']
+                        },
+                        quantity: { [Op.gt]: 0 }
+                    },
+                    // Para todos os outros stocks: sem filtro de quantidade
+                    {
+                        '$stock.name_stock$': {
+                            [Op.notIn]: ['Barras Cortadas', 'Chapas Cortadas']
+                        }
+                    },
+                    // Para itens sem stock
+                    {
+                        '$stock.name_stock$': null
+                    }
+                ]
+            },
+            include: [{
+                model: Stock,
+                as: 'stock',
+                attributes: [],
+                required: false
+            }],
+            attributes: {
+                exclude: ['stockId'],
+                include: [
+                    [Sequelize.col('stock.name_stock'), 'department'],
+                    [Sequelize.literal('(quantity)'), 'availableQuantity'],
+                    [Sequelize.col('total_value'), 'totalValue'],
+                    [Sequelize.col('last_modified'), 'lastModified'] // ← ADICIONADO AQUI
+                ]
+            },
+            order: finalOrder,
+            limit: pageLimit,
+            offset: offset,
+            raw: true,
+            nest: true
+        });
+
+        // DEBUG: Verificar se lastModified está vindo
+        console.log('DEBUG - Primeiros 3 itens com lastModified:');
+        items.slice(0, 3).forEach((item, index) => {
+            console.log(`Item ${index + 1}:`, {
+                name: item.name,
+                lastModified: item.lastModified,
+                hasLastModified: !!item.lastModified
+            });
+        });
+
+        // Itens excluídos (sem paginação)
+        const excludedWhere = { status: 'Excluido' };
+        if (busca) excludedWhere.name = { [Op.like]: `%${busca}%` };
+        if (code) excludedWhere.code = { [Op.like]: `%${code}%` };
+        if (position) excludedWhere.position = { [Op.like]: `%${position}%` };
+
+        const excludedItems = await Item.findAll({
+            where: excludedWhere,
+            include: [{
+                model: Stock,
+                as: 'stock',
+                attributes: ['name']
+            }],
+            attributes: {
+                include: [
+                    [Sequelize.col('last_modified'), 'lastModified'] // ← TAMBÉM AQUI PARA EXCLUÍDOS
+                ]
+            },
+            order: [['name', 'ASC']],
+            raw: true,
+            nest: true
+        });
+
+        // Departamentos para filtros
+        const stocks = await Stock.findAll({
+            order: [['name', 'ASC']]
+        });
+
+        // Calcular métricas para dashboard
+        const metrics = await Promise.all([
+            Item.count({ where: { status: 'Ativo' } }),
+            Item.count({
+                where: {
+                    quantity: { [Op.lte]: 0 },
+                    status: 'Ativo'
+                }
+            }),
+            Item.count({
+                where: {
+                    quantity: {
                         [Op.gt]: 0,
                         [Op.lt]: Sequelize.col('minimum_quantity')
-                    };
-                } else if (filtroStatus === 'normal') {
-                    whereClause.quantity = {
-                        [Op.gte]: Sequelize.col('minimum_quantity')
-                    };
+                    },
+                    status: 'Ativo'
                 }
-            }
+            })
+        ]);
 
-            // Ordenação
-            const allowedSortColumns = ['name', 'quantity', 'code', 'description',
-                'minimumQuantity', 'maximumQuantity', 'position', 'status'];
-            let sortColumn = allowedSortColumns.includes(sort) ? sort : 'name';
-            let sortOrder = order && ['ASC', 'DESC'].includes(order.toUpperCase()) ? order.toUpperCase() : 'ASC';
-
-            // Ordenação especial para department
-            let finalOrder = [[sortColumn, sortOrder]];
-            if (sortColumn === 'department') {
-                finalOrder = [[Sequelize.col('stock.name_stock'), sortOrder]];
-            }
-
-            // Paginação
-            const currentPage = parseInt(page);
-            const pageLimit = parseInt(limit);
-            const offset = (currentPage - 1) * pageLimit;
-
-            // const { count, rows: items } = await Item.findAndCountAll({
-            //     where: whereClause,
-            //     include: [{
-            //         model: Stock,
-            //         as: 'stock',
-            //         attributes: []
-            //     }],
-            //     attributes: {
-            //         exclude: ['stockId'],
-            //         include: [
-            //             [Sequelize.col('stock.name_stock'), 'department'],
-            //             [Sequelize.literal('(quantity)'), 'availableQuantity'],
-            //             // Inclua o total_value diretamente do banco
-            //             [Sequelize.col('total_value'), 'totalValue']
-            //         ]
-            //     },
-            //     order: finalOrder,
-            //     limit: pageLimit,
-            //     offset: offset,
-            //     raw: true,
-            //     nest: true
-            // });
-
-const { count, rows: items } = await Item.findAndCountAll({
-    where: {
-        ...whereClause,
-        [Op.or]: [
-            // Para os stocks específicos: quantidade > 0
-            {
-                '$stock.name_stock$': {
-                    [Op.in]: ['Barras Cortadas', 'Chapas Cortadas']
-                },
-                quantity: { [Op.gt]: 0 }
+        res.render('itens', {
+            items,
+            excludedItems,
+            stocks,
+            user: req.session.user,
+            filters: req.query,
+            currentSort: { column: sortColumn, order: sortOrder },
+            pagination: {
+                currentPage,
+                totalPages: Math.ceil(count / pageLimit),
+                totalItems: count,
+                hasPrev: currentPage > 1,
+                hasNext: currentPage < Math.ceil(count / pageLimit)
             },
-            // Para todos os outros stocks: sem filtro de quantidade
-            {
-                '$stock.name_stock$': {
-                    [Op.notIn]: ['Barras Cortadas', 'Chapas Cortadas']
-                }
-            },
-            // Para itens sem stock
-            {
-                '$stock.name_stock$': null
+            metrics: {
+                totalAtivos: metrics[0],
+                totalEsgotados: metrics[1],
+                totalEstoqueBaixo: metrics[2]
             }
-        ]
-    },
-    include: [{
-        model: Stock,
-        as: 'stock',
-        attributes: [],
-        required: false
-    }],
-    attributes: {
-        exclude: ['stockId'],
-        include: [
-            [Sequelize.col('stock.name_stock'), 'department'],
-            [Sequelize.literal('(quantity)'), 'availableQuantity'],
-            [Sequelize.col('total_value'), 'totalValue']
-        ]
-    },
-    order: finalOrder,
-    limit: pageLimit,
-    offset: offset,
-    raw: true,
-    nest: true
-});
+        });
 
-            // Itens excluídos (sem paginação) - CORRIGIDO: removido updatedAt
-            const excludedWhere = { status: 'Excluido' };
-            if (busca) excludedWhere.name = { [Op.like]: `%${busca}%` };
-            if (code) excludedWhere.code = { [Op.like]: `%${code}%` };
-            if (position) excludedWhere.position = { [Op.like]: `%${position}%` };
-
-            const excludedItems = await Item.findAll({
-                where: excludedWhere,
-                include: [{
-                    model: Stock,
-                    as: 'stock',
-                    attributes: ['name']
-                }],
-                order: [['name', 'ASC']], // Alterado para ordenar por nome em vez de updatedAt
-                raw: true,
-                nest: true
-            });
-
-            // Departamentos para filtros
-            const stocks = await Stock.findAll({
-                order: [['name', 'ASC']]
-            });
-
-            // Calcular métricas para dashboard
-            const metrics = await Promise.all([
-                Item.count({ where: { status: 'Ativo' } }),
-                Item.count({
-                    where: {
-                        quantity: { [Op.lte]: 0 },
-                        status: 'Ativo'
-                    }
-                }),
-                Item.count({
-                    where: {
-                        quantity: {
-                            [Op.gt]: 0,
-                            [Op.lt]: Sequelize.col('minimum_quantity')
-                        },
-                        status: 'Ativo'
-                    }
-                })
-            ]);
-
-            res.render('itens', {
-                items,
-                excludedItems,
-                stocks,
-                user: req.session.user,
-                filters: req.query,
-                currentSort: { column: sortColumn, order: sortOrder },
-                pagination: {
-                    currentPage,
-                    totalPages: Math.ceil(count / pageLimit),
-                    totalItems: count,
-                    hasPrev: currentPage > 1,
-                    hasNext: currentPage < Math.ceil(count / pageLimit)
-                },
-                metrics: {
-                    totalAtivos: metrics[0],
-                    totalEsgotados: metrics[1],
-                    totalEstoqueBaixo: metrics[2]
-                }
-            });
-
-        } catch (error) {
-            console.error("Erro ao buscar itens:", error);
-            // Corrigido: usando res.send em vez de res.render para view que não existe
-            res.status(500).send(`Erro ao buscar itens: ${error.message}`);
-        }
-    },
+    } catch (error) {
+        console.error("Erro ao buscar itens:", error);
+        res.status(500).send(`Erro ao buscar itens: ${error.message}`);
+    }
+},
 
     // 🔄 RESTAURAR ITEM
     restore: async (req, res) => {
