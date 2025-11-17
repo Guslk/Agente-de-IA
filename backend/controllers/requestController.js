@@ -146,7 +146,6 @@ getAll: async (req, res) => {
         });
 
         // DEBUG: Verificar se as fotos estão sendo convertidas
-        console.log('📋 Requisições processadas:', requestsWithPhotos.length);
         requestsWithPhotos.forEach((request, index) => {
             console.log(`Requisição ${index + 1}:`, {
                 id: request.id,
