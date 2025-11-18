@@ -6,7 +6,13 @@
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
                 <span>Bem-vindo, <%= user.nome || user.name %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+                <div class="user-avatar">
+                    <% if (typeof user !== 'undefined' && user.photo) { %>
+                        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" onerror="this.src='img/usuario.jpg'">
+                    <% } else { %>
+                        <img src="img/usuario.jpg" alt="Avatar">
+                    <% } %>
+                </div>
             <% } %>
         </div>
     </div>
@@ -14,8 +20,6 @@
 
 <main class="main-content">
     
-    <!-- 1. Indicadores Chave (KPIs) -->
-    <!-- Os dados agora vêm do objeto 'kpis' -->
     <div class="kpi-grid">
         <div class="kpi-card">
             <h3>Valor Total do Estoque</h3>
@@ -35,29 +39,68 @@
         </div>
     </div>
 
-    <!-- 2. Grade de Gráficos -->
+    <div class="report-card" style="margin-top: 30px; width: 100%;">
+        <div class="card-header" style="margin-bottom: 15px;">
+            <h3>Fluxo Financeiro (Entradas vs. Saídas - Últimos 6 Meses)</h3>
+        </div>
+        <div style="height: 350px; width: 100%;">
+            <canvas id="financeiroChart"></canvas>
+        </div>
+    </div>
+
     <div class="reports-grid" style="margin-top: 30px;">
         
-        <!-- Gráfico de Curva ABC -->
+        <div class="report-card">
+            <h3>Itens por Departamento (SKUs)</h3>
+            
+            <div style="height: 300px; max-height: 300px; margin: 0 auto; display: flex; justify-content: center; align-items: center;">
+                <canvas id="itensPorCategoriaChart" style="max-height: 100%; max-width: 100%;"></canvas>
+            </div>
+        </div>
+
         <div class="report-card">
             <h3>Curva ABC (Top 20 Itens por Valor)</h3>
             <canvas id="abcChart"></canvas>
         </div>
 
-        <!-- Gráfico de Itens por Categoria (Rosca) -->
-        <div class="report-card">
-            <h3>Itens por Departamento (SKUs)</h3>
-            <canvas id="itensPorCategoriaChart"></canvas>
-        </div>
-
-        <!-- Gráfico de Valor por Categoria (Barras Horizontais) -->
         <div class="report-card">
             <h3>Valor por Departamento (R$)</h3>
             <canvas id="valorPorCategoriaChart"></canvas>
         </div>
     </div>
+    <div class="main-header" style="margin-top: 40px; margin-bottom: 20px;">
+        <h2>🚨 Itens em Risco de Ruptura (Dias de Cobertura < 15)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Qtd. Atual</th>
+                    <th>Qtd. Mínima</th>
+                    <th>Consumo Diário Médio</th>
+                    <th>DIAS DE COBERTURA</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof kpis !== 'undefined' && kpis.riscoRuptura && kpis.riscoRuptura.length > 0) { %>
+                    <% kpis.riscoRuptura.forEach(item => { %>
+                        <tr class="table-row-danger"> <td><code><%= item.code %></code></td>
+                            <td><strong><%= item.name %></strong> (<%= item.unitOfMeasure %>)</td>
+                            <td><%= item.quantity %></td>
+                            <td><%= item.minimumQuantity || 'N/A' %></td>
+                            <td><%= item.consumptionRate %></td>
+                            <td style="font-weight: bold; font-size: 1.1em;"><%= item.daysOfCoverage %> dias</td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="6" style="text-align: center;">Nenhum item com risco imediato de ruptura (cobertura > 15 dias).</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
 
-     <!-- 3. Tabela de Itens Obsoletos/Parados -->
      <div class="main-header" style="margin-top: 30px;">
         <h2>Itens Parados (Sem Saída há > 90 dias)</h2>
     </div>
@@ -73,15 +116,12 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Dados agora vêm de kpis.itensParados -->
                 <% if (typeof kpis !== 'undefined' && kpis.itensParados && kpis.itensParados.length > 0) { %>
                     <% kpis.itensParados.forEach(item => { %>
-                        <tr class="stock-planned"> <!-- Classe de alerta (amarelo) -->
-                            <td><code><%= item.code %></code></td>
+                        <tr class="stock-planned"> <td><code><%= item.code %></code></td>
                             <td><strong><%= item.name %></strong></td>
                             <td><%= item.quantity %></td>
-                            <!-- Corrigido para verificar se totalValue é um número -->
-                            <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${item.totalValue.toFixed(2)}` : 'N/A' %></td>
+                            <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${parseFloat(item.totalValue).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : 'N/A' %></td>
                             <td><%= item.ultimaSaida ? new Date(item.ultimaSaida).toLocaleDateString('pt-BR') : 'Nunca' %></td>
                         </tr>
                     <% }); %>
@@ -96,14 +136,103 @@
 
 <%- include('partials/footer') %>
 
-<!-- Chart.js (essencial para os gráficos) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     
-    // --- 1. Gráfico de Rosca: Itens por Departamento ---
-    // Pega os dados do kpis.itensPorCategoria
+    // ==================================================
+    // 1. NOVO GRÁFICO: FLUXO FINANCEIRO (ENTRADAS vs SAÍDAS)
+    // ==================================================
+    const financeiroData = JSON.parse(`<%- JSON.stringify(typeof chartData !== 'undefined' ? chartData : { labels: [], entradas: [], saidas: [] }) %>`);
+    const ctxFin = document.getElementById('financeiroChart');
+
+    if (ctxFin && financeiroData.labels && financeiroData.labels.length > 0) {
+        new Chart(ctxFin, {
+            type: 'line',
+            data: {
+                labels: financeiroData.labels,
+                datasets: [
+                    {
+                        label: 'Entradas (Compras)',
+                        data: financeiroData.entradas,
+                        borderColor: '#28a745', // Verde Sucesso
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        pointBackgroundColor: '#28a745',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Saídas (Consumo)',
+                        data: financeiroData.saidas,
+                        borderColor: '#dc3545', // Vermelho Perigo
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        pointBackgroundColor: '#dc3545',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [2, 4] },
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value; // Simplificado para não poluir o eixo
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    } else if (ctxFin) {
+        // Fallback visual se não houver dados
+        const ctx = ctxFin.getContext('2d');
+        // Ajusta o canvas para o tamanho do container
+        ctxFin.width = ctxFin.parentElement.clientWidth;
+        ctxFin.height = ctxFin.parentElement.clientHeight;
+        
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px "Segoe UI"';
+        ctx.fillText('Nenhum dado financeiro disponível para o período', ctxFin.width / 2, ctxFin.height / 2);
+    }
+    
+
+
+    // ==================================================
+    // 2. GRÁFICOS ORIGINAIS
+    // ==================================================
+
+    // --- Itens por Departamento (Rosca) ---
     const categoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.itensPorCategoria : { labels: [], data: [] }) %>`);
     const ctxCategoria = document.getElementById('itensPorCategoriaChart');
     
@@ -121,17 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: { responsive: true, plugins: { legend: { position: 'top' } } }
         });
-    } else if (ctxCategoria) {
-        const ctx = ctxCategoria.getContext('2d');
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#aaa';
-        ctx.font = '16px "Poppins"';
-        ctx.fillText('Nenhum dado de categoria', ctxCategoria.width / 2, ctxCategoria.height / 2);
     }
 
-    // --- 2. Gráfico de Barras: Valor por Departamento ---
-    // Pega os dados de kpis.valorPorCategoria
+    // --- Valor por Departamento (Barras) ---
     const valorCategoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.valorPorCategoria : { labels: [], data: [] }) %>`);
     const ctxValorCategoria = document.getElementById('valorPorCategoriaChart');
 
@@ -147,84 +268,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 }]
             },
             options: {
-                indexAxis: 'y', // <-- Barras horizontais
+                indexAxis: 'y',
                 responsive: true,
-                plugins: {
-                    legend: { display: false } 
-                }
+                plugins: { legend: { display: false } }
             }
         });
-    } else if (ctxValorCategoria) {
-         const ctx = ctxValorCategoria.getContext('2d');
-         ctx.textAlign = 'center';
-         ctx.textBaseline = 'middle';
-         ctx.fillStyle = '#aaa';
-         ctx.font = '16px "Poppins"';
-         ctx.fillText('Nenhum dado de valor', ctxValorCategoria.width / 2, ctxValorCategoria.height / 2);
     }
 
-    // --- 3. Gráfico de Curva ABC ---
-    // Pega os dados de kpis.curvaABC
+    // --- Curva ABC ---
     const abcData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.curvaABC : { labels: [], dataValor: [], dataAcumulado: [] }) %>`);
     const ctxABC = document.getElementById('abcChart');
 
     if (ctxABC && abcData.labels && abcData.labels.length > 0) {
         new Chart(ctxABC, {
-            type: 'bar', // Gráfico combinado
+            type: 'bar',
             data: {
-                labels: abcData.labels, // Ex: ['Item 1', 'Item 2', ...]
+                labels: abcData.labels,
                 datasets: [
                     {
-                        type: 'bar', // Barras (Valor)
+                        type: 'bar',
                         label: 'Valor Individual (R$)',
                         data: abcData.dataValor,
                         backgroundColor: '#6c757d'
                     },
                     {
-                        type: 'line', // Linha (Acumulado %)
+                        type: 'line',
                         label: '% Acumulada',
                         data: abcData.dataAcumulado,
                         borderColor: '#e43f42',
                         backgroundColor: '#e43f42',
                         tension: 0.1,
-                        yAxisID: 'yAcumulado' // Eixo Y secundário
+                        yAxisID: 'yAcumulado'
                     }
                 ]
             },
             options: {
                 responsive: true,
                 scales: {
-                    y: { // Eixo Y primário (R$)
+                    y: {
                         beginAtZero: true,
                         type: 'linear',
                         position: 'left',
                         title: { display: true, text: 'Valor em Estoque (R$)' }
                     },
-                    yAcumulado: { // Eixo Y secundário (%)
+                    yAcumulado: {
                         beginAtZero: true,
                         max: 100,
                         type: 'linear',
                         position: 'right',
                         title: { display: true, text: '% Acumulada' },
-                        grid: {
-                            drawOnChartArea: false, // Não desenha a grade sobre as barras
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%'
-                            }
-                        }
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: function(value) { return value + '%' } }
                     }
                 }
             }
         });
-    } else if (ctxABC) {
-        const ctx = ctxABC.getContext('2d');
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#aaa';
-        ctx.font = '16px "Poppins"';
-        ctx.fillText('Nenhum dado de valor de item', ctxABC.width / 2, ctxABC.height / 2);
     }
 });
 </script>
