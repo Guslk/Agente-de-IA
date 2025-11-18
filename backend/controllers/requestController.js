@@ -64,120 +64,74 @@ const calculateAvgCost = (item) => {
 
 const requestController = {
 
-    // getAll: async (req, res) => {
-    //     const { tenantId } = req;
-    //     try {
-    //         const sequelize = await getTenantDB(tenantId);
-    //         const { Request, Employee, Item, RequestItem } = db.initialize(sequelize);
+    getAll: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Request, Employee, Item, RequestItem } = db.initialize(sequelize);
 
-    //         const requests = await Request.findAll({
-    //             include: [
-    //                 { model: Employee, as: 'requester', attributes: ['name'] },
-    //                 { model: Employee, as: 'approver', attributes: ['name'] },
-    //                 {
-    //                     model: RequestItem,
-    //                     as: 'items',
-    //                     include: [{
-    //                         model: Item,
-    //                         as: 'item',
-    //                         attributes: ['name', 'code', 'unitOfMeasure']
-    //                     }]
-    //                 }
-    //             ],
-    //             order: [['created_at', 'DESC']]
-    //         });
-
-    //         res.render('requisicoes', {
-    //             requests,
-    //             user: req.session.user,
-    //             query: req.query,
-    //             paginaAtiva: 'requisicoes'
-    //         });
-    //     } catch (error) {
-    //         res.redirect(`/itens?error=${error.message}`);
-    //     }
-    // },
-getAll: async (req, res) => {
-    const { tenantId } = req;
-    try {
-        const sequelize = await getTenantDB(tenantId);
-        const { Request, Employee, Item, RequestItem } = db.initialize(sequelize);
-
-        const requests = await Request.findAll({
-            include: [
-                { 
-                    model: Employee, 
-                    as: 'requester', 
-                    attributes: ['id', 'name', 'photo'] // photo é BLOB
-                },
-                { 
-                    model: Employee, 
-                    as: 'approver', 
-                    attributes: ['id', 'name', 'photo'] // photo é BLOB
-                },
-                {
-                    model: RequestItem,
-                    as: 'items',
-                    include: [{
-                        model: Item,
-                        as: 'item',
-                        attributes: ['name', 'code', 'unitOfMeasure']
-                    }]
-                }
-            ],
-            order: [['created_at', 'DESC']]
-        });
-
-        // Converter BLOB para base64
-        const requestsWithPhotos = requests.map(request => {
-            const requestJSON = request.toJSON();
-            
-            // Converter foto do solicitante
-            if (requestJSON.requester && requestJSON.requester.photo) {
-                requestJSON.requester.photo = `data:image/jpeg;base64,${requestJSON.requester.photo.toString('base64')}`;
-            }
-            
-            // Converter foto do aprovador
-            if (requestJSON.approver && requestJSON.approver.photo) {
-                requestJSON.approver.photo = `data:image/jpeg;base64,${requestJSON.approver.photo.toString('base64')}`;
-            }
-            
-            return requestJSON;
-        });
-
-        // DEBUG: Verificar se as fotos estão sendo convertidas
-        requestsWithPhotos.forEach((request, index) => {
-            console.log(`Requisição ${index + 1}:`, {
-                id: request.id,
-                requester: request.requester ? {
-                    name: request.requester.name,
-                    hasPhoto: !!request.requester.photo,
-                    photoType: request.requester.photo ? typeof request.requester.photo : 'none'
-                } : 'N/A'
+            const requests = await Request.findAll({
+                include: [
+                    {
+                        model: Employee,
+                        as: 'requester',
+                        attributes: ['id', 'name'] // photo é BLOB
+                    },
+                    {
+                        model: Employee,
+                        as: 'approver',
+                        attributes: ['id', 'name'] // photo é BLOB
+                    },
+                    {
+                        model: RequestItem,
+                        as: 'items',
+                        include: [{
+                            model: Item,
+                            as: 'item',
+                            attributes: ['name', 'code', 'unitOfMeasure']
+                        }]
+                    }
+                ],
+                order: [['created_at', 'DESC']]
             });
-        });
 
-        res.render('requisicoes', {
-            requests: requestsWithPhotos, // Usar o array convertido
-            user: req.session.user,
-            query: req.query,
-            paginaAtiva: 'requisicoes'
-        });
-    } catch (error) {
-        console.error("❌ Erro ao buscar requisições:", error);
-        res.redirect('/requisicoes?error=fetch_failed');
-    }
-},
+
+            res.render('requisicoes', {
+                requests,
+                user: req.session.user,
+                query: req.query,
+                paginaAtiva: 'requisicoes'
+            });
+        } catch (error) {
+            console.error("❌ Erro ao buscar requisições:", error);
+            res.redirect('/requisicoes?error=fetch_failed');
+        }
+    },
 
 
     create: async (req, res) => {
         const { tenantId } = req;
         const employeeId = req.session.user.id;
-        const { notes, items } = req.body;
+        // 1. Recebe os novos campos do body
+        const { requestType, justificativa, op, items } = req.body;
         let transaction;
 
         if (!items || items.length === 0) {
             return res.status(400).json({ error: 'Nenhum item selecionado.' });
+        }
+
+        // 2. Formata a nota final com base na escolha
+        let finalNotes = '';
+        if (requestType === 'op') {
+            if (!op || op.trim() === '') {
+                return res.status(400).json({ error: 'Número da OP é obrigatório.' });
+            }
+            finalNotes = `OP: ${op.trim()}`; // Salva no formato "OP: 12345"
+        } else {
+            if (!justificativa || justificativa.trim() === '') {
+                return res.status(400).json({ error: 'Justificativa é obrigatória.' });
+            }
+            finalNotes = justificativa.trim(); // Salva a justificativa
         }
 
         try {
@@ -187,7 +141,7 @@ getAll: async (req, res) => {
 
             const newRequest = await Request.create({
                 employeeId: employeeId,
-                notes: notes,
+                notes: finalNotes, // 4. Salva a 'finalNotes' no campo 'notes'
                 status: 'Pendente'
             }, { transaction });
 
@@ -266,13 +220,13 @@ getAll: async (req, res) => {
             await transaction.commit();
             res.redirect('/requisicoes?success=request_approved');
 
-} catch (error) {
-    let errorKey = 'approve_failed';
-    if (error.message.includes('não está mais pendente')) {
-        errorKey = 'request_not_pending';
-    }
-    res.redirect(`/requisicoes?error=${errorKey}`);
-}
+        } catch (error) {
+            let errorKey = 'approve_failed';
+            if (error.message.includes('não está mais pendente')) {
+                errorKey = 'request_not_pending';
+            }
+            res.redirect(`/requisicoes?error=${errorKey}`);
+        }
     },
 
     cancel: async (req, res) => {
@@ -307,13 +261,13 @@ getAll: async (req, res) => {
             await transaction.commit();
             res.redirect('/requisicoes?success=request_cancelled');
 
-} catch (error) {
-    let errorKey = 'cancel_failed';
-    if (error.message.includes('apenas requisições pendentes')) {
-        errorKey = 'only_pending_cancellable';
-    }
-    res.redirect(`/requisicoes?error=${errorKey}`);
-}
+        } catch (error) {
+            let errorKey = 'cancel_failed';
+            if (error.message.includes('apenas requisições pendentes')) {
+                errorKey = 'only_pending_cancellable';
+            }
+            res.redirect(`/requisicoes?error=${errorKey}`);
+        }
     },
 
 
@@ -355,354 +309,79 @@ getAll: async (req, res) => {
                 paginaAtiva: 'requisicoes'
             });
 
-} catch (error) {
-    let errorKey = 'fetch_failed';
-    if (error.message.includes('não encontrada')) {
-        errorKey = 'request_not_found';
-    } else if (error.message.includes('apenas requisições finalizadas')) {
-        errorKey = 'only_finished_returnable';
-    }
-    res.redirect(`/requisicoes?error=${errorKey}`);
-}
+        } catch (error) {
+            let errorKey = 'fetch_failed';
+            if (error.message.includes('não encontrada')) {
+                errorKey = 'request_not_found';
+            } else if (error.message.includes('apenas requisições finalizadas')) {
+                errorKey = 'only_finished_returnable';
+            }
+            res.redirect(`/requisicoes?error=${errorKey}`);
+        }
     },
 
-processReturn: async (req, res) => {
-    const { tenantId } = req;
-    const { id: requestId } = req.params;
-    const { itemId, quantity } = req.body;
+    processReturn: async (req, res) => {
+        const { tenantId } = req;
+        const { id: requestId } = req.params;
+        const { itemId, quantity } = req.body;
 
-    console.log('=== 🚀 PROCESSANDO DEVOLUÇÃO ===');
-    console.log('Request ID:', requestId);
-    console.log('Body:', req.body);
-    console.log('Item ID:', itemId);
-    console.log('Quantity:', quantity);
+        console.log('=== 🚀 PROCESSANDO DEVOLUÇÃO ===');
+        console.log('Request ID:', requestId);
+        console.log('Body:', req.body);
+        console.log('Item ID:', itemId);
+        console.log('Quantity:', quantity);
 
-    let transaction;
+        let transaction;
 
-    try {
-        const sequelize = await getTenantDB(tenantId);
-        const { Request, RequestItem, Item, Entry, Output } = db.initialize(sequelize);
-        transaction = await sequelize.transaction();
-
-        // Buscar requisição
-        const request = await Request.findByPk(requestId, {
-            include: [{
-                model: RequestItem,
-                as: 'items',
-                include: [{ model: Item, as: 'item' }]
-            }],
-            transaction
-        });
-
-        if (!request || request.status !== 'Finalizado') {
-            throw new Error('Requisição não encontrada ou não está finalizada');
-        }
-
-        // Validar dados
-        if (!itemId || !quantity) {
-            throw new Error('Dados incompletos para devolução');
-        }
-
-        const returnQty = parseFloat(quantity);
-        if (returnQty <= 0) {
-            throw new Error('Quantidade deve ser maior que zero');
-        }
-
-        // Buscar item específico na requisição
-        const reqItem = request.items.find(item => item.itemId == itemId);
-        if (!reqItem) {
-            throw new Error('Item não encontrado na requisição');
-        }
-
-        const item = await Item.findByPk(itemId, { transaction, lock: true });
-        if (!item) {
-            throw new Error('Item não encontrado no estoque');
-        }
-
-        // Validar quantidade
-        const alreadyReturned = parseFloat(reqItem.quantityReturned || 0);
-        const maxReturnable = parseFloat(reqItem.quantityRequested) - alreadyReturned;
-
-        if (returnQty > maxReturnable) {
-            throw new Error(`Não é possível devolver ${returnQty} unidades. Máximo: ${maxReturnable}`);
-        }
-
-        // 🔧 CORREÇÃO: Buscar o custo original da saída em vez de usar o custo médio atual
-        const originalOutput = await Output.findOne({
-            where: {
-                itemId: item.id,
-                justification: { [Op.like]: `%Requisição #${requestId}%` }
-            },
-            order: [['exitDate', 'DESC']],
-            transaction
-        });
-
-        let costPerItem;
-        if (originalOutput) {
-            // Usar o custo original da saída
-            costPerItem = parseFloat(originalOutput.unitPrice);
-            console.log(`💰 Usando custo original da saída: ${costPerItem}`);
-        } else {
-            // Fallback: usar custo médio atual
-            costPerItem = calculateAvgCost(item);
-            console.log(`⚠️  Custo original não encontrado, usando custo médio: ${costPerItem}`);
-        }
-
-        const valueToReturn = costPerItem * returnQty;
-
-        console.log(`📊 Devolução: ${returnQty} unidades x ${costPerItem} = ${valueToReturn}`);
-
-        // Atualizar estoque
-        await item.increment('quantity', { by: returnQty, transaction });
-        await item.increment('totalValue', { by: valueToReturn, transaction });
-
-        // Atualizar requisição
-        await reqItem.increment('quantityReturned', { by: returnQty, transaction });
-
-        // Registrar entrada
-        const entryData = {
-            itemId: item.id,
-            quantity: returnQty,
-            unitPrice: costPerItem,
-            entryDate: new Date(),
-            invoiceNumber: `DEV-REQ-${requestId}`,
-            notes: `Devolução da requisição #${requestId} - Item: ${item.name}`
-        };
-
-        // Se supplierId for obrigatório, usar um valor padrão
         try {
-            await Entry.create(entryData, { transaction });
-        } catch (entryError) {
-            if (entryError.name === 'SequelizeValidationError' && entryError.errors.find(e => e.path === 'supplierId')) {
-                console.log('⚠️  Tentando criar entrada com supplierId padrão...');
-                entryData.supplierId = 1;
-                await Entry.create(entryData, { transaction });
-            } else {
-                throw entryError;
+            const sequelize = await getTenantDB(tenantId);
+            const { Request, RequestItem, Item, Entry, Output } = db.initialize(sequelize);
+            transaction = await sequelize.transaction();
+
+            // Buscar requisição
+            const request = await Request.findByPk(requestId, {
+                include: [{
+                    model: RequestItem,
+                    as: 'items',
+                    include: [{ model: Item, as: 'item' }]
+                }],
+                transaction
+            });
+
+            if (!request || request.status !== 'Finalizado') {
+                throw new Error('Requisição não encontrada ou não está finalizada');
             }
-        }
 
-        // Verificar se todos os itens foram devolvidos
-        const allItemsReturned = request.items.every(item =>
-            parseFloat(item.quantityReturned || 0) >= parseFloat(item.quantityRequested)
-        );
+            // Validar dados
+            if (!itemId || !quantity) {
+                throw new Error('Dados incompletos para devolução');
+            }
 
-        if (allItemsReturned) {
-            await request.update({
-                status: 'Devolvido',
-                updatedAt: new Date()
-            }, { transaction });
-        }
+            const returnQty = parseFloat(quantity);
+            if (returnQty <= 0) {
+                throw new Error('Quantidade deve ser maior que zero');
+            }
 
-        await transaction.commit();
+            // Buscar item específico na requisição
+            const reqItem = request.items.find(item => item.itemId == itemId);
+            if (!reqItem) {
+                throw new Error('Item não encontrado na requisição');
+            }
 
-        console.log('✅ Devolução processada com sucesso');
-        console.log(`📦 Estoque atualizado: Quantidade = ${parseFloat(item.quantity) + returnQty}, Valor = ${parseFloat(item.totalValue) + valueToReturn}`);
-        
-        res.redirect('/requisicoes?success=devolucao_processada');
+            const item = await Item.findByPk(itemId, { transaction, lock: true });
+            if (!item) {
+                throw new Error('Item não encontrado no estoque');
+            }
 
-} catch (error) {
-    console.error('❌ Erro na devolução:', error);
-    if (transaction) await transaction.rollback();
-    
-    let errorKey = 'return_failed';
-    if (error.message.includes('não encontrada') || error.message.includes('não está finalizada')) {
-        errorKey = 'invalid_return_request';
-    } else if (error.message.includes('Dados incompletos')) {
-        errorKey = 'incomplete_data';
-    } else if (error.message.includes('Quantidade deve ser maior')) {
-        errorKey = 'invalid_quantity';
-    } else if (error.message.includes('Item não encontrado')) {
-        errorKey = 'item_not_found';
-    } else if (error.message.includes('Não é possível devolver')) {
-        errorKey = 'excess_return_quantity';
-    }
-    
-    res.redirect(`/requisicoes/devolucao/${requestId}?error=${errorKey}`);
-}
-},
-
-    searchItems: async (req, res) => {
-    const { tenantId } = req;
-    const { q } = req.query;
-    
-    try {
-        const sequelize = await getTenantDB(tenantId);
-        const { Item } = db.initialize(sequelize);
-        const { Op } = require('sequelize');
-
-
-        const items = await Item.findAll({
-            where: {
-                status: 'Ativo',
-                [Op.or]: [
-                    { name: { [Op.like]: `%${q}%` } },
-                    { code: { [Op.like]: `%${q}%` } }
-                ]
-            },
-            attributes: ['id', 'name', 'code', 'quantity', 'reservedQuantity', 'unitOfMeasure'],
-            limit: 20
-        });
-
-
-        const itemsWithAvailable = items.map(item => {
-            console.log('📝 Item:', item.name, 'unitOfMeasure:', item.unitOfMeasure);
-            return {
-                id: item.id,
-                name: item.name,
-                code: item.code,
-                availableQuantity: parseFloat(item.quantity) - parseFloat(item.reservedQuantity),
-                unitOfMeasure: item.unitOfMeasure
-            };
-        });
-
-        res.json(itemsWithAvailable);
-    } catch (error) {
-        console.error('❌ Erro na busca de itens:', error);
-        res.status(500).json({ error: error.message });
-    }
-},
-
-    // returnComplete: async (req, res) => {
-    //     const { tenantId } = req;
-    //     const { id: requestId } = req.params;
-
-    //     console.log('=== 🚀 DEVOLUÇÃO COMPLETA ===');
-    //     console.log('Request ID:', requestId);
-
-    //     let transaction;
-
-    //     try {
-    //         const sequelize = await getTenantDB(tenantId);
-    //         const { Request, RequestItem, Item, Entry } = db.initialize(sequelize);
-    //         transaction = await sequelize.transaction();
-
-    //         const request = await Request.findByPk(requestId, {
-    //             include: [{
-    //                 model: RequestItem,
-    //                 as: 'items',
-    //                 include: [{ model: Item, as: 'item' }]
-    //             }],
-    //             transaction
-    //         });
-
-    //         if (!request || request.status !== 'Finalizado') {
-    //             throw new Error('Requisição não encontrada ou não está finalizada');
-    //         }
-
-    //         let totalReturned = 0;
-
-    //         for (const reqItem of request.items) {
-    //             const alreadyReturned = parseFloat(reqItem.quantityReturned || 0);
-    //             const remainingToReturn = parseFloat(reqItem.quantityRequested) - alreadyReturned;
-
-    //             if (remainingToReturn <= 0) continue;
-
-    //             const item = await Item.findByPk(reqItem.itemId, { transaction, lock: true });
-    //             const costPerItem = calculateAvgCost(item);
-    //             const valueToReturn = costPerItem * remainingToReturn;
-
-    //             // Atualizar estoque
-    //             await item.increment('quantity', { by: remainingToReturn, transaction });
-    //             await item.increment('totalValue', { by: valueToReturn, transaction });
-
-    //             // Atualizar requisição
-    //             await reqItem.update({
-    //                 quantityReturned: parseFloat(reqItem.quantityRequested)
-    //             }, { transaction });
-
-    //             // Registrar entrada - CORRIGIDO: sem supplierId ou com valor padrão
-    //             const entryData = {
-    //                 itemId: item.id,
-    //                 quantity: remainingToReturn,
-    //                 unitPrice: costPerItem,
-    //                 entryDate: new Date(),
-    //                 invoiceNumber: `DEV-COMPLETA-REQ-${requestId}`,
-    //                 notes: `Devolução completa da requisição #${requestId}`
-    //             };
-
-    //             // Se supplierId for obrigatório, usar um valor padrão ou buscar do item
-    //             try {
-    //                 // Tenta criar sem supplierId primeiro
-    //                 await Entry.create(entryData, { transaction });
-    //             } catch (entryError) {
-    //                 if (entryError.name === 'SequelizeValidationError' && entryError.errors.find(e => e.path === 'supplierId')) {
-    //                     // Se o erro for por supplierId, tentar com um valor padrão
-    //                     console.log('⚠️  Tentando criar entrada com supplierId padrão...');
-    //                     entryData.supplierId = 1; // Ou outro ID padrão do seu sistema
-    //                     await Entry.create(entryData, { transaction });
-    //                 } else {
-    //                     throw entryError;
-    //                 }
-    //             }
-
-    //             totalReturned += remainingToReturn;
-    //             console.log(`✅ Devolvido: ${remainingToReturn} unidades de ${item.name}`);
-    //         }
-
-    //         if (totalReturned === 0) {
-    //             throw new Error('Todos os itens já foram devolvidos');
-    //         }
-
-    //         // Atualizar status
-    //         await request.update({
-    //             status: 'Devolvido',
-    //             updatedAt: new Date()
-    //         }, { transaction });
-
-    //         await transaction.commit();
-
-    //         console.log('✅ Devolução completa processada');
-    //         res.redirect('/requisicoes?success=devolucao_completa');
-
-    //     } catch (error) {
-    //         console.error('❌ Erro na devolução completa:', error);
-    //         if (transaction) await transaction.rollback();
-    //         res.redirect(`/requisicoes/devolucao/${requestId}?error=${encodeURIComponent(error.message)}`);
-    //     }
-    // },
-
-    // NOVO: Devolução completa - CORRIGIDO O CÁLCULO DO VALOR
-returnComplete: async (req, res) => {
-    const { tenantId } = req;
-    const { id: requestId } = req.params;
-
-    console.log('=== 🚀 DEVOLUÇÃO COMPLETA ===');
-    console.log('Request ID:', requestId);
-
-    let transaction;
-
-    try {
-        const sequelize = await getTenantDB(tenantId);
-        const { Request, RequestItem, Item, Entry, Output } = db.initialize(sequelize);
-        transaction = await sequelize.transaction();
-
-        const request = await Request.findByPk(requestId, {
-            include: [{
-                model: RequestItem,
-                as: 'items',
-                include: [{ model: Item, as: 'item' }]
-            }],
-            transaction
-        });
-
-        if (!request || request.status !== 'Finalizado') {
-            throw new Error('Requisição não encontrada ou não está finalizada');
-        }
-
-        let totalReturned = 0;
-        let totalValueReturned = 0;
-
-        for (const reqItem of request.items) {
+            // Validar quantidade
             const alreadyReturned = parseFloat(reqItem.quantityReturned || 0);
-            const quantityRequested = parseFloat(reqItem.quantityRequested);
-            const remainingToReturn = quantityRequested - alreadyReturned;
+            const maxReturnable = parseFloat(reqItem.quantityRequested) - alreadyReturned;
 
-            if (remainingToReturn <= 0) continue;
+            if (returnQty > maxReturnable) {
+                throw new Error(`Não é possível devolver ${returnQty} unidades. Máximo: ${maxReturnable}`);
+            }
 
-            const item = await Item.findByPk(reqItem.itemId, { transaction, lock: true });
-            
-            // 🔧 CORREÇÃO: Buscar o custo original da saída
+            // 🔧 CORREÇÃO: Buscar o custo original da saída em vez de usar o custo médio atual
             const originalOutput = await Output.findOne({
                 where: {
                     itemId: item.id,
@@ -714,36 +393,36 @@ returnComplete: async (req, res) => {
 
             let costPerItem;
             if (originalOutput) {
+                // Usar o custo original da saída
                 costPerItem = parseFloat(originalOutput.unitPrice);
-                console.log(`💰 Item ${item.name}: usando custo original ${costPerItem}`);
+                console.log(`💰 Usando custo original da saída: ${costPerItem}`);
             } else {
+                // Fallback: usar custo médio atual
                 costPerItem = calculateAvgCost(item);
-                console.log(`⚠️  Item ${item.name}: custo original não encontrado, usando médio ${costPerItem}`);
+                console.log(`⚠️  Custo original não encontrado, usando custo médio: ${costPerItem}`);
             }
 
-            const valueToReturn = costPerItem * remainingToReturn;
+            const valueToReturn = costPerItem * returnQty;
 
-            console.log(`📊 ${item.name}: ${remainingToReturn} unidades x ${costPerItem} = ${valueToReturn}`);
 
             // Atualizar estoque
-            await item.increment('quantity', { by: remainingToReturn, transaction });
+            await item.increment('quantity', { by: returnQty, transaction });
             await item.increment('totalValue', { by: valueToReturn, transaction });
 
             // Atualizar requisição
-            await reqItem.update({
-                quantityReturned: quantityRequested
-            }, { transaction });
+            await reqItem.increment('quantityReturned', { by: returnQty, transaction });
 
             // Registrar entrada
             const entryData = {
                 itemId: item.id,
-                quantity: remainingToReturn,
+                quantity: returnQty,
                 unitPrice: costPerItem,
                 entryDate: new Date(),
-                invoiceNumber: `DEV-COMPLETA-REQ-${requestId}`,
-                notes: `Devolução completa da requisição #${requestId}`
+                invoiceNumber: `DEV-REQ-${requestId}`,
+                notes: `Devolução da requisição #${requestId} - Item: ${item.name}`
             };
 
+            // Se supplierId for obrigatório, usar um valor padrão
             try {
                 await Entry.create(entryData, { transaction });
             } catch (entryError) {
@@ -756,42 +435,286 @@ returnComplete: async (req, res) => {
                 }
             }
 
-            totalReturned += remainingToReturn;
-            totalValueReturned += valueToReturn;
-            console.log(`✅ Devolvido: ${remainingToReturn} unidades de ${item.name} (Valor: ${valueToReturn})`);
+            // Verificar se todos os itens foram devolvidos
+            const allItemsReturned = request.items.every(item =>
+                parseFloat(item.quantityReturned || 0) >= parseFloat(item.quantityRequested)
+            );
+
+            if (allItemsReturned) {
+                await request.update({
+                    status: 'Devolvido',
+                    updatedAt: new Date()
+                }, { transaction });
+            }
+
+            await transaction.commit();
+
+            console.log('✅ Devolução processada com sucesso');
+            console.log(`📦 Estoque atualizado: Quantidade = ${parseFloat(item.quantity) + returnQty}, Valor = ${parseFloat(item.totalValue) + valueToReturn}`);
+
+            res.redirect('/requisicoes?success=devolucao_processada');
+
+        } catch (error) {
+            console.error('❌ Erro na devolução:', error);
+            if (transaction) await transaction.rollback();
+
+            let errorKey = 'return_failed';
+            if (error.message.includes('não encontrada') || error.message.includes('não está finalizada')) {
+                errorKey = 'invalid_return_request';
+            } else if (error.message.includes('Dados incompletos')) {
+                errorKey = 'incomplete_data';
+            } else if (error.message.includes('Quantidade deve ser maior')) {
+                errorKey = 'invalid_quantity';
+            } else if (error.message.includes('Item não encontrado')) {
+                errorKey = 'item_not_found';
+            } else if (error.message.includes('Não é possível devolver')) {
+                errorKey = 'excess_return_quantity';
+            }
+
+            res.redirect(`/requisicoes/devolucao/${requestId}?error=${errorKey}`);
         }
+    },
 
-        if (totalReturned === 0) {
-            throw new Error('Todos os itens já foram devolvidos');
-        }
-
-        // Atualizar status
-        await request.update({
-            status: 'Devolvido',
-            updatedAt: new Date()
-        }, { transaction });
-
-        await transaction.commit();
-
-        console.log('✅ Devolução completa processada');
-        console.log(`📊 Total: ${totalReturned} unidades devolvidas, Valor total: ${totalValueReturned}`);
+searchItems: async (req, res) => {
+        const { tenantId } = req;
+        const { q, context } = req.query; 
         
-        res.redirect('/requisicoes?success=devolucao_completa');
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            // ADICIONE 'Stock' AQUI NA DESESTRUTURAÇÃO
+            const { Item, Stock } = db.initialize(sequelize); 
+            const { Op } = require('sequelize');
 
-} catch (error) {
-    console.error('❌ Erro na devolução completa:', error);
-    if (transaction) await transaction.rollback();
-    
-    let errorKey = 'complete_return_failed';
-    if (error.message.includes('Todos os itens já foram devolvidos')) {
-        errorKey = 'all_items_returned';
-    } else if (error.message.includes('não encontrada') || error.message.includes('não está finalizada')) {
-        errorKey = 'invalid_return_request';
-    }
-    
-    res.redirect(`/requisicoes/devolucao/${requestId}?error=${errorKey}`);
-}
-},
+            // 1. Configuração base do filtro (Busca por Nome ou Código)
+            let whereConditions = {
+                status: 'Ativo',
+                [Op.or]: [
+                    { name: { [Op.like]: `%${q}%` } },
+                    { code: { [Op.like]: `%${q}%` } }
+                ]
+            };
+
+            // --- NOVA REGRA DE NEGÓCIO POR STOCK_ID ---
+            // Se for uma ENTRADA (Compra), não mostrar itens de estoques de "Corte/Retalho"
+            if (context === 'entry') {
+                
+                // Passo A: Buscar os IDs dos estoques que não devem receber compras
+                // (Procure por nomes comuns como "Retalho", "Cortada", "Produção")
+                const restrictedStocks = await Stock.findAll({
+                    where: {
+                        [Op.or]: [
+                            { name: { [Op.like]: '%CORTADA%' } }, // Ex: "Estoque Barras Cortadas"
+                            { name: { [Op.like]: '%RETALHO%' } }, // Ex: "Estoque de Retalhos"
+                            { name: { [Op.like]: '%SOBRA%' } }    // Ex: "Sobras de Produção"
+                        ]
+                    },
+                    attributes: ['id']
+                });
+
+                // Extrai apenas os IDs (ex: [2, 5])
+                const restrictedStockIds = restrictedStocks.map(s => s.id);
+
+                // Passo B: Se encontrou estoques restritos, exclui itens que pertencem a eles
+                if (restrictedStockIds.length > 0) {
+                    whereConditions.stockId = { [Op.notIn]: restrictedStockIds };
+                }
+            }
+
+            // 2. Buscar os Itens aplicando os filtros
+            const items = await Item.findAll({
+                where: whereConditions,
+                attributes: ['id', 'name', 'code', 'quantity', 'reservedQuantity', 'unitOfMeasure', 'stockId'], // Adicionei stockId para debug se precisar
+                limit: 20
+            });
+
+            const itemsWithAvailable = items.map(item => {
+                return {
+                    id: item.id,
+                    name: item.name,
+                    code: item.code,
+                    availableQuantity: parseFloat(item.quantity) - parseFloat(item.reservedQuantity),
+                    unitOfMeasure: item.unitOfMeasure
+                };
+            });
+
+            res.json(itemsWithAvailable);
+
+        } catch (error) {
+            console.error('❌ Erro na busca de itens:', error);
+            res.status(500).json({ error: error.message });
+        }
+    },
+
+    // searchItems: async (req, res) => {
+    //     const { tenantId } = req;
+    //     const { q } = req.query;
+
+    //     try {
+    //         const sequelize = await getTenantDB(tenantId);
+    //         const { Item } = db.initialize(sequelize);
+    //         const { Op } = require('sequelize');
+
+
+    //         const items = await Item.findAll({
+    //             where: {
+    //                 status: 'Ativo',
+    //                 [Op.or]: [
+    //                     { name: { [Op.like]: `%${q}%` } },
+    //                     { code: { [Op.like]: `%${q}%` } }
+    //                 ]
+    //             },
+    //             attributes: ['id', 'name', 'code', 'quantity', 'reservedQuantity', 'unitOfMeasure'],
+    //             limit: 20
+    //         });
+
+
+    //         const itemsWithAvailable = items.map(item => {
+    //             console.log('📝 Item:', item.name, 'unitOfMeasure:', item.unitOfMeasure);
+    //             return {
+    //                 id: item.id,
+    //                 name: item.name,
+    //                 code: item.code,
+    //                 availableQuantity: parseFloat(item.quantity) - parseFloat(item.reservedQuantity),
+    //                 unitOfMeasure: item.unitOfMeasure
+    //             };
+    //         });
+
+    //         res.json(itemsWithAvailable);
+    //     } catch (error) {
+    //         console.error('❌ Erro na busca de itens:', error);
+    //         res.status(500).json({ error: error.message });
+    //     }
+    // },
+    // NOVO: Devolução completa - CORRIGIDO O CÁLCULO DO VALOR
+    returnComplete: async (req, res) => {
+        const { tenantId } = req;
+        const { id: requestId } = req.params;
+
+        console.log('=== 🚀 DEVOLUÇÃO COMPLETA ===');
+        console.log('Request ID:', requestId);
+
+        let transaction;
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Request, RequestItem, Item, Entry, Output } = db.initialize(sequelize);
+            transaction = await sequelize.transaction();
+
+            const request = await Request.findByPk(requestId, {
+                include: [{
+                    model: RequestItem,
+                    as: 'items',
+                    include: [{ model: Item, as: 'item' }]
+                }],
+                transaction
+            });
+
+            if (!request || request.status !== 'Finalizado') {
+                throw new Error('Requisição não encontrada ou não está finalizada');
+            }
+
+            let totalReturned = 0;
+            let totalValueReturned = 0;
+
+            for (const reqItem of request.items) {
+                const alreadyReturned = parseFloat(reqItem.quantityReturned || 0);
+                const quantityRequested = parseFloat(reqItem.quantityRequested);
+                const remainingToReturn = quantityRequested - alreadyReturned;
+
+                if (remainingToReturn <= 0) continue;
+
+                const item = await Item.findByPk(reqItem.itemId, { transaction, lock: true });
+
+                // 🔧 CORREÇÃO: Buscar o custo original da saída
+                const originalOutput = await Output.findOne({
+                    where: {
+                        itemId: item.id,
+                        justification: { [Op.like]: `%Requisição #${requestId}%` }
+                    },
+                    order: [['exitDate', 'DESC']],
+                    transaction
+                });
+
+                let costPerItem;
+                if (originalOutput) {
+                    costPerItem = parseFloat(originalOutput.unitPrice);
+                    console.log(`💰 Item ${item.name}: usando custo original ${costPerItem}`);
+                } else {
+                    costPerItem = calculateAvgCost(item);
+                    console.log(`⚠️  Item ${item.name}: custo original não encontrado, usando médio ${costPerItem}`);
+                }
+
+                const valueToReturn = costPerItem * remainingToReturn;
+
+                console.log(`📊 ${item.name}: ${remainingToReturn} unidades x ${costPerItem} = ${valueToReturn}`);
+
+                // Atualizar estoque
+                await item.increment('quantity', { by: remainingToReturn, transaction });
+                await item.increment('totalValue', { by: valueToReturn, transaction });
+
+                // Atualizar requisição
+                await reqItem.update({
+                    quantityReturned: quantityRequested
+                }, { transaction });
+
+                // Registrar entrada
+                const entryData = {
+                    itemId: item.id,
+                    quantity: remainingToReturn,
+                    unitPrice: costPerItem,
+                    entryDate: new Date(),
+                    invoiceNumber: `DEV-COMPLETA-REQ-${requestId}`,
+                    notes: `Devolução completa da requisição #${requestId}`
+                };
+
+                try {
+                    await Entry.create(entryData, { transaction });
+                } catch (entryError) {
+                    if (entryError.name === 'SequelizeValidationError' && entryError.errors.find(e => e.path === 'supplierId')) {
+                        console.log('⚠️  Tentando criar entrada com supplierId padrão...');
+                        entryData.supplierId = 1;
+                        await Entry.create(entryData, { transaction });
+                    } else {
+                        throw entryError;
+                    }
+                }
+
+                totalReturned += remainingToReturn;
+                totalValueReturned += valueToReturn;
+                console.log(`✅ Devolvido: ${remainingToReturn} unidades de ${item.name} (Valor: ${valueToReturn})`);
+            }
+
+            if (totalReturned === 0) {
+                throw new Error('Todos os itens já foram devolvidos');
+            }
+
+            // Atualizar status
+            await request.update({
+                status: 'Devolvido',
+                updatedAt: new Date()
+            }, { transaction });
+
+            await transaction.commit();
+
+            console.log('✅ Devolução completa processada');
+            console.log(`📊 Total: ${totalReturned} unidades devolvidas, Valor total: ${totalValueReturned}`);
+
+            res.redirect('/requisicoes?success=devolucao_completa');
+
+        } catch (error) {
+            console.error('❌ Erro na devolução completa:', error);
+            if (transaction) await transaction.rollback();
+
+            let errorKey = 'complete_return_failed';
+            if (error.message.includes('Todos os itens já foram devolvidos')) {
+                errorKey = 'all_items_returned';
+            } else if (error.message.includes('não encontrada') || error.message.includes('não está finalizada')) {
+                errorKey = 'invalid_return_request';
+            }
+
+            res.redirect(`/requisicoes/devolucao/${requestId}?error=${errorKey}`);
+        }
+    },
 
     showCreateForm: async (req, res) => {
         res.render('requisicoes-nova', {

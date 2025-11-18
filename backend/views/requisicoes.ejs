@@ -1,26 +1,6 @@
 
 <%- include('partials/header', { title: 'Requisições', paginaAtiva: 'requisicoes' }) %>
 
-<!-- <header class="header">
-    <h1 class="header-title">Requisições de Itens</h1>
-    <div class="header-right">
-        <div class="user-profile">
-            <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.name %></span>
-                <div class="user-avatar">
-    <% if (typeof user !== 'undefined' && user.photo) { %>
-        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
-             onerror="this.src='img/usuario.jpg'">
-    <% } else { %>
-        <img src="img/usuario.jpg" alt="Avatar">
-    <% } %>
-</div>
-            <% } %>
-        </div>
-    </div>
-</header> -->
-
-
 <header class="header">
     <h1 class="header-title">Requisições de Itens</h1>
     <div class="header-right">
@@ -84,17 +64,6 @@
                     </td>
                     <td>
                         <div class="requester-cell">
-                            <div class="avatar-small">
-                                <% if (req.requester && req.requester.photo) { %>
-                                    <img src="<%= req.requester.photo %>" 
-                                         alt="<%= req.requester.name %>" 
-                                         class="employee-photo">
-                                <% } else { %>
-                                    <div class="avatar-placeholder">
-                                        <%= req.requester ? req.requester.name.charAt(0).toUpperCase() : '?' %>
-                                    </div>
-                                <% } %>
-                            </div>
                             <span><%= req.requester ? req.requester.name : 'N/A' %></span>
                         </div>
                     </td>
@@ -104,17 +73,6 @@
                         
    <% if (req.approver) { %>
                    <div class="requester-cell">
-                            <div class="avatar-small">
-                                <% if (req.approver && req.approver.photo) { %>
-                                    <img src="<%= req.approver.photo %>" 
-                                         alt="<%= req.approver.name %>" 
-                                         class="employee-photo">
-                                <% } else { %>
-                                    <div class="avatar-placeholder">
-                                        <%= req.approver ? req.approver.name.charAt(0).toUpperCase() : '?' %>
-                                    </div>
-                                <% } %>
-                            </div>
                             <span><%= req.requester ? req.approver.name : 'N/A' %></span>
 <% } %>
                     </td>

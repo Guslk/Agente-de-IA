@@ -218,14 +218,16 @@
                     </h4>
                     <div class="form-grid">
                         <div class="form-group full-width">
-                            <label for="entry-itemId" class="form-label required">Item</label>
-                            <select name="itemId" id="entry-itemId" class="form-select" required>
-                                <option value="" disabled selected>Selecione um item...</option>
-                                <% if(typeof items !== 'undefined') { items.forEach(item => { %>
-                                    <option value="<%= item.id %>"><%= item.name %></option>
-                                <% }); } %>
-                            </select>
-                        </div>
+    <label for="entry-selected-item-name" class="form-label required">Item</label>
+    <div class="input-with-button">
+        <input type="text" id="entry-selected-item-name" placeholder="Nenhum item selecionado" readonly class="form-control-readonly">
+        <button type="button" class="btn-secondary btn-lookup" id="entry-btn-open-search-modal">
+            <i class="bi bi-search"></i> Buscar
+        </button>
+    </div>
+    <input type="hidden" name="itemId" id="entry-selected-item-id" required>
+    <input type="hidden" id="entry-selected-item-unit">
+</div>
                         <div class="form-group">
                             <label for="entry-quantity" class="form-label required">Quantidade</label>
                             <input type="number" id="entry-quantity" name="quantity" class="form-input" min="0.01" step="any" required>
@@ -277,14 +279,16 @@
                     </h4>
                     <div class="form-grid">
                         <div class="form-group full-width">
-                            <label for="output-itemId" class="form-label required">Item</label>
-                            <select name="itemId" id="output-itemId" class="form-select" required>
-                                <option value="" disabled selected>Selecione um item...</option>
-                                <% if(typeof items !== 'undefined') { items.forEach(item => { %>
-                                    <option value="<%= item.id %>"><%= item.name %> (Disponível: <%= item.quantity || 0 %>)</option>
-                                <% }); } %>
-                            </select>
-                        </div>
+    <label for="output-selected-item-name" class="form-label required">Item</label>
+    <div class="input-with-button">
+        <input type="text" id="output-selected-item-name" placeholder="Nenhum item selecionado" readonly class="form-control-readonly">
+        <button type="button" class="btn-secondary btn-lookup" id="output-btn-open-search-modal">
+            <i class="bi bi-search"></i> Buscar
+        </button>
+    </div>
+    <input type="hidden" name="itemId" id="output-selected-item-id" required>
+    <input type="hidden" id="output-selected-item-unit">
+</div>
                         <div class="form-group">
                             <label for="output-quantity" class="form-label required">Quantidade</label>
                             <input type="number" id="output-quantity" name="quantity" class="form-input" min="0.01" step="any" required>
@@ -312,13 +316,72 @@
     </div>
 </div>
 
+
+<div class="modal-overlay" id="item-search-modal">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Buscar Item Ativo</h3>
+            <button class="close-button" id="btn-close-search-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="item-search-input">Buscar por Nome ou Código</label>
+                <input type="text" id="item-search-input" placeholder="Comece a digitar para filtrar a lista..." autocomplete="off">
+            </div>
+            <div class="search-results-list" id="item-search-results">
+                <div class="result-item" style="text-align: center; color: #64748b; padding: 2rem;">
+                    Digite para buscar itens...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <%- include('partials/footer') %>
 
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    // ===================================================
+    // 1. FUNÇÕES AUXILIARES (Formatação e Unidades)
+    // ===================================================
+
+    function formatQuantity(quantity, unitOfMeasure) {
+        if (!quantity) return '0';
+        const qty = parseFloat(quantity);
+        const effectiveUnit = unitOfMeasure || 'un';
+
+        if (['kg', 'g', 'ton', 'l', 'ml'].includes(effectiveUnit)) {
+            return qty.toFixed(2);
+        } else if (['un', 'pc', 'cx'].includes(effectiveUnit)) {
+            return qty % 1 === 0 ? qty.toString() : qty.toFixed(2);
+        } else {
+            return qty.toFixed(2);
+        }
+    }
+
+    function getUnitLabel(unitOfMeasure) {
+        if (!unitOfMeasure) return 'un';
+        const unitMap = { 'un': 'un', 'kg': 'kg', 'g': 'g', 'ton': 'ton', 'pc': 'pc', 'cx': 'cx', 'l': 'l', 'ml': 'ml' };
+        return unitMap[unitOfMeasure] || unitOfMeasure;
+    }
+
+    function getInputStep(unitOfMeasure) {
+        if (!unitOfMeasure) return '0.01';
+        if (['kg', 'g', 'ton', 'l', 'ml'].includes(unitOfMeasure)) return '0.01';
+        if (['un', 'pc'].includes(unitOfMeasure)) return '1';
+        if (unitOfMeasure === 'cx') return '0.5';
+        return '0.01';
+    }
+
+    function getInputMin(unitOfMeasure) {
+        if (!unitOfMeasure) return '0.01';
+        return ['un', 'pc'].includes(unitOfMeasure) ? '1' : '0.01';
+    }
+
+    // ===================================================
+    // 2. LÓGICA DE LAYOUT E SIDEBAR (Recuperada)
+    // ===================================================
     
-    // ===== CONTROLE DO ESPAÇO EM BRANCO =====
     function fixWhiteSpace() {
         const mainContent = document.querySelector('.main-content');
         const body = document.body;
@@ -331,16 +394,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Correções imediatas
         body.style.overflowX = 'hidden';
         html.style.overflowX = 'hidden';
-        mainContent.style.overflowX = 'hidden';
+        // mainContent.style.overflowX = 'hidden'; // Comentado para permitir scroll interno se necessário
         
         // Aplicar largura total a elementos críticos
-        const criticalSelectors = [
-            '.main-content',
-            '.main-header',
-            '.filter-section',
-            '.table-section',
-            '.section-header'
-        ];
+        const criticalSelectors = ['.main-content', '.main-header', '.filter-section', '.table-section', '.section-header'];
         
         criticalSelectors.forEach(selector => {
             const elements = document.querySelectorAll(selector);
@@ -359,76 +416,74 @@ document.addEventListener('DOMContentLoaded', function() {
             table.style.width = '100%';
             table.style.overflowX = 'auto';
         });
-        
-        // Verificar se ainda há espaço em branco
-        setTimeout(() => {
-            const newScrollWidth = document.documentElement.scrollWidth;
-            if (newScrollWidth > viewportWidth) {
-                console.warn('⚠️ Ainda há overflow horizontal. Aplicando correções extras...');
-                applyEmergencyFixes();
-            }
-        }, 100);
     }
-    
-    function applyEmergencyFixes() {
-        document.body.style.minWidth = '0';
-        document.documentElement.style.minWidth = '0';
-        
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach(el => {
-            const style = window.getComputedStyle(el);
-            if (parseInt(style.minWidth) > 1000) {
-                el.style.minWidth = '0';
-            }
-        });
-        window.dispatchEvent(new Event('resize'));
-    }
-    
-    // ===== CONTROLE DO SIDEBAR =====
+
     function setupSidebarControl() {
         const sidebar = document.querySelector('.sidebar');
-        const mainContent = document.querySelector('.main-content');
-        
-        if (!sidebar || !mainContent) return;
         
         function updateSidebarLayout() {
             setTimeout(fixWhiteSpace, 150);
         }
         
-        const observer = new MutationObserver(function(mutations) {
-            let shouldUpdate = false;
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && 
-                   (mutation.attributeName === 'class' || mutation.attributeName === 'style')) {
-                    shouldUpdate = true;
-                }
-            });
-            if (shouldUpdate) {
-                setTimeout(updateSidebarLayout, 50);
-            }
-        });
-        
         if (sidebar) {
-            observer.observe(sidebar, { 
-                attributes: true, 
-                attributeFilter: ['class', 'style'] 
+            const observer = new MutationObserver(function(mutations) {
+                updateSidebarLayout();
             });
+            observer.observe(sidebar, { attributes: true, attributeFilter: ['class', 'style'] });
         }
         
-        let resizeTimeout;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(updateSidebarLayout, 200);
+        window.addEventListener('resize', () => {
+            setTimeout(updateSidebarLayout, 200);
         });
         
         updateSidebarLayout();
     }
-    
-    // ===== SISTEMA DE MODAIS =====
-    function setupModals() {
+
+    // ===================================================
+    // 3. LÓGICA PRINCIPAL DA PÁGINA
+    // ===================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        let debounceTimer;
+        let searchTarget = null; 
+
+        // --- Captura de Elementos ---
         const entryModal = document.getElementById('entry-modal');
         const outputModal = document.getElementById('output-modal');
-        
+        const searchModal = document.getElementById('item-search-modal');
+
+        const btnShowEntry = document.getElementById('btn-show-entry-modal');
+        const btnShowOutput = document.getElementById('btn-show-output-modal');
+
+        const btnCloseEntry = document.getElementById('btn-close-entry-modal');
+        const btnCloseOutput = document.getElementById('btn-close-output-modal');
+        const btnCloseSearch = document.getElementById('btn-close-search-modal');
+        const cancelButtons = document.querySelectorAll('.btn-cancel-modal');
+
+        const searchInput = document.getElementById('item-search-input');
+        const searchResultsContainer = document.getElementById('item-search-results');
+
+        // Formulário de ENTRADA
+        const btnOpenSearchEntry = document.getElementById('entry-btn-open-search-modal');
+        const entrySelectedItemName = document.getElementById('entry-selected-item-name');
+        const entrySelectedItemId = document.getElementById('entry-selected-item-id');
+        const entrySelectedItemUnit = document.getElementById('entry-selected-item-unit');
+        const entryQuantityInput = document.getElementById('entry-quantity');
+
+        // Formulário de SAÍDA
+        const btnOpenSearchOutput = document.getElementById('output-btn-open-search-modal');
+        const outputSelectedItemName = document.getElementById('output-selected-item-name');
+        const outputSelectedItemId = document.getElementById('output-selected-item-id');
+        const outputSelectedItemUnit = document.getElementById('output-selected-item-unit');
+        const outputQuantityInput = document.getElementById('output-quantity');
+
+        // Filtros
+        const btnClearFilters = document.getElementById('btn-clear-filters');
+        const filterForm = document.getElementById('filter-form');
+
+
+        // --- Funções de Controle dos Modais ---
+
         function openModal(modal) {
             if (modal) {
                 modal.style.display = 'flex';
@@ -441,208 +496,307 @@ document.addEventListener('DOMContentLoaded', function() {
         function closeModal(modal) {
             if (modal) {
                 modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
+                const anyModalOpen = (entryModal && entryModal.style.display === 'flex') || 
+                                     (outputModal && outputModal.style.display === 'flex') || 
+                                     (searchModal && searchModal.style.display === 'flex');
+                if (!anyModalOpen) {
+                    document.body.style.overflow = 'auto';
+                }
             }
         }
         
         function closeAllModals() {
-            [entryModal, outputModal].forEach(modal => closeModal(modal));
+            [entryModal, outputModal, searchModal].forEach(modal => closeModal(modal));
         }
-        
-        // Modal de Entrada
-        const btnShowEntry = document.getElementById('btn-show-entry-modal');
-        const btnCloseEntry = document.getElementById('btn-close-entry-modal');
-        
-        if (btnShowEntry) btnShowEntry.addEventListener('click', () => openModal(entryModal));
-        if (btnCloseEntry) btnCloseEntry.addEventListener('click', () => closeModal(entryModal));
-        
-        // Modal de Saída
-        const btnShowOutput = document.getElementById('btn-show-output-modal');
-        const btnCloseOutput = document.getElementById('btn-close-output-modal');
 
-        if (btnShowOutput) btnShowOutput.addEventListener('click', () => openModal(outputModal));
-        if (btnCloseOutput) btnCloseOutput.addEventListener('click', () => closeModal(outputModal));
+        // --- Lógica de Busca de Item ---
 
-        // Botões de Cancelar universais
-        document.querySelectorAll('.btn-cancel-modal').forEach(btn => {
-            btn.addEventListener('click', () => closeAllModals());
-        });
-        
-        // Fechar modais clicando fora ou com ESC
-        window.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal-overlay')) {
-                closeAllModals();
-            }
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeAllModals();
-        });
-    }
-    
-    // ===== SISTEMA DE NOTIFICAÇÕES =====
-    function setupNotifications() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const success = urlParams.get('success');
-        const error = urlParams.get('error');
-        
-        if (success) {
-            showNotification(getSuccessMessage(success), 'success');
-            cleanUrlParams(['success', 'error']);
+        function openSearchModalFunc(target) {
+            searchTarget = target;
+            openModal(searchModal);
+            performSearch(); 
         }
-        
-        if (error) {
-            showNotification(getErrorMessage(error), 'error');
-            cleanUrlParams(['success', 'error']);
-        }
-    }
-    
-    function getSuccessMessage(type) {
-        const messages = {
-            'mov_created': 'Movimentação registrada com sucesso!',
-            'entry_created': 'Entrada registrada com sucesso!',
-            'output_created': 'Saída registrada com sucesso!',
-            // Adicione outras mensagens de sucesso aqui
-        };
-        return messages[type] || 'Ação realizada com sucesso!';
-    }
-    
-    function getErrorMessage(type) {
-        const messages = {
-            'not_found': 'Registro não encontrado!',
-            'validation_error': 'Erro de validação. Verifique os dados.',
-            'server_error': 'Erro no servidor. Tente novamente.',
-            'insufficient_stock': 'Estoque insuficiente para esta saída!'
-            // Adicione outras mensagens de erro aqui
-        };
-        return messages[type] || 'Ocorreu um erro!';
-    }
-    
-    function showNotification(message, type) {
-        document.querySelectorAll('.notification').forEach(notification => {
-            notification.remove();
-        });
-        
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="notification-close">
-                <i class="bi bi-x"></i>
-            </button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        const closeBtn = notification.querySelector('.notification-close');
-        closeBtn.addEventListener('click', function() {
-            notification.remove();
-        });
-        
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
-        }, 5000);
-    }
-    
-    function cleanUrlParams(paramsToRemove) {
-        const url = new URL(window.location.href);
-        paramsToRemove.forEach(param => url.searchParams.delete(param));
-        window.history.replaceState({}, '', url);
-    }
-    
-    // ===== FUNCIONALIDADES EXTRAS =====
-    function setupAdditionalFeatures() {
-        // Limpar Filtros
-        const btnClearFilters = document.getElementById('btn-clear-filters');
-        if (btnClearFilters) {
-            btnClearFilters.addEventListener('click', function() {
-                window.location.href = '/movimentacoes'; // Corrigido para /movimentacoes
-            });
-        }
-        
-        // Submit do formulário de filtro com Enter
-        const filterForm = document.getElementById('filter-form');
-        if (filterForm) {
-            filterForm.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    this.submit();
+
+        const performSearch = async () => {
+            if (!searchInput || !searchResultsContainer) return;
+            const query = searchInput.value;
+            try {
+                const response = await fetch(`/api/search-items?q=${query}&context=${searchTarget}`);
+        const items = await response.json();
+
+                searchResultsContainer.innerHTML = ''; 
+
+                if (items.length > 0) {
+                    items.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'result-item';
+                        
+                        const unitLabel = getUnitLabel(item.unitOfMeasure);
+                        const unitClass = item.unitOfMeasure ? `unit-${item.unitOfMeasure}` : 'unit-un';
+                        
+                        div.innerHTML = `
+                            <div>
+                                <strong>${item.name}</strong>
+                                <span>(Cód: ${item.code || 'N/A'})</span>
+                                <span class="unit-badge ${unitClass}">${unitLabel}</span>
+                            </div>
+                            <span class="qty">Disponível: ${formatQuantity(item.availableQuantity, item.unitOfMeasure)} ${unitLabel}</span>
+                        `;
+                        
+                        if (searchTarget === 'output' && item.availableQuantity <= 0) {
+                            div.style.cursor = 'not-allowed';
+                            div.style.opacity = '0.5';
+                        } else {
+                            div.addEventListener('click', () => selectItem(item));
+                        }
+                        searchResultsContainer.appendChild(div);
+                    });
+                } else {
+                    searchResultsContainer.innerHTML = '<div class="result-item">Nenhum item encontrado.</div>';
                 }
+            } catch (err) {
+                console.error('Erro na busca:', err);
+                searchResultsContainer.innerHTML = '<div class="result-item">Erro ao buscar itens.</div>';
+            }
+        };
+
+        function selectItem(item) {
+            const unitLabel = getUnitLabel(item.unitOfMeasure);
+            const availableQtyText = formatQuantity(item.availableQuantity, item.unitOfMeasure);
+            const displayText = `${item.name} (Disponível: ${availableQtyText} ${unitLabel})`;
+
+            if (searchTarget === 'entry') {
+                if(entrySelectedItemName) entrySelectedItemName.value = displayText;
+                if(entrySelectedItemId) entrySelectedItemId.value = item.id;
+                if(entrySelectedItemUnit) entrySelectedItemUnit.value = item.unitOfMeasure || 'un';
+                if(entryQuantityInput) {
+                    entryQuantityInput.step = getInputStep(item.unitOfMeasure);
+                    entryQuantityInput.min = getInputMin(item.unitOfMeasure);
+                    entryQuantityInput.value = '';
+                    entryQuantityInput.focus();
+                }
+
+            } else if (searchTarget === 'output') {
+                if(outputSelectedItemName) outputSelectedItemName.value = displayText;
+                if(outputSelectedItemId) outputSelectedItemId.value = item.id;
+                if(outputSelectedItemUnit) outputSelectedItemUnit.value = item.unitOfMeasure || 'un';
+                if(outputQuantityInput) {
+                    outputQuantityInput.step = getInputStep(item.unitOfMeasure);
+                    outputQuantityInput.min = getInputMin(item.unitOfMeasure);
+                    outputQuantityInput.value = '';
+                    outputQuantityInput.focus();
+                }
+            }
+
+            closeModal(searchModal);
+            searchTarget = null; 
+            searchInput.value = '';
+        }
+
+        // --- Lógica de Notificações ---
+
+        function getSuccessMessage(type) {
+            const messages = {
+                'mov_created': 'Movimentação registrada com sucesso!',
+                'entry_created': 'Entrada registrada com sucesso!',
+                'output_created': 'Saída registrada com sucesso!',
+            };
+            return messages[type] || 'Ação realizada com sucesso!';
+        }
+        
+        function getErrorMessage(type) {
+            const messages = {
+                'not_found': 'Registro não encontrado!',
+                'validation_error': 'Erro de validação. Verifique os dados.',
+                'server_error': 'Erro no servidor. Tente novamente.',
+                'insufficient_stock': 'Estoque insuficiente para esta saída!'
+            };
+            return messages[type] || 'Ocorreu um erro!';
+        }
+        
+        function showNotification(message, type) {
+            document.querySelectorAll('.notification').forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+                <button class="notification-close"><i class="bi bi-x"></i></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            const closeBtn = notification.querySelector('.notification-close');
+            if(closeBtn) {
+                closeBtn.addEventListener('click', () => notification.remove());
+            }
+            setTimeout(() => notification.remove(), 5000);
+        }
+        
+        function cleanUrlParams(paramsToRemove) {
+            const url = new URL(window.location.href);
+            paramsToRemove.forEach(param => url.searchParams.delete(param));
+            window.history.replaceState({}, '', url);
+        }
+
+        function setupNotifications() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            const error = urlParams.get('error');
+            
+            if (success) {
+                showNotification(getSuccessMessage(success), 'success');
+                cleanUrlParams(['success', 'error']);
+            }
+            if (error) {
+                showNotification(getErrorMessage(error), 'error');
+                cleanUrlParams(['success', 'error']);
+            }
+        }
+        
+        // --- Inicialização ---
+
+        function init() {
+            console.log('🚀 Inicializando sistema de movimentações...');
+            
+            // Layout
+            fixWhiteSpace();
+            setupSidebarControl();
+
+            // Listeners Modais Entrada/Saída
+            if (btnShowEntry) btnShowEntry.addEventListener('click', () => openModal(entryModal));
+            if (btnCloseEntry) btnCloseEntry.addEventListener('click', () => closeModal(entryModal));
+            if (btnShowOutput) btnShowOutput.addEventListener('click', () => openModal(outputModal));
+            if (btnCloseOutput) btnCloseOutput.addEventListener('click', () => closeModal(outputModal));
+
+            // Listeners Busca
+            if (btnOpenSearchEntry) btnOpenSearchEntry.addEventListener('click', () => openSearchModalFunc('entry'));
+            if (btnOpenSearchOutput) btnOpenSearchOutput.addEventListener('click', () => openSearchModalFunc('output'));
+            if (btnCloseSearch) btnCloseSearch.addEventListener('click', () => closeModal(searchModal));
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(performSearch, 300);
+                });
+            }
+
+            // Listeners Globais
+            cancelButtons.forEach(btn => btn.addEventListener('click', () => closeAllModals()));
+            window.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) closeAllModals();
             });
-        }
-    }
-    
-    // ===== INICIALIZAÇÃO COMPLETA =====
-    function init() {
-        console.log('🚀 Inicializando sistema de movimentações...');
-        
-        // 1. Correções de layout imediatas
-        fixWhiteSpace();
-        
-        // 2. Configurar controle do sidebar
-        setupSidebarControl();
-        
-        // 3. Configurar modais
-        setupModals();
-        
-        // 4. Configurar notificações
-        setupNotifications();
-        
-        // 5. Configurar funcionalidades extras
-        setupAdditionalFeatures();
-        
-        // 6. Aplicar correções finais após carregamento completo
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                fixWhiteSpace();
-                console.log('✅ Sistema completamente carregado e otimizado');
-            }, 500);
-        });
-        
-        // 7. Monitorar continuamente por problemas de layout
-        setInterval(fixWhiteSpace, 5000);
-    }
-    
-    // Inicializar o sistema
-    init();
-});
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeAllModals();
+            });
 
-// ===== FUNÇÕES GLOBAIS PARA DEPURAÇÃO =====
-window.debugLayout = function() {
-    const mainContent = document.querySelector('.main-content');
-    const body = document.body;
-    
-    console.log('🔧 Debug de Layout:');
-    console.log('- Viewport width:', window.innerWidth);
-    console.log('- Body width:', body.offsetWidth);
-    console.log('- Main content width:', mainContent?.offsetWidth);
-    console.log('- Scroll width:', document.documentElement.scrollWidth);
-    console.log('- Sidebar expanded:', body.classList.contains('sidebar-expanded'));
-    
-    const wideElements = document.querySelectorAll('*');
-    wideElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.width > window.innerWidth) {
-            console.warn('Elemento muito largo:', el);
-            el.style.outline = '2px solid red';
+            // Extras
+            if (btnClearFilters) {
+                btnClearFilters.addEventListener('click', () => window.location.href = '/movimentacoes');
+            }
+            
+            if (filterForm) {
+                filterForm.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                        e.preventDefault();
+                        this.submit();
+                    }
+                });
+            }
+            
+            setupNotifications();
+
+            console.log('✅ Sistema pronto.');
         }
+
+        // Executar a inicialização
+        init();
+        
+        // Monitorar layout periodicamente para correções
+        setInterval(fixWhiteSpace, 2000);
     });
-};
-
-window.fixLayoutNow = function() {
-    const event = new Event('resize');
-    window.dispatchEvent(event);
-    console.log('🛠️ Layout forçado a atualizar');
-};
 </script>
 
 
 <style>
+
+    .search-results-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        margin-top: 16px;
+    }
+    
+    .result-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s;
+    }
+    
+    .result-item:hover {
+        background-color: #f8fafc;
+    }
+    
+    .result-item:last-child {
+        border-bottom: none;
+    }
+    
+    .result-item strong {
+        color: #1e293b;
+    }
+    
+    .result-item span {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .qty {
+        font-size: 0.85rem;
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .unit-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 0.5rem;
+    }
+
+    .unit-un, .unit-pc {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+
+    .unit-kg, .unit-g, .unit-ton {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    .unit-cx {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .unit-l, .unit-ml {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #a5b4fc;
+    }
+
 /* ===== VARIÁVEIS E RESET ===== */
 :root {
     --primary: #4361ee;
