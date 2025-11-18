@@ -132,11 +132,11 @@ function redrawCanvas() {
     canvas.height = displayHeight;
 
     // Limpa com a cor de fundo padrão
-    ctx.fillStyle = '#f4f7fa';
+    ctx.fillStyle = '#ffffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (!currentPlate) {
-        return; // Nada para desenhar
+        return; // Nada para desenhar   
     }
 
     // --- LÓGICA DE ESCALA ---
@@ -164,18 +164,18 @@ function redrawCanvas() {
     // --- DESENHA OS ELEMENTOS EM COORDENADAS LÓGICAS (mm) ---
 
     // Desenha o fundo da chapa
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = '#CED4DA';
     ctx.fillRect(0, 0, plateWidth, plateHeight);
 
     // Desenha a borda da chapa (linha de 1px visual)
-    ctx.strokeStyle = '#AAAAAA';
+    ctx.strokeStyle = '#000000ff';
     ctx.lineWidth = 1 / renderScale; // Largura da linha "ao contrário"
     ctx.strokeRect(0, 0, plateWidth, plateHeight);
 
     // Desenha os cortes finalizados (linha de 2px visual)
     const standardLineWidth = 2 / renderScale;
-    ctx.strokeStyle = 'blue';
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.fillStyle = '#FFFFFF';  
     ctx.lineWidth = standardLineWidth;
 
     finishedCuts.forEach(cut => {
@@ -667,6 +667,7 @@ async function handleSaveCuts() {
              originalCutCount = finishedCuts.length; 
         }
         setStatusMessage(result.message || 'Cortes salvos com sucesso!', 'green');
+        await loadPlateHistory(currentPlate.id);
     } catch (error) {
         console.error("Erro ao salvar cortes:", error);
         setStatusMessage(`Erro ao salvar os cortes: ${error.message}`, 'red');
