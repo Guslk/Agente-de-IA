@@ -52,19 +52,19 @@ const getTenantDB = async (tenantId) => {
     // Monta a configuração do Sequelize com as credenciais obtidas.
     const sequelizeConfig = {
       timezone: 'America/Sao_Paulo',
-      dialect: 'mysql', // Especifica o dialeto do banco de dados
+      dialect: 'mysql',
       host: tenant.database.host,
       port: tenant.database.port,
       database: tenant.database.db_name,
-      username: tenant.database.db_user, // Sequelize usa 'username' em vez de 'user'
+      username: tenant.database.db_user, 
       password: tenant.database.db_password,
-      pool: { // Configurações do pool de conexões gerenciado pelo Sequelize
-        max: 10, // Equivalente ao connectionLimit
+      pool: { 
+        max: 10, 
         min: 0,
         acquire: 30000,
         idle: 10000,
       },
-      logging: false, // Desative para não poluir o console com logs de query SQL. Mude para console.log para debugar.
+      logging: false, 
     };
 
     // Cria uma nova instância do Sequelize

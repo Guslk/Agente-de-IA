@@ -263,34 +263,6 @@ const authController = {
 
         if (password !== confirmPassword) return res.render('change-password', { error: 'As senhas não coincidem.' });
 
-        // try {
-        //     const sequelize = await getTenantDB(tenantId);
-        //     const { Employee } = db.initialize(sequelize);
-        //     const user = await Employee.findByPk(partial_login_user_id);
-
-        //     if (!user) throw new Error('Usuário não encontrado.');
-
-        //     user.passwordHash = await bcrypt.hash(password, 10);
-        //     user.forcePasswordChange = false;
-        //     await user.save();
-
-        //     delete req.session.force_password_change_pending;
-
-        //     if (!user.twoFactorEnabled) {
-        //         req.session.setup_2fa_pending = true;
-        //         return res.redirect('/setup-2fa');
-        //     }
-
-        //     if (user.twoFactorEnabled && user.twoFactorSecret) {
-        //         req.session.two_factor_pending = true;
-        //         return res.redirect('/verify-2fa');
-        //     }
-
-        //     finalizeLogin(req, user);
-        //     return res.redirect('/itens');
-        // } catch (error) {
-        //     res.render('change-password', { error: 'Ocorreu um erro ao salvar sua nova senha.' });
-        // }
         try {
         const sequelize = await getTenantDB(tenantId);
         const { Employee } = db.initialize(sequelize);
@@ -356,32 +328,6 @@ const user = await Employee.findByPk(partial_login_user_id, {
         const { token } = req.body;
         const { tenantId, partial_login_user_id } = req.session;
 
-        // try {
-        //     const sequelize = await getTenantDB(tenantId);
-        //     const { Employee } = db.initialize(sequelize);
-        //     const user = await Employee.findByPk(partial_login_user_id);
-
-        //     if (!user || !user.twoFactorSecret) return res.render('setup-2fa', { error: 'Usuário não encontrado ou segredo 2FA não configurado.', qrCodeUrl: null });
-
-        //     const verified = speakeasy.totp.verify({
-        //         secret: user.twoFactorSecret,
-        //         encoding: 'base32',
-        //         token: token,
-        //         window: 1
-        //     });
-
-        //     if (verified) {
-        //         user.twoFactorEnabled = true; // ATIVA o 2FA
-        //         await user.save();
-        //         delete req.session.setup_2fa_pending;
-        //         finalizeLogin(req, user); // LOGIN COMPLETO!
-        //         return res.redirect('/itens');
-        //     } else {
-        //         return res.render('setup-2fa', { error: 'Código inválido. Tente novamente.', qrCodeUrl: `data:image/png;base64,...` /* recrie o QR code se necessário */ });
-        //     }
-        // } catch (error) {
-        //     res.render('setup-2fa', { error: 'Ocorreu um erro interno.', qrCodeUrl: null });
-        // }
         try {
         const sequelize = await getTenantDB(tenantId);
         const { Employee } = db.initialize(sequelize);
