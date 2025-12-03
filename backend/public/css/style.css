@@ -572,7 +572,7 @@ body {
 .sidebar { 
     grid-area: sidebar; 
     background-color: var(--sidebar-bg); 
-    padding: 20px; 
+    padding: 10px; 
     border-right: 1px solid var(--border-color); 
     display: flex; 
     flex-direction: column; 
