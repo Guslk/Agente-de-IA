@@ -1,0 +1,386 @@
+<%- include('partials/header', { title: 'Controle de Materiais', paginaAtiva: 'chapas' }) %>
+
+<style>
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+}
+.form-group-inline input[type="checkbox"] {
+    width: auto;
+    height: 18px;
+    margin: 0;
+}
+.form-group-inline label {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-dark);
+}
+.header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+  /* Navegação de Abas (Chapas/Barras) */
+  .nav-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+  }
+  .nav-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-light);
+    border-radius: 6px 6px 0 0;
+    margin-bottom: -2px; /* Alinha com a borda inferior */
+  }
+  .nav-tab:hover {
+    background-color: #f4f7fa; /* Cor de fundo suave */
+  }
+  .nav-tab.active {
+    background-color: var(--card-bg); /* Fundo branco */
+    color: var(--primary-color);
+    font-weight: 600;
+    border: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--card-bg); /* Truque para "conectar" com o conteúdo */
+  }
+
+  /* Container principal para o canvas e os campos de dimensão */
+  .chapa-editor-container {
+    display: flex;
+    gap: 20px; /* Espaço entre o canvas e os campos */
+    align-items: flex-start; /* Alinha o topo dos elementos */
+  }
+
+  /* Container do canvas (ocupa a maior parte do espaço) */
+  #chapa-canvas-container {
+    flex-grow: 1; /* Permite que ele cresça */
+    min-width: 0; /* Necessário para flexbox em alguns casos */
+    background-color: #f4f7fa;
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box; 
+    border: 1px solid var(--border-color);
+  }
+
+  /* Regras de enquadramento do canvas */
+#canvas {
+    width: 100%;           /* Faz o canvas ocupar a largura total do container */
+    min-height: 500px;     /* FORÇA o canvas a ter PELO MENOS 500px de altura */
+    height: 60vh;          /* Alternativa: 60% da altura da tela */
+    
+    /* Você pode ter outras propriedades, como: */
+    border: 1px solid #ddd;
+    background-color: #f4f7fa;
+    cursor: crosshair;
+}
+  /* Container para os campos de dimensão (largura fixa) */
+  .chapa-dimension-fields {
+    width: 150px; /* Largura fixa para os campos */
+    flex-shrink: 0; /* Impede que ele encolha */
+  }
+
+  /* Estilo para os campos de dimensão (reutilizando form-group) */
+  .chapa-dimension-fields .form-group {
+    margin-bottom: 15px;
+  }
+  .chapa-dimension-fields label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-light);
+  }
+  .chapa-dimension-fields input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: right;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: #e9ecef; /* Fundo cinza para indicar 'read-only' */
+  }
+</style>
+
+<header class="header">
+    <h1 class="header-title">Controle Geométrico de Materiais</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<!-- <header class="header">
+    <h1 class="header-title">Controle Geométrico de Materiais</h1> 
+    <div class="header-right"> 
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome || user.name %></span>
+                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar" class="avatar-img">
+            <% } %>
+        </div>
+    </div>
+</header> -->
+
+<main class="main-content">
+    
+    <div class="main-header">
+        <h2>Gerenciamento de Consumo</h2>
+        <div class="action-buttons">
+            <!-- Botão de Cadastrar Chapa (visível por padrão) -->
+            <button id="open-plate-modal-btn" class="btn-primary" style="background-color: var(--primary-color);">
+                <i class="bi bi-plus-circle" style="margin-right: 8px;"></i> Cadastrar Nova Chapa
+            </button>
+            <!-- Botão de Cadastrar Barra (escondido por padrão) -->
+            <button id="open-bar-modal-btn" class="btn-primary" style="background-color: #17a2b8; display: none;">
+                <i class="bi bi-plus-circle"></i> Cadastrar Nova Barra
+            </button>
+        </div>
+    </div>
+
+    <!-- NAVEGAÇÃO DE ABAS -->
+    <div class="nav-tabs">
+        <button id="btn-view-chapas" class="nav-tab active">
+            <i class="bi bi-grid-3x3-gap-fill" style="margin-right: 8px;"></i> Chapas
+        </button>
+        <button id="btn-view-barras" class="nav-tab">
+            <i class="bi bi-layout-three-columns" style="margin-right: 8px;"></i> Barras
+        </button>
+    </div>
+
+    <!-- VIEW DE CHAPAS (ativa por padrão) -->
+    <div id="chapas-view">
+        <div class="filter-section">
+            <div class="filter-form">
+                <div class="form-group" style="flex-grow: 1.5;">
+                    <label for="plate-selector">Selecionar Chapa</label>
+                    <select id="plate-selector">
+                        <option value="">-- Carregando chapas... --</option>
+                    </select>
+                    <p id="plate-dimensions" style="margin-top: 5px;"></p>
+                </div>
+                <div class="form-group" style="flex-grow: 2;">
+                    <label>Adicionar Corte por Dimensão</label>
+                    <form id="auto-cut-form" class="form-grid" style="grid-template-columns: 2fr 2fr 1fr; gap: 10px; margin-top: 5px;">
+                        <input type="number" id="cut-width" placeholder="Largura (mm)" required>
+                        <input type="number" id="cut-height" placeholder="Altura (mm)" required>
+                        <button type="submit" id="btn-add-cut-auto" class="btn-primary" style="background-color: #17a2b8; width: 100%; margin: 0; padding: 12px;">Adicionar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="chapa-editor-container">
+            <div id="chapa-canvas-container">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="chapa-dimension-fields">
+                <div class="form-group">
+                    <label for="current-cut-width">Largura Atual (mm)</label>
+                    <input type="text" id="current-cut-width" value="0.0" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="current-cut-height">Altura Atual (mm)</label>
+                    <input type="text" id="current-cut-height" value="0.0" readonly>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-card" style="padding: 10px; margin-top: 20px;">
+            <div class="chapa-controls" style="display: flex; gap: 15px; padding: 15px; border-bottom: 1px solid var(--border-color); align-items: center;">
+                <button id="btn-undo-cut" class="btn-secondary">Desfazer Último Corte</button>
+                <button id="btn-save-cuts" class="btn-primary" style="background-color: var(--success);">Salvar Consumo</button>
+                
+                <div class="form-group-inline" style="margin-left: auto;">
+                    <input type="checkbox" id="plate-create-item-check">
+                    <label for="plate-create-item-check">Criar itens de estoque</label>
+                </div>
+            </div>
+            <p id="status-message" style="padding: 15px; margin: 0;">Para iniciar um corte, clique e arraste a partir de uma borda disponível.</p>
+            </div>
+        </div>  <div id="plate-history-container" style="margin-top: 20px; display: none;">
+        <h4>Histórico de Peças Criadas da Chapa</h4>
+        <section class="inventory-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data (Criação)</th>
+                        <th>Nome / ID da Peça</th>
+                        <th>Dimensões</th> <th>Usuário</th> <th>Código</th>
+                    </tr>
+                </thead>
+                <tbody id="plate-history-tablebody">
+                   <tr><td colspan="5" style="text-align: center;">Selecione uma chapa para ver o histórico de peças.</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+   
+    <div id="barras-view" style="display: none;">
+        <div class="report-card">
+            <h3>Controle de Consumo de Barras</h3>
+            <p id="bar-status-message" style="min-height: 20px; font-weight: 500;"></p>
+            
+            <div class="filter-section" style="margin-top: 20px;">
+                <form id="bar-consume-form" class="filter-form" style="align-items: end;">
+                    <div class="form-group" style="flex-grow: 2;">
+                         <label for="bar-selector">Selecionar Barra</label>
+                         <select id="bar-selector" required> ... </select>
+                         <p id="bar-dimensions" ...></p>
+                    </div>
+                     <div class="form-group" style="flex-grow: 1;">
+                        <label for="bar-consume-length">Consumir (mm)</label>
+                        <input type="number" id="bar-consume-length" placeholder="Ex: 500" required>
+                    </div>
+
+                    <div class="form-group" style="flex-grow: 1; justify-content: center;">
+                         <div class="form-group-inline" style="padding-bottom: 12px;"> <input type="checkbox" id="bar-create-item-check">
+                            <label for="bar-create-item-check">Criar item</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="align-self: end; background-color: var(--danger);">Registrar Consumo</button>
+                </form>
+            </div>
+
+            <!-- Tabela de Histórico -->
+            <div id="bar-history-container" style="margin-top: 20px;">
+                <h4>Histórico de Consumo da Barra</h4>
+                <section class="inventory-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Comprimento Consumido (mm)</th>
+                                <th>Consumido por</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bar-history-tablebody">
+                           <tr><td colspan="3" style="text-align: center;">Selecione uma barra para ver o histórico.</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+        </div>
+    </div>
+
+</main>
+
+<!-- Modal de Cadastro de Chapas -->
+<div id="new-plate-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Chapa</h3>
+            <button class="close-button" id="close-plate-modal-btn">&times;</button> <!-- ID alterado para ser único -->
+        </div>
+        
+        <form id="new-plate-form">
+            <div class="modal-body">
+                 <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label for="plate-name">Nome/ID da Chapa</label>
+                        <input type="text" id="plate-name" placeholder="Ex: Chapa Inox 304 2mm" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="plate-width">Largura (mm)</label>
+                        <input type="number" id="plate-width" placeholder="Ex: 3000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="plate-height">Altura (mm)</label>
+                        <input type="number" id="plate-height" placeholder="Ex: 1500" required>
+                    </div>
+                </div>
+                
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label for="plate-cost">Custo Total (R$) (Opcional)</label>
+                        <input type="number" id="plate-cost" step="0.01" placeholder="Ex: 1250.50">
+                    </div>
+                </div>
+                </div>
+            
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Cadastrar Chapa</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- === NOVO MODAL DE CADASTRO DE BARRAS === -->
+<div id="new-bar-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Cadastrar Nova Barra</h3>
+            <button class="close-button" id="close-bar-modal-btn">&times;</button>
+        </div>
+        
+        <form id="new-bar-form">
+            <div class="modal-body"> <div class="form-group full-width">
+                    <label for="bar-name">Nome/ID da Barra</label>
+                    <input type="text" id="bar-name" name="name" placeholder="Ex: Barra Aço 1020 1 pol" required>
+                </div>
+
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div class="form-group">
+                        <label for="bar-length">Comprimento Original (mm)</label>
+                        <input type="number" id="bar-length" name="length" placeholder="Ex: 6000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bar-diameter">Diâmetro (mm) (Opc)</label>
+                        <input type="number" id="bar-diameter" name="diameter" placeholder="Ex: 25.4">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                        <label for="bar-material">Material (Opcional)</label>
+                        <input type="text" id="bar-material" name="material" placeholder="Ex: Aço 1020">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="bar-cost">Custo Total da Barra (R$) (Opcional)</label>
+                    <input type="number" id="bar-cost" name="cost" step="0.01" placeholder="Ex: 300.00">
+                </div>
+
+            </div> <div class="modal-footer">
+                <button type="submit" class="btn-primary" style="background-color: #17a2b8;">Cadastrar Barra</button>
+            </div>
+        </form>
+    </div>
+</div>
+<style>
+    .main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+</style>
+
+<%- include('partials/footer') %>
+
+<script src="/js/chapas-script.js"></script>

@@ -1,130 +1,334 @@
 <%- include('partials/header', { title: 'Fornecedores', paginaAtiva: 'fornecedores' }) %>
 
+<!-- Estilo agora vem do style.css principal -->
+
 <header class="header">
-    <h1 class="header-title">Gerenciamento de Fornecedores</h1>
+    <h1 class="header-title">Fornecedores</h1>
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
-                <span class="notification-badge"><%= lowStockCount %></span>
-            <% } %>
-        </div>
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.nome %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='img/usuario.jpg'">
+    <% } else { %>
+        <img src="img/usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
             <% } %>
         </div>
-        </div>
+    </div>
 </header>
 
 <main class="main-content">
+
     <div class="main-header">
-        <h2>Fornecedores Cadastrados</h2>
+        <h2>Fornecedores Ativos</h2>
         <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Fornecedor</button>
+            <!-- Botão Adicionar com classe btn-primary e cor success -->
+            <button class="btn-primary" id="btn-show-add-modal" style="background-color: var(--success);"><i class="bi bi-plus-circle-fill"></i> Adicionar Fornecedor</button>
         </div>
     </div>
+
+    <!-- Tabela de Fornecedores Ativos -->
     <section class="inventory-table">
         <table>
             <thead>
                 <tr>
-                    <th>Empresa</th>
+                    <th>Nome da Empresa</th>
                     <th>Contato</th>
-                    <th>Telefone / Email</th>
-                    <th>Endereço</th> <th>Ações</th>
+                    <th>Telefone</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
-                <% if (typeof fornecedores !== 'undefined' && fornecedores.length > 0) { %>
-                    <% fornecedores.forEach(f => { %>
-                        <tr>
-                            <td><strong><%= f.nome_empresa %></strong></td>
-                            <td><%= f.contato %></td>
-                            <td><%= f.telefone %><br><%= f.email %></td>
-                            <td><%= f.endereco %></td> <td>
-                                <button title="Editar" class="action-btn btn-edit" data-fornecedor='<%= JSON.stringify(f) %>'>
+                <% if (typeof activeSuppliers !== 'undefined' && activeSuppliers.length > 0) { %>
+                    <% activeSuppliers.forEach(supplier => { %>
+                        <tr class="stock-in">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.contactPerson || '-' %></td>
+                            <td><%= supplier.phoneNumber || '-' %></td>
+                            <td><%= supplier.email || '-' %></td>
+                            <td><span class="status-pill status-ok"><%= supplier.status %></span></td>
+                            <td>
+                                <button title="Editar" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'><i class="bi bi-pencil-square"></i></button>
+                                <form action="/fornecedores/<%= supplier.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja desativar este fornecedor?');">
+                                    <button type="submit" title="Desativar" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="6" style="text-align: center;">Nenhum fornecedor ativo encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Tabela de Fornecedores Desativados -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Fornecedores Desativados</h2>
+    </div>
+    <section class="inventory-table items-deactivated">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Empresa</th>
+                    <th>Contato</th>
+                    <th>Telefone</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof deactivatedSuppliers !== 'undefined' && deactivatedSuppliers.length > 0) { %>
+                    <% deactivatedSuppliers.forEach(supplier => { %>
+                        <tr class="stock-planned">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.contactPerson || '-' %></td>
+                            <td><%= supplier.phoneNumber || '-' %></td>
+                            <td><span class="status-pill status-low"><%= supplier.status %></span></td>
+                            <td>
+                                <button title="Editar (Reativar)" class="action-btn btn-edit" data-supplier='<%- JSON.stringify(supplier) %>'>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                                <form action="/fornecedores/excluir/<%= f.id_fornecedor %>" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este fornecedor?');">
-                                    <button type="submit" title="Excluir" class="action-btn danger">
-                                        <i class="bi bi-trash-fill"></i>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhum fornecedor desativado encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Tabela da Lixeira (Fornecedores Excluídos) -->
+    <div class="main-header" style="margin-top: 30px;">
+        <h2>Lixeira (Fornecedores Excluídos)</h2>
+        <div class="action-buttons">
+            <button class="btn-secondary" id="btn-toggle-excluded">
+                <i class="bi bi-eye-fill"></i> Mostrar Lixeira
+            </button>
+        </div>
+    </div>
+
+    <section class="inventory-table" id="excluded-items-table" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome da Empresa</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof excludedSuppliers !== 'undefined' && excludedSuppliers.length > 0) { %>
+                    <% excludedSuppliers.forEach(supplier => { %>
+                        <tr style="opacity: 0.7; background-color: #f8f9fa;">
+                            <td><strong><%= supplier.name %></strong></td>
+                            <td><%= supplier.email || '-' %></td>
+                            <td><span class="status-pill status-empty"><%= supplier.status %></span></td>
+                            <td>
+                                <form action="/fornecedores/<%= supplier.id %>/restore" method="POST" style="display: inline;">
+                                    <button type="submit" title="Restaurar Fornecedor" class="action-btn restore-btn" style="color: var(--success);">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Restaurar
                                     </button>
                                 </form>
                             </td>
                         </tr>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhum fornecedor encontrado.</td></tr>
+                    <tr><td colspan="4" style="text-align: center;">Lixeira está vazia.</td></tr>
                 <% } %>
             </tbody>
         </table>
     </section>
+
 </main>
 
+<!-- Modal de Adicionar Fornecedor - CORRIGIDO -->
 <div class="modal-overlay" id="add-modal">
     <div class="modal">
-        <div class="modal-header"><h3>Adicionar Novo Fornecedor</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
-        <form action="/fornecedores/novo" method="POST">
-            <div class="modal-body"><div class="form-grid">
-                <div class="form-group"><label for="nome_empresa">Nome da Empresa</label><input type="text" id="nome_empresa" name="nome_empresa" required></div>
-                <div class="form-group"><label for="contato">Nome do Contato</label><input type="text" id="contato" name="contato"></div>
-                <div class="form-group"><label for="telefone">Telefone</label><input type="text" id="telefone" name="telefone"></div>
-                <div class="form-group"><label for="email">Email</label><input type="email" id="email" name="email"></div>
-                <div class="form-group" style="grid-column: 1 / -1;"><label for="endereco">Endereço</label><input type="text" id="endereco" name="endereco"></div>
-            </div></div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Fornecedor</button></div>
+        <div class="modal-header">
+            <h3>Adicionar Novo Fornecedor</h3>
+            <button class="close-button" id="btn-close-add-modal">&times;</button>
+        </div>
+        <form action="/fornecedores" method="POST">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <!-- CORREÇÃO AQUI: companyName → name -->
+                    <div class="form-group">
+                        <label for="add-name">Nome da Empresa *</label>
+                        <input type="text" id="add-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="add-contactPerson">Pessoa de Contato</label>
+                        <input type="text" id="add-contactPerson" name="contactPerson">
+                    </div>
+                    <div class="form-group">
+                        <label for="add-phoneNumber">Telefone</label>
+                        <input type="tel" id="add-phoneNumber" name="phoneNumber">
+                    </div>
+                    <div class="form-group">
+                        <label for="add-email">Email</label>
+                        <input type="email" id="add-email" name="email">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="add-address">Endereço</label>
+                        <input type="text" id="add-address" name="address">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Fornecedor</button>
+            </div>
         </form>
     </div>
 </div>
 
+<!-- Modal de Editar Fornecedor - CORRIGIDO -->
 <div class="modal-overlay" id="edit-modal">
     <div class="modal">
-        <div class="modal-header"><h3>Editar Fornecedor</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST">
-            <div class="modal-body"><div class="form-grid">
-                <div class="form-group"><label for="edit-nome_empresa">Nome da Empresa</label><input type="text" id="edit-nome_empresa" name="nome_empresa" required></div>
-                <div class="form-group"><label for="edit-contato">Nome do Contato</label><input type="text" id="edit-contato" name="contato"></div>
-                <div class="form-group"><label for="edit-telefone">Telefone</label><input type="text" id="edit-telefone" name="telefone"></div>
-                <div class="form-group"><label for="edit-email">Email</label><input type="email" id="edit-email" name="email"></div>
-                <div class="form-group" style="grid-column: 1 / -1;"><label for="edit-endereco">Endereço</label><input type="text" id="edit-endereco" name="endereco"></div>
-            </div></div>
-            <div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div>
+        <div class="modal-header">
+            <h3>Editar Fornecedor</h3>
+            <button class="close-button" id="btn-close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-form" action="" method="POST">
+            <input type="hidden" name="_method" value="PUT">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <!-- CORREÇÃO AQUI: companyName → name -->
+                    <div class="form-group">
+                        <label for="edit-name">Nome da Empresa *</label>
+                        <input type="text" id="edit-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-contactPerson">Pessoa de Contato</label>
+                        <input type="text" id="edit-contactPerson" name="contactPerson">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-phoneNumber">Telefone</label>
+                        <input type="tel" id="edit-phoneNumber" name="phoneNumber">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-email">Email</label>
+                        <input type="email" id="edit-email" name="email">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="edit-address">Endereço</label>
+                        <input type="text" id="edit-address" name="address">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status" name="status" required>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Desativado">Desativado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn-primary">Salvar Alterações</button>
+            </div>
         </form>
     </div>
 </div>
 
 <%- include('partials/footer') %>
 
+<!-- Script JS Atualizado -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Lógica para o modal de ADICIONAR
     const addModal = document.getElementById('add-modal');
     const btnShowAddModal = document.getElementById('btn-show-add-modal');
     const btnCloseAddModal = document.getElementById('btn-close-add-modal');
-    if(btnShowAddModal) btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
-    if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+    if(addModal && btnShowAddModal && btnCloseAddModal) {
+        btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
+        btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+    }
 
     // Lógica para o modal de EDITAR
     const editModal = document.getElementById('edit-modal');
-    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
     const editForm = document.getElementById('edit-form');
+    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
     const btnsEdit = document.querySelectorAll('.btn-edit');
 
-    btnsEdit.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const fornecedor = JSON.parse(btn.dataset.fornecedor);
-            editForm.action = `/fornecedores/editar/${fornecedor.id_fornecedor}`;
-            document.getElementById('edit-nome_empresa').value = fornecedor.nome_empresa;
-            document.getElementById('edit-contato').value = fornecedor.contato;
-            document.getElementById('edit-telefone').value = fornecedor.telefone;
-            document.getElementById('edit-email').value = fornecedor.email;
-            document.getElementById('edit-endereco').value = fornecedor.endereco;
-            editModal.style.display = 'flex';
+    if(editModal && editForm && btnCloseEditModal && btnsEdit.length > 0) {
+        btnsEdit.forEach(btn => {
+            btn.addEventListener('click', () => {
+    try {
+        const supplier = JSON.parse(btn.dataset.supplier);
+
+        // CORREÇÃO SIMPLES: Use POST com /update
+        editForm.action = `/fornecedores/${supplier.id}/update`;
+        editForm.method = 'POST';
+
+        // Preenche os campos
+        document.getElementById('edit-name').value = supplier.name || '';
+        document.getElementById('edit-contactPerson').value = supplier.contactPerson || '';
+        document.getElementById('edit-phoneNumber').value = supplier.phoneNumber || '';
+        document.getElementById('edit-email').value = supplier.email || '';
+        document.getElementById('edit-address').value = supplier.address || '';
+        document.getElementById('edit-status').value = supplier.status || 'Ativo';
+
+        editModal.style.display = 'flex';
+    } catch(e) {
+        console.error("Erro ao processar dados do fornecedor:", e);
+        alert("Erro ao carregar dados do fornecedor para edição.");
+    }
+            });
         });
-    });
-    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+        btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
+        window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+    }
+
+    // Lógica para o botão "Mostrar Lixeira"
+    const btnToggleExcluded = document.getElementById('btn-toggle-excluded');
+    const excludedTable = document.getElementById('excluded-items-table');
+
+    if (btnToggleExcluded && excludedTable) {
+        btnToggleExcluded.addEventListener('click', () => {
+            const isHidden = excludedTable.style.display === 'none';
+            if (isHidden) {
+                excludedTable.style.display = 'block';
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-slash-fill"></i> Ocultar Lixeira';
+                btnToggleExcluded.classList.remove('btn-secondary');
+                btnToggleExcluded.classList.add('btn-primary');
+                btnToggleExcluded.style.backgroundColor = 'var(--danger)';
+            } else {
+                excludedTable.style.display = 'none';
+                btnToggleExcluded.innerHTML = '<i class="bi bi-eye-fill"></i> Mostrar Lixeira';
+                btnToggleExcluded.classList.remove('btn-primary');
+                btnToggleExcluded.style.backgroundColor = '';
+                btnToggleExcluded.classList.add('btn-secondary');
+            }
+        });
+    }
 });
 </script>
+
+<style>
+.header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+</style>

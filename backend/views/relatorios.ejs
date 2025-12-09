@@ -3,47 +3,135 @@
 <header class="header">
     <h1 class="header-title">Relatórios e Análises</h1>
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (lowStockCount > 0) { %><span class="notification-badge"><%= lowStockCount %></span><% } %>
-        </div>
         <div class="user-profile">
-            <span>Bem-vindo, <%= user.nome %></span>
-            <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.nome || user.name %></span>
+                <div class="user-avatar">
+                    <% if (typeof user !== 'undefined' && user.photo) { %>
+                        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" onerror="this.src='img/usuario.jpg'">
+                    <% } else { %>
+                        <img src="img/usuario.jpg" alt="Avatar">
+                    <% } %>
+                </div>
+            <% } %>
         </div>
     </div>
 </header>
 
 <main class="main-content">
+    
     <div class="kpi-grid">
         <div class="kpi-card">
             <h3>Valor Total do Estoque</h3>
-            <span class="kpi-value"><%= kpis.valorTotalEstoque %></span>
+            <span class="kpi-value"><%= (typeof kpis !== 'undefined' ? kpis.valorTotalEstoque : 'R$ 0,00') %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens Únicos (SKUs)</h3>
-            <span class="kpi-value"><%= kpis.totalItemsUnicos %></span>
+            <span class="kpi-value"><%= (typeof kpis !== 'undefined' ? kpis.totalItemsUnicos : 0) %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens com Estoque Baixo</h3>
-            <span class="kpi-value warning"><%= kpis.itensEstoqueBaixo %></span>
+            <span class="kpi-value warning"><%= (typeof kpis !== 'undefined' ? kpis.itensEstoqueBaixo : 0) %></span>
         </div>
         <div class="kpi-card">
             <h3>Itens Esgotados</h3>
-            <span class="kpi-value danger"><%= kpis.itensEsgotados %></span>
+            <span class="kpi-value danger"><%= (typeof kpis !== 'undefined' ? kpis.itensEsgotados : 0) %></span>
+        </div>
+    </div>
+
+    <div class="report-card" style="margin-top: 30px; width: 100%;">
+        <div class="card-header" style="margin-bottom: 15px;">
+            <h3>Fluxo Financeiro (Entradas vs. Saídas - Últimos 6 Meses)</h3>
+        </div>
+        <div style="height: 350px; width: 100%;">
+            <canvas id="financeiroChart"></canvas>
         </div>
     </div>
 
     <div class="reports-grid" style="margin-top: 30px;">
+        
         <div class="report-card">
-            <h3>Itens por Categoria</h3>
-            <canvas id="itensPorCategoriaChart"></canvas>
+            <h3>Itens por Departamento (SKUs)</h3>
+            
+            <div style="height: 300px; max-height: 300px; margin: 0 auto; display: flex; justify-content: center; align-items: center;">
+                <canvas id="itensPorCategoriaChart" style="max-height: 100%; max-width: 100%;"></canvas>
+            </div>
         </div>
+
         <div class="report-card">
-            <h3>Outro Relatório</h3>
-            <div class="placeholder-chart">Espaço para um futuro gráfico</div>
+            <h3>Curva ABC (Top 20 Itens por Valor)</h3>
+            <canvas id="abcChart"></canvas>
+        </div>
+
+        <div class="report-card">
+            <h3>Valor por Departamento (R$)</h3>
+            <canvas id="valorPorCategoriaChart"></canvas>
         </div>
     </div>
+    <div class="main-header" style="margin-top: 40px; margin-bottom: 20px;">
+        <h2>🚨 Itens em Risco de Ruptura (Dias de Cobertura < 15)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Qtd. Atual</th>
+                    <th>Qtd. Mínima</th>
+                    <th>Consumo Diário Médio</th>
+                    <th>DIAS DE COBERTURA</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof kpis !== 'undefined' && kpis.riscoRuptura && kpis.riscoRuptura.length > 0) { %>
+                    <% kpis.riscoRuptura.forEach(item => { %>
+                        <tr class="table-row-danger"> <td><code><%= item.code %></code></td>
+                            <td><strong><%= item.name %></strong> (<%= item.unitOfMeasure %>)</td>
+                            <td><%= item.quantity %></td>
+                            <td><%= item.minimumQuantity || 'N/A' %></td>
+                            <td><%= item.consumptionRate %></td>
+                            <td style="font-weight: bold; font-size: 1.1em;"><%= item.daysOfCoverage %> dias</td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="6" style="text-align: center;">Nenhum item com risco imediato de ruptura (cobertura > 15 dias).</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+     <div class="main-header" style="margin-top: 30px;">
+        <h2>Itens Parados (Sem Saída há > 90 dias)</h2>
+    </div>
+    <section class="inventory-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Item</th>
+                    <th>Qtd. Atual</th>
+                    <th>Valor em Estoque</th>
+                    <th>Última Saída</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (typeof kpis !== 'undefined' && kpis.itensParados && kpis.itensParados.length > 0) { %>
+                    <% kpis.itensParados.forEach(item => { %>
+                        <tr class="stock-planned"> <td><code><%= item.code %></code></td>
+                            <td><strong><%= item.name %></strong></td>
+                            <td><%= item.quantity %></td>
+                            <td><%= (typeof item.totalValue === 'number' && !isNaN(item.totalValue)) ? `R$ ${parseFloat(item.totalValue).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : 'N/A' %></td>
+                            <td><%= item.ultimaSaida ? new Date(item.ultimaSaida).toLocaleDateString('pt-BR') : 'Nunca' %></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Nenhum item parado encontrado.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
 </main>
 
 <%- include('partials/footer') %>
@@ -52,34 +140,185 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 2. Pega os dados que o controller enviou e os transforma em um objeto JavaScript
-    const categoriaData = JSON.parse('<%- JSON.stringify(itensPorCategoriaData) %>');
+    
+    // ==================================================
+    // 1. NOVO GRÁFICO: FLUXO FINANCEIRO (ENTRADAS vs SAÍDAS)
+    // ==================================================
+    const financeiroData = JSON.parse(`<%- JSON.stringify(typeof chartData !== 'undefined' ? chartData : { labels: [], entradas: [], saidas: [] }) %>`);
+    const ctxFin = document.getElementById('financeiroChart');
 
-    // 3. Configura e desenha o gráfico de pizza
-    const ctx = document.getElementById('itensPorCategoriaChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'doughnut', // Tipo do gráfico: 'doughnut' (rosquinha) ou 'pie' (pizza)
+    if (ctxFin && financeiroData.labels && financeiroData.labels.length > 0) {
+        new Chart(ctxFin, {
+            type: 'line',
             data: {
-                labels: categoriaData.labels, // Ex: ['Hardware', 'Periféricos']
-                datasets: [{
-                    label: 'Nº de Itens',
-                    data: categoriaData.data, // Ex: [2, 2]
-                    backgroundColor: [
-                        '#3e4e88',
-                        '#fb8b24',
-                        '#85d874',
-                        '#e43f42',
-                        '#6c757d'
-                    ],
-                    hoverOffset: 4
-                }]
+                labels: financeiroData.labels,
+                datasets: [
+                    {
+                        label: 'Entradas (Compras)',
+                        data: financeiroData.entradas,
+                        borderColor: '#28a745', // Verde Sucesso
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        pointBackgroundColor: '#28a745',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Saídas (Consumo)',
+                        data: financeiroData.saidas,
+                        borderColor: '#dc3545', // Vermelho Perigo
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        pointBackgroundColor: '#dc3545',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
-                    legend: {
-                        position: 'top',
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [2, 4] },
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value; // Simplificado para não poluir o eixo
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    } else if (ctxFin) {
+        // Fallback visual se não houver dados
+        const ctx = ctxFin.getContext('2d');
+        // Ajusta o canvas para o tamanho do container
+        ctxFin.width = ctxFin.parentElement.clientWidth;
+        ctxFin.height = ctxFin.parentElement.clientHeight;
+        
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px "Segoe UI"';
+        ctx.fillText('Nenhum dado financeiro disponível para o período', ctxFin.width / 2, ctxFin.height / 2);
+    }
+    
+
+
+    // ==================================================
+    // 2. GRÁFICOS ORIGINAIS
+    // ==================================================
+
+    // --- Itens por Departamento (Rosca) ---
+    const categoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.itensPorCategoria : { labels: [], data: [] }) %>`);
+    const ctxCategoria = document.getElementById('itensPorCategoriaChart');
+    
+    if (ctxCategoria && categoriaData.labels && categoriaData.labels.length > 0) {
+        new Chart(ctxCategoria, {
+            type: 'doughnut',
+            data: {
+                labels: categoriaData.labels, 
+                datasets: [{
+                    label: 'Nº de Itens',
+                    data: categoriaData.data, 
+                    backgroundColor: ['#3e4e88', '#fb8b24', '#85d874', '#e43f42', '#6c757d', '#17a2b8'],
+                    hoverOffset: 4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
+    }
+
+    // --- Valor por Departamento (Barras) ---
+    const valorCategoriaData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.valorPorCategoria : { labels: [], data: [] }) %>`);
+    const ctxValorCategoria = document.getElementById('valorPorCategoriaChart');
+
+    if (ctxValorCategoria && valorCategoriaData.labels && valorCategoriaData.labels.length > 0) {
+        new Chart(ctxValorCategoria, {
+            type: 'bar', 
+            data: {
+                labels: valorCategoriaData.labels,
+                datasets: [{
+                    label: 'Valor Total (R$)',
+                    data: valorCategoriaData.data,
+                    backgroundColor: '#3e4e88',
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // --- Curva ABC ---
+    const abcData = JSON.parse(`<%- JSON.stringify(typeof kpis !== 'undefined' ? kpis.curvaABC : { labels: [], dataValor: [], dataAcumulado: [] }) %>`);
+    const ctxABC = document.getElementById('abcChart');
+
+    if (ctxABC && abcData.labels && abcData.labels.length > 0) {
+        new Chart(ctxABC, {
+            type: 'bar',
+            data: {
+                labels: abcData.labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Valor Individual (R$)',
+                        data: abcData.dataValor,
+                        backgroundColor: '#6c757d'
+                    },
+                    {
+                        type: 'line',
+                        label: '% Acumulada',
+                        data: abcData.dataAcumulado,
+                        borderColor: '#e43f42',
+                        backgroundColor: '#e43f42',
+                        tension: 0.1,
+                        yAxisID: 'yAcumulado'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Valor em Estoque (R$)' }
+                    },
+                    yAcumulado: {
+                        beginAtZero: true,
+                        max: 100,
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: '% Acumulada' },
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: function(value) { return value + '%' } }
                     }
                 }
             }

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -16,7 +17,7 @@
     
     <div class="login-card">
         <div class="login-header">
-            <h1><i class="bi bi-shield-lock-fill"></i> Verificação</h1>
+            <h1><i class="bi bi-archive-fill"></i> StockEx</h1>
             <p>Abra seu aplicativo autenticador e insira o código de 6 dígitos.</p>
         </div>
 
@@ -27,15 +28,16 @@
 
         <form action="/login/verificar-2fa" method="POST">
             <div class="form-group">
-                <label for="token">Código de 6 Dígitos</label>
+                <label for="token">Código de Verificação</label>
                 <input type="text" id="token" name="token" required 
                        pattern="\d{6}" maxlength="6" 
                        title="Digite o código de 6 números gerado pelo seu aplicativo."
                        autocomplete="off"
-                       style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+                       placeholder="000000"
+                       style="text-align: center; font-size: 1.2rem; letter-spacing: 0.3rem; font-weight: 600;">
             </div>
             
-            <button type="submit" class="btn-login">Verificar</button>
+            <button type="submit" class="btn-login">Verificar e Entrar</button>
         </form>
         
         <div class="login-link">
@@ -43,5 +45,26 @@
         </div>
     </div>
 
+    <script>
+        // Melhoria de UX para o campo de token
+        document.addEventListener('DOMContentLoaded', function() {
+            const tokenInput = document.getElementById('token');
+            
+            // Foca automaticamente no campo
+            tokenInput.focus();
+            
+            // Permite apenas números
+            tokenInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+            
+            // Auto-submit quando completar 6 dígitos
+            tokenInput.addEventListener('input', function(e) {
+                if (this.value.length === 6) {
+                    this.form.submit();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

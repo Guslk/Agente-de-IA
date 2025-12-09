@@ -2,7 +2,6 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    padding: 20px;
     background-color: #f4f6f9;
 }
 
@@ -10,6 +9,407 @@ h1 {
     color: #333;
 }
 
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.alert-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+/* Matheus */
+
+/* ================================== */
+/* === SCRIPT CSS PADRÃO PARA TABELAS === */
+/* ================================== */
+
+/* 1. O Contêiner da Tabela */
+/* Esta é a 'div' ou 'section' que envolve a sua tabela */
+.inventory-table {
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 8px; /* Bordas arredondadas */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Sombra suave */
+    overflow: hidden; /* Garante que a tabela respeite as bordas arredondadas */
+    margin-top: 1.5rem;
+}
+
+/* 2. A Tabela Principal */
+.inventory-table table {
+    width: 100%;
+    border-collapse: collapse; /* Remove o espaçamento padrão entre células */
+    font-size: 0.9rem;
+}
+
+/* 3. O Cabeçalho (thead) */
+.inventory-table th {
+    /* Padding: 0.75rem vertical, 1.25rem horizontal */
+    padding: 0.75rem 1.25rem; 
+    background-color: #f8f9fa; /* Cinza claro de fundo */
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* 4. As Células de Dados (tbody) */
+.inventory-table td {
+    /* Padding vertical reduzido para linhas mais compactas */
+    padding: 0.65rem 1.25rem; 
+    color: #333;
+    border-bottom: 1px solid #f0f0f0; /* Linha de separação bem suave */
+    vertical-align: middle;
+}
+
+/* Remove a borda da última linha */
+.inventory-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Efeito de hover sutil */
+.inventory-table tbody tr:hover {
+    background-color: #fafafa;
+}
+
+/* 5. Cores das Linhas de Status */
+/* Estas classes são aplicadas automaticamente pelo seu EJS */
+
+/* Verde para entradas, disponíveis, etc. */
+.inventory-table tr.stock-in {
+    background-color: rgba(40, 167, 69, 0.05);
+}
+.inventory-table tr.stock-in:hover {
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Vermelho para saídas, em uso, esgotado, etc. */
+.inventory-table tr.stock-out,
+.inventory-table tr.out-of-stock-row {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+.inventory-table tr.stock-out:hover,
+.inventory-table tr.out-of-stock-row:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+/* Amarelo/Laranja para estoque baixo ou planejamentos */
+.inventory-table tr.low-stock-row,
+.inventory-table tr.stock-planned {
+    background-color: rgba(255, 193, 7, 0.05);
+}
+.inventory-table tr.low-stock-row:hover,
+.inventory-table tr.stock-planned:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* 6. Estilos de Conteúdo Específico */
+.inventory-table td code {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #e9ecef;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.inventory-table td strong {
+    font-weight: 500;
+    color: #000;
+}
+
+/* 7. Estilos para Botões de Ação na Tabela */
+
+/* Garante que o <form> não adicione espaçamento extra */
+.inventory-table td form {
+    margin: 0;
+    display: inline-block;
+}
+
+/* Estilo base para todos os botões de ação (Editar, Excluir, Retirar) */
+.inventory-table .action-btn,
+.inventory-table .btn-retirar,
+.inventory-table .btn-devolver {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    margin: 0 0.2rem;
+    color: #555;
+    border-radius: 5px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.inventory-table .action-btn i,
+.inventory-table .btn-retirar i,
+.inventory-table .btn-devolver i {
+    font-size: 1.1rem;
+    vertical-align: middle;
+}
+
+/* Cores específicas */
+.inventory-table .action-btn:hover {
+    background-color: #e9ecef;
+    color: #007bff; /* Azul para "editar" */
+}
+.inventory-table .action-btn.danger:hover {
+    background-color: #f8d7da;
+    color: #dc3545; /* Vermelho para "excluir" */
+}
+
+/* Botão de Retirar */
+.inventory-table .btn-retirar {
+    color: #ffc107; /* Amarelo/Laranja */
+}
+.inventory-table .btn-retirar:hover {
+    background-color: #fff9e6;
+    color: #e0a800;
+}
+
+/* Botão de Devolver */
+.inventory-table .btn-devolver {
+    background-color: #007bff;
+    color: white;
+    padding: 0;
+    font-size: 0.8rem;
+    font-weight: 100;
+}
+.inventory-table .btn-devolver:hover {
+    background-color: #0056b3;
+}
+
+/* Centraliza a coluna "Ações" por padrão */
+.inventory-table th:last-child,
+.inventory-table td:last-child {
+    text-align: center;
+}
+/* Matheus */
+
+/* ================================== */
+/* === ESTILOS DO MODAL APRIMORADO === */
+/* ================================== */
+
+/* --- ESTRUTURA E SEÇÕES --- */
+.modal-body h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+}
+
+.modal-body .form-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 2rem 0 1.5rem 0;
+}
+
+/* --- GRID DO FORMULÁRIO --- */
+.form-grid {
+    display: grid;
+    /* Duas colunas de tamanho igual */
+    grid-template-columns: repeat(2, 1fr);
+    /* Espaçamento entre os campos */
+    gap: 1.5rem;
+}
+
+/* --- CAMPOS DO FORMULÁRIO (INPUT, SELECT) --- */
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.alert {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.alert strong {
+    font-weight: 600;
+}
+
+.alert-danger {
+    color: #842029;
+    background-color: #f8d7da;
+    border-color: #f5c2c7;
+}
+ .inventory-table {
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    
+    overflow: hidden; 
+} */
+
+ .inventory-table table {
+    width: 100%;
+    border-collapse: collapse; 
+    font-size: 0.9rem;
+} 
+
+
+ .inventory-table tbody tr.stock-in {
+    background-color: rgba(40, 167, 69, 0.05); 
+}
+.inventory-table tbody tr.stock-in:hover {
+    background-color: rgba(40, 167, 69, 0.1); 
+}
+
+.inventory-table tbody tr.stock-out {
+    background-color: rgba(220, 53, 69, 0.05); 
+}
+.inventory-table tbody tr.stock-out:hover {
+    background-color: rgba(220, 53, 69, 0.1); 
+}
+
+.inventory-table th {
+padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa; 
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6; 
+}
+
+.inventory-table td {
+    color: #333;
+    border-bottom: 1px solid #eee; 
+    vertical-align: middle;
+}
+
+.inventory-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.inventory-table tbody tr:hover {
+    background-color: #fdfdfd;
+}
+
+.inventory-table td code {
+    
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.inventory-table td strong {
+    font-weight: 500;
+    color: #000;
+}
+
+.inventory-table th:last-child,
+.inventory-table td:last-child {
+    text-align: center;
+ }   
+
+/* 5. Estilo para o Botão "Devolver" */
+.btn-devolver {
+    background-color: #007bff; /* Azul primário (pode mudar para laranja/amarelo se preferir) */
+    color: #fff;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-devolver:hover {
+    background-color: #0056b3;
+    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+}
+.btn-devolver i {
+    font-size: 1rem;
+}
+.table-avatar {
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%; /* Deixa a imagem redonda */
+    object-fit: cover; /* Garante que a imagem preencha o espaço sem distorcer */
+    border: 2px solid #eee;
+}
+/* 6. Cores das Linhas de Status */
+/* Essas classes vêm do seu EJS e dão cor às linhas */
+.stock-in {
+    background-color: rgba(40, 167, 69, 0.05); /* Verde muito claro */
+}
+.stock-out {
+    background-color: rgba(220, 53, 69, 0.05); /* Vermelho muito claro */
+}
+.stock-planned {
+    background-color: rgba(255, 193, 7, 0.05); /* Amarelo muito claro */
+}
+.alert-success {
+    color: #0f5132;
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+}
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #f9f9f9;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Efeito ao focar no campo */
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    background-color: #fff;
+}
+
+/* Classe utilitária para campos que ocupam a largura total */
+.form-group.full-width {
+    grid-column: 1 / -1; /* Ocupa do início ao fim do grid */
+}
+
+/* --- RESPONSIVIDADE PARA TELAS MENORES --- */
+@media (max-width: 768px) {
+    .form-grid {
+        /* Muda para uma única coluna em telas menores */
+        grid-template-columns: 1fr;
+    }
+}
 
 
 
@@ -172,7 +572,7 @@ body {
 .sidebar { 
     grid-area: sidebar; 
     background-color: var(--sidebar-bg); 
-    padding: 20px; 
+    padding: 10px; 
     border-right: 1px solid var(--border-color); 
     display: flex; 
     flex-direction: column; 
@@ -273,8 +673,8 @@ body {
     opacity: 0.9; 
 }
 
-/* Tabela */
-.inventory-table { 
+
+/* .inventory-table { 
     background-color: var(--card-bg); 
     padding: 25px; 
     border-radius: 12px; 
@@ -297,7 +697,7 @@ th {
 }
 td { 
     font-weight: 500; 
-}
+} */
 
 /* Pílulas de Status */
 .status-pill { 
@@ -756,7 +1156,6 @@ body.auth-page {
 }
 /* Estilos para botões de Retirada e Devolução */
 .btn-retirar, .btn-devolver {
-    padding: 8px 15px;
     border-radius: 6px;
     border: none;
     font-weight: 600;
@@ -765,7 +1164,6 @@ body.auth-page {
     font-size: 0.9rem;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     transition: opacity 0.3s ease;
 }
 
@@ -810,14 +1208,13 @@ body.auth-page {
     box-shadow: 0 4px 15px var(--shadow-color);
     margin-bottom: 20px;
 }
-.filter-form {
+/* .filter-form {
     display: flex;
     align-items: flex-end;
-    gap: 15px;
 }
 .filter-form .form-group {
     flex-grow: 1;
-}
+} */
 /* Estilos para a parte direita do header e notificações */
 .header {
     /* Garante que o justify-content funcione */
@@ -828,7 +1225,6 @@ body.auth-page {
 .header-right {
     display: flex;
     align-items: center;
-    gap: 20px;
 }
 .notification-icon {
     position: relative;
@@ -898,4 +1294,85 @@ body.auth-page {
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
+}
+.chapa-body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+.chapa-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+/* /* } 
+h1, h2 {
+    color: #1e3a5f;
+} */
+.chapa-panel {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+.chapa-form-section {
+    flex: 1;
+}
+input[type="text"], input[type="number"], select, button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-sizing: border-box; 
+}
+.chapa-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.chapa-button:hover {
+    background-color: #0056b3;
+}
+.chapa-save-button {
+    background-color: #28a745;
+}
+.chapa-save-button:hover {
+    background-color: #218838;
+}
+#chapa-canvas-container {
+    width: 100%;
+    max-width: 1000px; 
+    margin: 20px 0;
+}
+canvas {
+    border: 2px solid #1e3a5f;
+    background-color: #fff;
+    width: 100%; 
+    height: auto;
+    cursor: crosshair;
+}
+.chapa-controls {
+    margin-top: 10px;
+}
+#status-message {
+    margin-top: 15px;
+    font-weight: bold;
+    min-height: 20px;
+}
+#plate-dimensions {
+    font-style: italic;
+    color: #555;
+}
+#auto-cut-form button {
+    background-color: #17a2b8; 
+}
+#auto-cut-form button:hover {
+    background-color: #138496;
+}
 }

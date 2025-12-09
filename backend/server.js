@@ -1,84 +1,81 @@
-// server.js
-
 // ===================================================
-// 1. IMPORTAÇÕES
+// SERVIDOR PRINCIPAL (FICHEIRO DE ENTRADA) - ESTRUTURA CORRETA
 // ===================================================
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
+// const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 
-// Importação dos Middlewares
-const isAuthenticated = require('./middleware/authMiddleware');
-const checkNotifications = require('./middleware/notificationMiddleware'); // << GARANTA QUE ESTA LINHA EXISTE
+// --- MÓDULOS PRINCIPAIS DA APLICAÇÃO ---
+// Conexão com a base de dados mestre
+const { connectMasterDB } = require('./config/database');
 
-// Importação de todas as rotas
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const itemRoutes = require('./routes/itemRoutes');
-const movimentacaoRoutes = require('./routes/movimentacaoRoutes');
-const fornecedorRoutes = require('./routes/fornecedorRoutes');
-const funcionarioRoutes = require('./routes/funcionarioRoutes');
-const relatorioRoutes = require('./routes/relatorioRoutes');
+// Roteadores
 const authRoutes = require('./routes/authRoutes');
-const manualRoutes = require('./routes/manualRoutes');
-const ativacaoRoutes = require('./routes/ativacaoRoutes');
-const historicoRoutes = require('./routes/historicoRoutes');
-const departamentoRoutes = require('./routes/departamentoRoutes');
-const materiaPrimaRoutes = require('./routes/materiaPrimaRoutes');
+const allTenantRoutes = require('./routes/allTenantRoutes');
+const chapasRoutes = require('./routes/chapasRoutes'); // << 1. IMPORTAR A NOVA ROTA
 
+// Middlewares
+const tenantIdentifier = require('./middleware/tenantIdentifier');
+const isAuthenticated = require('./middleware/authMiddleware');
 
-// ===================================================
-// 2. CONFIGURAÇÃO DO APP
-// ===================================================
+// --- CONFIGURAÇÃO DA APLICAÇÃO ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configurar o EJS como o motor de templates
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+// Função principal assíncrona
+const startServer = async () => {
+  // 1. Conecta-se à base de dados mestre antes de iniciar o servidor
+  await connectMasterDB();
 
-// Servir arquivos estáticos da pasta "public"
-app.use(express.static(path.join(__dirname, 'public')));
+  // --- MIDDLEWARES DE DESEMPENHO E UTILIDADE ---
+  app.use(compression());
+  app.use(morgan('dev')); // Logger de pedidos
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.static(path.join(__dirname, 'public')));
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
 
-// Middlewares para processar dados de formulário
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+  // --- CONFIGURAÇÃO DA SESSÃO ---
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'um-segredo-muito-fraco-para-desenvolvimento',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+  }));
 
-// Configuração da Sessão
-app.use(session({
-    secret: 'seu-segredo-super-secreto',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false, maxAge: 3600000 }
-}));
-
-// ===================================================
-// 3. USO DAS ROTAS (ORDEM CORRETA)
-// ===================================================
-
-// PRIMEIRO: Rotas PÚBLICAS (não precisam de login)
-app.use('/', authRoutes);
-
-// SEGUNDO: A PARTIR DAQUI, TUDO É PROTEGIDO E TERÁ NOTIFICAÇÕES
-app.use(isAuthenticated);
-app.use(checkNotifications); // << GARANTA QUE ESTA LINHA EXISTE E ESTÁ AQUI
-
-// TERCEIRO: Rotas PROTEGIDAS (agora exigem login e terão acesso à variável de notificação)
-app.use('/', dashboardRoutes);
-app.use('/itens', itemRoutes);
-app.use('/movimentacoes', movimentacaoRoutes);
-app.use('/fornecedores', fornecedorRoutes);
-app.use('/funcionarios', funcionarioRoutes);
-app.use('/relatorios', relatorioRoutes);
-app.use('/manual', manualRoutes);
-app.use('/ativacao', ativacaoRoutes);
-app.use('/historico', historicoRoutes);
-app.use('/departamentos', isAuthenticated, departamentoRoutes);
-app.use('/materiais', isAuthenticated, materiaPrimaRoutes);
+  // --- LÓGICA DE ROTEAMENTO MULTI-TENANT ---
+  app.use(tenantIdentifier);
+  app.use('/', authRoutes);
+  
+  // Rotas protegidas
+  app.use(isAuthenticated.isAuthenticated);
+  app.use('/', allTenantRoutes);
+  app.use('/chapas', chapasRoutes); // << 2. USAR A NOVA ROTA (substitui /materiais)
 
 
-// ===================================================
-// 4. INICIAR O SERVIDOR
-// ===================================================
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+  // --- GESTÃO DE ERROS CENTRALIZADA ---
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Algo correu mal no servidor!');
+  });
+
+  // --- INICIA O SERVIDOR ---
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor a ser executado na porta ${PORT}`);
+    console.log('Aguardando por pedidos nos subdomínios...');
+  });
+};
+
+// Inicia a aplicação
+startServer();
+
+

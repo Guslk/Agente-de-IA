@@ -1,0 +1,610 @@
+
+// controllers/chapasController.js
+
+const { getTenantDB } = require('../config/database');
+const db = require('../models');
+const { Op } = require('sequelize');
+
+const chapasController = {
+
+    renderPage: async (req, res) => {
+        try {
+            // Renderiza a view 'chapas.ejs'. 
+            // Os dados (chapas, barras) serão carregados pelo script do lado do cliente
+            res.render('chapas', {
+                paginaAtiva: 'chapas',
+                user: req.session.user
+                // A variável 'lowStockCount' já é injetada em res.locals pelo middleware
+            });
+        } catch (error) {
+            console.error("Erro ao renderizar /chapas:", error);
+            res.status(500).send(`Erro ao carregar a página: ${error.message}`);
+        }
+    },
+
+    // ===================================================
+    // ==           ROTAS DA API (CHAPAS)             ==
+    // ===================================================
+
+    /**
+     * API: Lista todas as chapas cadastradas.
+     * Rota: GET /chapas/api/plates
+     */
+   listPlates: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Plate } = db.initialize(sequelize);
+
+            if (!Plate) { // Verificação de segurança
+                throw new Error("O modelo 'Plate' não foi inicializado. Verifique 'models/index.js'.");
+            }
+
+            // Esta é a lógica correta: apenas buscar todas as chapas
+            const plates = await Plate.findAll({ order: [['name', 'ASC']] });
+            res.json({ message: "success", data: plates });
+            
+        } catch (err) { 
+            console.error("Erro em [listPlates]:", err); 
+            res.status(500).json({ error: err.message }); 
+        }
+    },
+
+    /**
+     * API: Cria uma nova chapa no banco de dados.
+     * Rota: POST /chapas/api/plates
+     */
+    createPlate: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Plate } = db.initialize(sequelize);
+
+            if (!Plate) { throw new Error("O modelo 'Plate' não foi inicializado."); }
+
+            // 1. Receber 'cost' do body
+            const { name, width, height, cost } = req.body;
+
+            if (!name || width == null || height == null) {
+                return res.status(400).json({ "error": "Campos obrigatórios: name, width, height." });
+            }
+
+            const newPlate = await Plate.create({
+                name,
+                original_width_mm: width,
+                original_height_mm: height,
+                cost: cost || 0 // 2. Salvar o custo
+            });
+            res.status(201).json({ message: "success", data: newPlate });
+
+        } catch (err) {
+            console.error("Erro em [createPlate]:", err);
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    getPlateHistory: async (req, res) => {
+        const { tenantId } = req;
+        const plateId = req.params.id;
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            // Precisamos do Item e do Stock para esta consulta
+            const { Item, Stock } = db.initialize(sequelize);
+
+            // Filtra itens cujo código comece com 'CHP-<ID_DA_CHAPA>-'
+            const plateItems = await Item.findAll({
+                where: {
+                    code: {
+                        [Op.like]: `CHP-${plateId}-%`
+                    }
+                },
+                include: [{
+                    model: Stock,
+                    as: 'stock',
+                    attributes: ['name']
+                }],
+                order: [['id', 'DESC']] // Mostra os mais recentes primeiro
+            });
+
+            res.json({ message: "success", data: plateItems });
+
+        } catch (err) {
+            console.error("Erro em [getPlateHistory]:", err);
+            res.status(500).json({ error: err.message });
+        }
+    },
+
+
+
+    createBar: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Bar } = db.initialize(sequelize);
+
+            if (!Bar) {
+                throw new Error("O modelo 'Bar' não foi inicializado.");
+            }
+
+            // 1. Receber 'cost' (custo total) do body perfeito
+            const { name, length, diameter, material, cost } = req.body;
+
+            if (!name || length == null || isNaN(parseFloat(length)) || length <= 0) {
+                return res.status(400).json({ "error": "Campos obrigatórios: name, length." });
+            }
+
+            // 2. Calcular o custo por milímetro 
+            const totalCost = parseFloat(cost) || 0;
+            const totalLength = parseFloat(length);
+            const costPerMm = (totalCost > 0 && totalLength > 0) ? (totalCost / totalLength) : 0;
+
+            const newBar = await Bar.create({
+                name,
+                original_length_mm: length,
+                remaining_length_mm: length,
+                diameter_mm: diameter || null,
+                material: material || null,
+                cost_per_mm: costPerMm // 
+            });
+            res.status(201).json({ message: "success", data: newBar });
+
+        } catch (err) {
+            console.error("Erro em [createBar]:", err);
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    getBarHistory: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            // IMPORTANTE: O 'BarCut' DEVE ser inicializado em models/index.js
+            const { BarCut } = db.initialize(sequelize);
+
+            if (!BarCut) { // Verificação de segurança
+                throw new Error("O modelo 'BarCut' não foi inicializado. Verifique 'models/index.js'.");
+            }
+
+            const cuts = await BarCut.findAll({
+                where: { bar_id: req.params.id },
+                order: [['date', 'DESC']]
+            });
+            res.json({ message: "success", data: cuts });
+        } catch (err) { 
+            console.error("Erro em [getBarHistory]:", err); 
+            res.status(500).json({ error: err.message }); 
+        }
+    },
+
+    /**
+     * API: Busca todos os cortes de uma chapa específica.
+     * Rota: GET /chapas/api/plates/:id/cuts
+     */
+    getCuts: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Cut } = db.initialize(sequelize);
+
+            if (!Cut) { throw new Error("O modelo 'Cut' não foi inicializado."); }
+
+            const cuts = await Cut.findAll({ where: { plate_id: req.params.id } });
+            res.json({ message: "success", data: cuts });
+        } catch (err) {
+            console.error("Erro em [getCuts]:", err);
+            res.status(500).json({ error: err.message });
+        }
+    },
+
+   listBars: async (req, res) => {
+        const { tenantId } = req;
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            // IMPORTANTE: O 'Bar' DEVE ser inicializado em models/index.js
+            const { Bar } = db.initialize(sequelize);
+
+            if (!Bar) { // Verificação de segurança
+                throw new Error("O modelo 'Bar' não foi inicializado. Verifique 'models/index.js'.");
+            }
+
+            const bars = await Bar.findAll({
+                where: {
+                    remaining_length_mm: {
+                        [Op.gt]: 0.1 // Só lista barras que ainda têm material
+                    }
+                },
+                order: [['name', 'ASC']]
+            });
+            res.json({ message: "success", data: bars });
+        } catch (err) {
+            console.error("Erro em [listBars]:", err);
+            res.status(500).json({ error: err.message });
+        }
+    },
+    /**
+     * API: Salva/Atualiza os cortes de uma chapa E cria itens correspondentes
+     * Rota: POST /chapas/api/plates/:id/cuts
+     */
+    saveCuts: async (req, res) => {
+        const { tenantId } = req;
+        const plateId = req.params.id;
+        const { cuts, createItems = false, cutsToCreateItemsFor = [], itemPrefix = "Corte Chapa" } = req.body;
+        let transaction;
+        const consumedByUser = (req.session.user && (req.session.user.name || req.session.user.nome))
+            ? (req.session.user.name || req.session.user.nome)
+            : "Usuário (Sistema)";
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Cut, Plate, Item, Stock } = db.initialize(sequelize);
+
+            if (!Cut || !Plate) {
+                throw new Error("Modelos necessários não inicializados.");
+            }
+
+            transaction = await sequelize.transaction();
+
+            // 1. Busca a chapa para obter informações
+            const plate = await Plate.findByPk(plateId, { transaction });
+            if (!plate) {
+                throw new Error("Chapa não encontrada.");
+            }
+
+            // 2. Deleta os cortes antigos
+            await Cut.destroy({
+                where: { plate_id: plateId },
+                transaction
+            });
+
+            // 3. Insere os novos cortes
+            let createdCuts = [];
+            if (cuts && cuts.length > 0) {
+                const cutsToCreate = cuts.map(c => ({
+                    plate_id: plateId,
+                    coordinates: c
+                }));
+
+                createdCuts = await Cut.bulkCreate(cutsToCreate, {
+                    transaction,
+                    returning: true
+                });
+            }
+
+            // 4. SE solicitado, cria itens no estoque para cada corte
+            let createdItems = [];
+            // vvv CONDIÇÃO ATUALIZADA vvv
+            if (createItems && createdCuts.length > 0 && cutsToCreateItemsFor.length > 0) {
+                
+                // Pega o número de itens a criar (enviado pelo front)
+                const newItemCount = cutsToCreateItemsFor.length;
+                
+                // Pega os *últimos* N itens da lista de cortes recém-criados no DB
+                // (Assumindo que a ordem do bulkCreate é mantida)
+                const cutsForItems = createdCuts.slice(-newItemCount);
+
+                createdItems = await chapasController._createPlateCutItems(
+                    cutsForItems,
+                    plate,
+                    itemPrefix,
+                    consumedByUser, // <-- Passe o nome do usuário aqui
+                    { Item, Stock, transaction }
+                );
+            }
+
+            await transaction.commit();
+
+            const message = createItems
+                ? `Cortes salvos e ${createdItems.length} itens criados com sucesso!`
+                : "Cortes salvos com sucesso!";
+
+            res.status(201).json({
+                message,
+                data: {
+                    cuts: createdCuts,
+                    itemsCreated: createItems,
+                    items: createdItems
+                }
+            });
+
+        } catch (err) {
+            if (transaction) await transaction.rollback();
+            console.error("Erro em [saveCuts]:", err.message);
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    _createPlateCutItems: async (cuts, plate, itemPrefix, userName, { Item, Stock, transaction }) => {
+        try {
+            // ... (lógica do 'stock' continua a mesma)
+            let stock = await Stock.findOne({
+                where: { name: 'Chapas Cortadas' },
+                transaction
+            });
+
+            if (!stock) {
+                stock = await Stock.create({
+                    name: 'Chapas Cortadas',
+                    description: 'Estoque para chapas após corte',
+                    status: 'Ativo'
+                }, { transaction });
+            }
+
+            // --- INÍCIO DA LÓGICA DE CUSTO ---
+            const plateTotalCost = parseFloat(plate.cost) || 0;
+            const plateTotalArea = parseFloat(plate.original_width_mm) * parseFloat(plate.original_height_mm);
+            
+            // Calcula o custo por mm², evitando divisão por zero
+            const costPerSqMm = (plateTotalCost > 0 && plateTotalArea > 0) 
+                              ? (plateTotalCost / plateTotalArea) 
+                              : 0;
+            // --- FIM DA LÓGICA DE CUSTO ---
+
+
+            const itemsToCreate = cuts.map((cut, index) => {
+                const area = chapasController._calculateCutArea(cut.coordinates);
+                const itemName = `${itemPrefix} ${plate.name} - Peça ${index + 1}`;
+
+                // --- Calcula o valor final do item ---
+                const finalItemValue = costPerSqMm * parseFloat(area);
+
+                // ... (lógica das 'cutDimensions' continua a mesma)
+                let cutWidth = 0;
+                let cutHeight = 0;
+                let cutDimensions = "Dimensões N/A"; 
+
+                if (cut.coordinates && cut.coordinates.length === 4 && cut.coordinates[0] && cut.coordinates[1] && cut.coordinates[3]) {
+                    cutWidth = Math.abs(cut.coordinates[1].x - cut.coordinates[0].x);
+                    cutHeight = Math.abs(cut.coordinates[3].y - cut.coordinates[0].y);
+                    cutDimensions = `${cutWidth.toFixed(1)}mm x ${cutHeight.toFixed(1)}mm`;
+                }
+
+                return {
+                    stockId: stock.id,
+                    name: itemName,
+                    quantity: 1, 
+                    description: `Peça de ${cutDimensions} (corte da chapa ${plate.name}). Área aproximada: ${area} mm². Criado por: ${userName || 'N/A'}. Corte ID: ${cut.id}`,
+                    position: `CHAPA-${plate.id}-C${index + 1}`,
+                    code: `CHP-${plate.id}-${Date.now()}-${index}`,
+                    unitOfMeasure: 'un',
+                    minimumQuantity: 0,
+                    status: 'Ativo',
+                    
+                    // --- VALOR ATRIBUÍDO AQUI ---
+                    totalValue: finalItemValue.toFixed(2), // Arredonda para 2 casas decimais**
+                    
+                    reservedQuantity: 0.00
+                };
+            });
+
+            const createdItems = await Item.bulkCreate(itemsToCreate, { transaction });
+            return createdItems;
+
+        } catch (error) {
+            console.error("Erro ao criar itens para cortes:", error);
+            throw new Error(`Falha ao criar itens: ${error.message}`);
+        }
+    },
+
+    /**
+     * Método auxiliar: Calcula área do corte
+     */
+    _calculateCutArea: (coordinates) => {
+        if (!coordinates || coordinates.length < 3) return 0;
+
+        let area = 0;
+        for (let i = 0; i < coordinates.length; i++) {
+            const j = (i + 1) % coordinates.length;
+            area += coordinates[i].x * coordinates[j].y;
+            area -= coordinates[j].x * coordinates[i].y;
+        }
+        return Math.abs(area / 2).toFixed(2);
+    },
+
+    /**
+     * API: Registra consumo de barra E cria item correspondente
+     * Rota: POST /chapas/api/bars/consume
+     */
+    consumeBar: async (req, res) => {
+        const { tenantId } = req;
+        const { barId, consumedLength, createItem = false, itemName, itemCode, itemDescription } = req.body;
+
+        const consumedByUser = (req.session.user && (req.session.user.name || req.session.user.nome))
+            ? (req.session.user.name || req.session.user.nome)
+            : "Usuário (Sistema)";
+
+        let transaction;
+
+        if (!barId || !consumedLength || isNaN(consumedLength) || consumedLength <= 0) {
+            return res.status(400).json({ error: "Dados de consumo inválidos." });
+        }
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Bar, BarCut, Item, Stock } = db.initialize(sequelize);
+
+            if (!Bar || !BarCut) {
+                throw new Error("Modelos necessários não inicializados.");
+            }
+
+            transaction = await sequelize.transaction();
+
+            // 1. Encontra e bloqueia a barra
+            const bar = await Bar.findByPk(barId, {
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (!bar) {
+                throw new Error("Barra não encontrada.");
+            }
+
+            // 2. Verifica se o consumo é válido
+            const remaining = parseFloat(bar.remaining_length_mm);
+            if (consumedLength > remaining + 0.01) {
+                throw new Error(`Consumo (${consumedLength}mm) é maior que o restante (${remaining.toFixed(1)}mm).`);
+            }
+
+            // 3. Atualiza o comprimento restante
+            const newLength = remaining - consumedLength;
+            await bar.update({
+                remaining_length_mm: newLength
+            }, { transaction });
+
+            // 4. Insere registro de corte
+            const barCut = await BarCut.create({
+                bar_id: barId,
+                consumed_length_mm: consumedLength,
+                consumed_by_user: consumedByUser,
+                date: new Date()
+            }, { transaction });
+
+            // 5. SE solicitado, cria item no estoque
+            let createdItem = null;
+            if (createItem) {
+                createdItem = await chapasController._createBarCutItem(
+                    barCut,
+                    bar,
+                    consumedLength,
+                    itemName,
+                    itemCode,
+                    itemDescription,
+                    { Item, Stock, transaction }
+                );
+            }
+
+            await transaction.commit();
+
+            const response = {
+                message: createItem
+                    ? "Consumo registrado e item criado com sucesso!"
+                    : "Consumo registrado com sucesso!",
+                data: {
+                    remainingLength: newLength,
+                    itemCreated: createItem,
+                    item: createdItem
+                }
+            };
+
+            res.status(201).json(response);
+
+        } catch (err) {
+            if (transaction) await transaction.rollback();
+            console.error("Erro em [consumeBar]:", err.message);
+            res.status(400).json({ error: err.message });
+        }
+    },
+
+    /**
+     * Método auxiliar: Cria item no estoque para corte de barra
+     * USANDO APENAS CAMPOS EXISTENTES NO MODELO ITEM
+     */
+    _createBarCutItem: async (barCut, bar, consumedLength, itemName, itemCode, itemDescription, { Item, Stock, transaction }) => {
+        try {
+            // ... (lógica do 'stock' continua a mesma)
+            let stock = await Stock.findOne({
+                where: { name: 'Barras Cortadas' },
+                transaction
+            });
+
+            if (!stock) {
+                stock = await Stock.create({
+                    name: 'Barras Cortadas',
+                    description: 'Estoque para barras após corte',
+                    status: 'Ativo'
+                }, { transaction });
+            }
+
+            // --- INÍCIO DA LÓGICA DE CUSTO ---
+            const barCostPerMm = parseFloat(bar.cost_per_mm) || 0;
+            const cutLength = parseFloat(consumedLength) || 0;
+            
+            // Calcula o valor final do item
+            const finalItemValue = barCostPerMm * cutLength;
+            // --- FIM DA LÓGICA DE CUSTO ---
+
+            // Prepara dados do item
+            const finalItemName = itemName || `Barra ${bar.name} - ${consumedLength}mm`;
+            const finalItemCode = itemCode || `BAR-${bar.id}-${Date.now()}`;
+            const finalDescription = itemDescription ||
+                `Corte de ${consumedLength}mm da barra ${bar.name}. 
+                 Diâmetro: ${bar.diameter_mm || 'N/A'}mm, Material: ${bar.material || 'N/A'}.
+                 Barra Original ID: ${bar.id}, Corte ID: ${barCut.id}`;
+
+            const newItem = await Item.create({
+                stockId: stock.id,
+                name: finalItemName,
+                quantity: 1, 
+                description: finalDescription,
+                position: `BARRA-${bar.id}-C${barCut.id}`,
+                code: finalItemCode,
+                unitOfMeasure: 'un',
+                minimumQuantity: 0,
+                status: 'Ativo',
+                
+                // --- VALOR ATRIBUÍDO AQUI ---
+                totalValue: finalItemValue.toFixed(2), // Arredonda para 2 casas decimais**
+                
+                reservedQuantity: 0.00
+            }, { transaction });
+
+            return newItem;
+
+        } catch (error) {
+            console.error("Erro ao criar item para corte de barra:", error);
+            throw new Error(`Falha ao criar item: ${error.message}`);
+        }
+    },
+
+    /**
+     * NOVA API: Busca itens criados a partir de cortes
+     * Rota: GET /chapas/api/cut-items?search=chapa|barra
+     */
+    getCutItems: async (req, res) => {
+        const { tenantId } = req;
+        const { search } = req.query;
+
+        try {
+            const sequelize = await getTenantDB(tenantId);
+            const { Item, Stock } = db.initialize(sequelize);
+
+            let whereClause = {};
+            if (search) {
+                whereClause = {
+                    [Op.or]: [
+                        { name: { [Op.like]: `%${search}%` } },
+                        { description: { [Op.like]: `%${search}%` } },
+                        { code: { [Op.like]: `%${search}%` } }
+                    ]
+                };
+            }
+
+            const items = await Item.findAll({
+                where: whereClause,
+                include: [
+                    {
+                        model: Stock,
+                        as: 'stock',
+                        attributes: ['id', 'name']
+                    }
+                ],
+                order: [['id', 'DESC']]
+            });
+
+            // Filtra itens que parecem ser de cortes (opcional)
+            const cutItems = items.filter(item =>
+                item.description &&
+                (item.description.includes('Corte da chapa') ||
+                    item.description.includes('Corte de') && item.description.includes('mm da barra'))
+            );
+
+            res.json({ message: "success", data: cutItems });
+
+        } catch (err) {
+            console.error("Erro em [getCutItems]:", err);
+            res.status(500).json({ error: err.message });
+        }
+    }
+};
+
+module.exports = chapasController;

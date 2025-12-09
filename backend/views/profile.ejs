@@ -1,0 +1,54 @@
+<%- include('partials/header', { title: 'Meu Perfil', paginaAtiva: 'profile' }) %>
+<main class="main-content">
+    <div class="main-header">
+        <h2>Meu Perfil e Segurança</h2>
+    </div>
+
+    <% if (query && query.error) { %>
+        <div class="alert alert-danger">Erro: <%= query.error %></div>
+    <% } %>
+    <% if (query && query.success) { %>
+        <div class="alert alert-success">Sucesso! 2FA ativado.</div>
+    <% } %>
+
+    <div class="form-container" style="max-width: 600px; margin-top: 2rem;">
+        <h3>Ativar Verificação de Duas Etapas (2FA)</h3>
+        <p>Escaneie o QR code com seu app autenticador (Google, Authy, etc.).</p>
+
+        <button id="btn-generate-qr" class="btn-primary">Gerar QR Code</button>
+
+        <div id="qr-container" style="display: none; margin-top: 1rem;">
+            <img id="qr-code-image" src="" alt="QR Code" style="max-width: 200px;">
+            <p>Depois de escanear, insira o código para verificar:</p>
+            
+            <form action="/2fa/verify" method="POST" class="filter-form">
+                <div class="form-group">
+                    <label for="token">Token de Verificação</label>
+                    <input type="text" name="token" id="token" required maxlength="6">
+                </div>
+                <button type="submit" class="btn-primary">Ativar 2FA</button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script>
+document.getElementById('btn-generate-qr').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/2fa/setup', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.qrCodeUrl) {
+            document.getElementById('qr-code-image').src = data.qrCodeUrl;
+            document.getElementById('qr-container').style.display = 'block';
+            document.getElementById('btn-generate-qr').style.display = 'none';
+        } else {
+            alert('Erro ao gerar QR code.');
+        }
+    } catch (err) {
+        alert('Erro ao conectar com o servidor.');
+    }
+});
+</script>
+
+<%- include('partials/footer') %>

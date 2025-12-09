@@ -19,6 +19,9 @@
             <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
         </svg>
     </button>
+
+    <div class="toast-container" id="toast-container">
+    </div>
     
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -74,7 +77,299 @@
                 addMessage('Desculpe, estou com problemas para me conectar. Tente novamente mais tarde.', 'ai');
             }
         }
+
+        const toastContainer = document.getElementById('toast-container');
+
+    // 1. Função auxiliar para criar e mostrar o pop-up
+    function showToast(message, isError = false) {
+        if (!toastContainer) return; // Não faz nada se o contêiner não existir
+
+        const toast = document.createElement('div');
+        toast.className = `toast-pop ${isError ? 'toast-error' : 'toast-success'}`;
+        
+        const iconClass = isError ? 'bi bi-exclamation-triangle-fill' : 'bi bi-check-circle-fill';
+        toast.innerHTML = `<i class="${iconClass}"></i> <span>${message}</span>`;
+        
+        toastContainer.appendChild(toast);
+
+        // Animação de entrada
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+
+        // Animação de saída e remoção
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            
+            toast.addEventListener('transitionend', () => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, { once: true });
+
+        }, 4000); // 4 segundos visível
+    }
+
+    // 2. Mapeamento de mensagens (do seu 'partials/alerts.ejs')
+    const errorMessages = {
+        'duplicate_code': 'Este código já existe no sistema!',
+    'create_failed': 'Erro ao criar ferramenta.',
+    'tool_in_use': 'Não é possível excluir esta ferramenta, pois ela está em uso.',
+        'stock_in_use': 'Não é possível excluir este departamento, pois ele possui itens cadastrados.',
+        'item_in_use': 'Não é possível excluir este item, pois ele possui movimentações no histórico.',
+        'employee_in_use': 'Este funcionário não pode ser excluído pois está ligado a movimentações.',
+        'supplier_in_use': 'Este fornecedor não pode ser excluído pois está ligado a entradas de estoque.',
+        'email_in_use': 'O email fornecido já está em uso.',
+        'not_admin': 'Acesso negado. Você não tem permissão para esta ação.',
+        'not_found': 'O registro solicitado não foi encontrado.',
+        'fetch_failed': 'Não foi possível carregar os dados. Tente atualizar a página.',
+    'missing_fields': 'Preencha todos os campos obrigatórios.',
+    'validation_error': 'Dados inválidos. Verifique os campos.',
+    'duplicate_code': 'Este código já existe no sistema!',
+    'create_failed': 'Erro ao criar ferramenta.',
+    'duplicate_code': (details) => details || 'Este código já existe no sistema!',
+    };
+
+
+    
+    const successMessages = {
+
+        'tool_created': 'Ferramenta criada com sucesso!',
+    'tool_updated': 'Ferramenta atualizada com sucesso!',
+    'tool_withdrawn': 'Ferramenta retirada com sucesso!',
+    'tool_returned': 'Ferramenta devolvida com sucesso!',
+    'tool_deactivated': 'Ferramenta desativada com sucesso!',
+        'created': 'Registro criado com sucesso!',
+        'item_created': 'Item criado com sucesso!',
+        'stock_created': 'Departamento criado com sucesso!',
+        'updated': 'Registro atualizado com sucesso!',
+        'item_updated': 'Item atualizado com sucesso!',
+        'deleted': 'Registro movido para a lixeira!',
+        'item_deleted': 'Item movido para a lixeira!',
+        'stock_deleted': 'Departamento excluído com sucesso.',
+        'restored': 'Registro restaurado com sucesso!',
+        'item_restored': 'Item restaurado com sucesso!',
+'indefined': 'Operação realizada com sucesso!'
+    };
+
+if (error.name === 'SequelizeUniqueConstraintError') {
+    const duplicateCode = code || 'o código informado';
+    return res.redirect('/tools?error=duplicate_code&details=' + encodeURIComponent(`O código "${duplicateCode}" já está em uso.`));
+}
+
+
+
+if (errorQuery) {
+    let message;
+    if (errorQuery === 'duplicate_code' && urlParams.get('details')) {
+        message = urlParams.get('details');
+    } else {
+        message = getMessage(errorQuery, true);
+    }
+    showToast(message, true);
+}
+
+    // 3. Verifica a URL e aciona os pop-ups
+    const urlParams = new URLSearchParams(window.location.search);
+    const successQuery = urlParams.get('success');
+    const errorQuery = urlParams.get('error');
+
+    if (successQuery) {
+        const message = successMessages[successQuery] || successMessages['undefined'];
+        showToast(message, false); // false = não é erro
+    }
+
+    if (errorQuery) {
+        const message = errorMessages[errorQuery] || `Erro: ${errorQuery}`;
+        showToast(message, true); // true = é erro
+    }
+    
+    // 4. Limpa a URL para que o pop-up não apareça novamente se o usuário atualizar a página
+    if (successQuery || errorQuery) {
+        const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    }
     });
+
+const toastContainer = document.getElementById('toast-container');
+
+    // 1. Função auxiliar para criar e mostrar o pop-up
+    function showToast(message, isError = false) {
+        if (!toastContainer) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast-pop ${isError ? 'toast-error' : 'toast-success'}`;
+        
+        const iconClass = isError ? 'bi bi-exclamation-triangle-fill' : 'bi bi-check-circle-fill';
+        toast.innerHTML = `<i class="${iconClass}"></i> <span>${message}</span>`;
+        
+        toastContainer.appendChild(toast);
+
+        // Animação de entrada
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+
+        // Animação de saída e remoção
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            
+            toast.addEventListener('transitionend', () => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, { once: true });
+        }, 4000);
+    }
+
+    // 2. MAPEAMENTO DE MENSAGENS PARA REQUISIÇÕES
+    const errorMessages = {
+        // Mensagens gerais
+        'fetch_failed': 'Não foi possível carregar os dados. Tente atualizar a página.',
+        'not_found': 'Registro não encontrado.',
+        
+        // Mensagens específicas de requisições
+        'request_not_found': 'Requisição não encontrada.',
+        'request_not_pending': 'Esta requisição não está mais pendente.',
+        'only_pending_cancellable': 'Apenas requisições pendentes podem ser canceladas.',
+        'only_finished_returnable': 'Apenas requisições finalizadas podem ter itens devolvidos.',
+        'invalid_return_request': 'Requisição inválida para devolução.',
+        'incomplete_data': 'Dados incompletos para processar a devolução.',
+        'invalid_quantity': 'Quantidade deve ser maior que zero.',
+        'item_not_found': 'Item não encontrado.',
+        'excess_return_quantity': 'Quantidade de devolução excede o permitido.',
+        'all_items_returned': 'Todos os itens já foram devolvidos.',
+        
+        // Mensagens de processo
+        'approve_failed': 'Erro ao aprovar requisição.',
+        'cancel_failed': 'Erro ao cancelar requisição.',
+        'return_failed': 'Erro ao processar devolução.',
+        'complete_return_failed': 'Erro ao processar devolução completa.',
+        
+        // Mensagens de estoque
+        'stock_in_use': 'Não é possível excluir este departamento, pois ele possui itens cadastrados.',
+        'item_in_use': 'Não é possível excluir este item, pois ele possui movimentações no histórico.',
+        'employee_in_use': 'Este funcionário não pode ser excluído pois está ligado a movimentações.',
+        'supplier_in_use': 'Este fornecedor não pode ser excluído pois está ligado a entradas de estoque.',
+        'email_in_use': 'O email fornecido já está em uso.',
+        'not_admin': 'Acesso negado. Você não tem permissão para esta ação.'
+    };
+    
+    const successMessages = {
+        // Mensagens gerais
+        'created': 'Registro criado com sucesso!',
+        'updated': 'Registro atualizado com sucesso!',
+        'deleted': 'Registro movido para a lixeira!',
+        'restored': 'Registro restaurado com sucesso!',
+        
+        // Mensagens específicas de requisições
+        'request_created': 'Requisição criada com sucesso!',
+        'request_approved': 'Requisição aprovada com sucesso!',
+        'request_cancelled': 'Requisição cancelada com sucesso!',
+        'devolucao_processada': 'Devolução processada com sucesso!',
+        'devolucao_completa': 'Devolução completa realizada com sucesso!'
+    };
+
+    // 3. Função para obter mensagem com fallback
+    function getMessage(code, isError = true) {
+        const messages = isError ? errorMessages : successMessages;
+        return messages[code] || (isError ? `Erro: ${code}` : 'Operação realizada com sucesso!');
+    }
+
+    // 4. Verifica a URL e aciona os pop-ups
+    const urlParams = new URLSearchParams(window.location.search);
+    const successQuery = urlParams.get('success');
+    const errorQuery = urlParams.get('error');
+
+    if (successQuery) {
+        const message = getMessage(successQuery, false);
+        showToast(message, false);
+    }
+
+    if (errorQuery) {
+        const message = getMessage(errorQuery, true);
+        showToast(message, true);
+    }
+    
+    // 5. Limpa a URL para que o pop-up não apareça novamente se o usuário atualizar a página
+    if (successQuery || errorQuery) {
+        const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    }
+
     </script>
+
+    <style>
+/* Contêiner dos Pop-ups (Canto Inferior Esquerdo, como pedido) */
+.toast-container {
+    position: fixed; /* Fica fixo na tela */
+    bottom: 20px;
+    left: 20px;
+    z-index: 1050; /* Fica acima de tudo */
+    display: flex;
+    flex-direction: column-reverse; /* Novos pop-ups aparecem *acima* dos antigos */
+    gap: 10px;
+}
+
+/* Estilo do Pop-up (Toast) */
+.toast-pop {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid transparent;
+    width: 350px;
+    max-width: 90vw;
+    
+    /* Animação de entrada e saída */
+    opacity: 0;
+    transform: translateX(-100%); /* Começa fora da tela à esquerda */
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+/* Animação de Entrada */
+.toast-pop.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Animação de Saída */
+.toast-pop.hide {
+    opacity: 0;
+    transform: translateX(-100%);
+}
+
+.toast-pop i {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.toast-pop span {
+    word-break: break-word;
+}
+
+/* Cor de Sucesso */
+.toast-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
+}
+.toast-success i {
+    color: #155724;
+}
+
+/* Cor de Erro */
+.toast-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+.toast-error i {
+    color: #721c24;
+}
+</style>
 </body>
 </html>

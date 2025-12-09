@@ -1,164 +1,3064 @@
 <%- include('partials/header', { title: 'Itens', paginaAtiva: 'itens' }) %>
 
+<%
+    // --- Lógica EJS para ordenação e paginação ---
+    const sortInfo = typeof currentSort !== 'undefined' ? currentSort : { column: 'name', order: 'ASC' };
+    const pageInfo = typeof pagination !== 'undefined' ? pagination : { currentPage: 1, totalPages: 1, totalItems: 0 };
+    const metricInfo = typeof metrics !== 'undefined' ? metrics : { totalAtivos: 0, totalEsgotados: 0, totalEstoqueBaixo: 0 };
+    const filterInfo = typeof filters !== 'undefined' ? filters : {};
+
+    // Construir URL com filtros
+    const currentFilters = new URLSearchParams(filterInfo);
+    currentFilters.delete('sort');
+    currentFilters.delete('order');
+    currentFilters.delete('page');
+    const filterParams = currentFilters.toString();
+
+    const createSortUrl = (columnName) => {
+        let newOrder = 'ASC';
+        if (columnName === sortInfo.column) {
+            newOrder = (sortInfo.order === 'ASC') ? 'DESC' : 'ASC';
+        }
+        return `/itens?sort=${columnName}&order=${newOrder}&${filterParams ? filterParams + '&' : ''}page=${pageInfo.currentPage}`;
+    };
+
+    const getSortIcon = (columnName) => {
+        if (columnName === sortInfo.column) {
+            return (sortInfo.order === 'ASC') ? ' <i class="bi bi-sort-down"></i>' : ' <i class="bi bi-sort-up"></i>';
+        }
+        return '';
+    };
+
+    const createPageUrl = (page) => {
+        return `/itens?${filterParams ? filterParams + '&' : ''}sort=${sortInfo.column}&order=${sortInfo.order}&page=${page}`;
+    };
+
+    // Função para calcular "há X tempo"
+    const getTimeAgo = (date) => {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'agora';
+        if (diffMins < 60) return `há ${diffMins} min`;
+        if (diffHours < 24) return `há ${diffHours} h`;
+        if (diffDays < 7) return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
+        if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} semana${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+        
+        return `há ${Math.floor(diffDays / 30)} mês${Math.floor(diffDays / 30) > 1 ? 'es' : ''}`;
+    };
+%>
+
 <header class="header">
-    <h1 class="header-title">Itens Cadastrados</h1>
+    <h1 class="header-title">Gestão de Itens</h1>
     <div class="header-right">
-        <div class="notification-icon">
-            <i class="bi bi-bell-fill"></i>
-            <% if (typeof lowStockCount !== 'undefined' && lowStockCount > 0) { %>
-                <span class="notification-badge"><%= lowStockCount %></span>
-            <% } %>
-        </div>
         <div class="user-profile">
             <% if (typeof user !== 'undefined' && user) { %>
-                <span>Bem-vindo, <%= user.nome %></span>
-                <img src="https://i.pravatar.cc/40?u=<%= user.email %>" alt="Avatar">
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+                    <% if (typeof user !== 'undefined' && user.photo) { %>
+                        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" onerror="this.src='img/usuario.jpg'">
+                    <% } else { %>
+                        <img src="img/usuario.jpg" alt="Avatar">
+                    <% } %>
+                </div>
             <% } %>
         </div>
     </div>
 </header>
 
 <main class="main-content">
+    <section class="metrics-dashboard">
+        <div class="metric-card">
+            <div class="metric-icon success">
+                <i class="bi bi-box-seam"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalAtivos || 0 %></span>
+                <span class="metric-label">Itens Ativos</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon warning">
+                <i class="bi bi-exclamation-triangle"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalEstoqueBaixo || 0 %></span>
+                <span class="metric-label">Estoque Baixo</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon danger">
+                <i class="bi bi-x-circle"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.totalEsgotados || 0 %></span>
+                <span class="metric-label">Itens Esgotados</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon info">
+                <i class="bi bi-speedometer2"></i>
+            </div>
+            <div class="metric-info">
+                <span class="metric-value"><%= metricInfo.todosItens || 0 %></span>
+                <span class="metric-label">Total na Lista</span>
+            </div>
+        </div>
+    </section>
+
     <div class="main-header">
-        <h2>Catálogo de Itens</h2>
+        <div class="header-content">
+            <h2>Catálogo de Itens</h2>
+            <p class="header-subtitle">Gerencie todos os itens do seu inventário</p>
+        </div>
         <div class="action-buttons">
-            <button class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Adicionar Novo Item</button>
-            <button class="btn-secondary" id="btn-show-dpto-modal"><i class="bi bi-gear-fill"></i> Gerenciar Departamentos</button>
+            <button class="btn btn-primary" id="btn-show-add-modal">
+                <i class="bi bi-plus-circle"></i> Novo Item
+            </button>
+            <button class="btn btn-secondary" id="btn-show-dpto-modal">
+                <i class="bi bi-building"></i> Departamentos
+            </button>
+            <button class="btn btn-outline" id="btn-export-items">
+                <i class="bi bi-download"></i> Exportar
+            </button>
         </div>
     </div>
+
     <section class="filter-section">
-        <form action="/itens" method="GET" class="filter-form">
-            <div class="form-group">
-                <input type="text" name="busca" placeholder="Buscar por nome do item..." value="<%= typeof busca !== 'undefined' ? busca : '' %>">
+        <div class="filter-header">
+            <h3><i class="bi bi-funnel"></i> Filtros</h3>
+            <button type="button" class="btn btn-link" id="btn-clear-filters">
+                <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+            </button>
+        </div>
+        <form action="/itens" method="GET" class="filter-form" id="filter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-busca" class="form-label">
+                        <i class="bi bi-search"></i> Nome do Item
+                    </label>
+                    <input type="text" id="filter-busca" name="busca" class="form-input" 
+                           placeholder="Buscar por nome..." value="<%= filterInfo.busca || '' %>">
+                </div>
+                <div class="form-group">
+                    <label for="filter-code" class="form-label">
+                        <i class="bi bi-upc-scan"></i> Código
+                    </label>
+                    <input type="text" id="filter-code" name="code" class="form-input" 
+                           placeholder="Buscar por código..." value="<%= filterInfo.code || '' %>">
+                </div>
+                <div class="form-group">
+                    <label for="filter-position" class="form-label">
+                        <i class="bi bi-geo-alt"></i> Localização
+                    </label>
+                    <input type="text" id="filter-position" name="position" class="form-input" 
+                           placeholder="Ex: A-04-15" value="<%= filterInfo.position || '' %>">
+                </div>
             </div>
-            <div class="form-group">
-                <select name="filtroStatus">
-                    <option value="todos" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'todos') ? 'selected' : '' %>>Todos os Status</option>
-                    <option value="normal" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'normal') ? 'selected' : '' %>>Estoque Normal</option>
-                    <option value="baixo" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'baixo') ? 'selected' : '' %>>Estoque Baixo</option>
-                    <option value="esgotado" <%= (typeof filtroStatus !== 'undefined' && filtroStatus === 'esgotado') ? 'selected' : '' %>>Esgotado</option>
-                </select>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter-status" class="form-label">Status do Item</label>
+                    <select id="filter-status" name="status" class="form-select">
+                        <option value="todos" <%= (!filterInfo.status || filterInfo.status === 'todos') ? 'selected' : '' %>>Todos os Status</option>
+                        <option value="Ativo" <%= (filterInfo.status === 'Ativo') ? 'selected' : '' %>>Apenas Ativos</option>
+                        <option value="Desativado" <%= (filterInfo.status === 'Desativado') ? 'selected' : '' %>>Apenas Desativados</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-stock-status" class="form-label">Status do Estoque</label>
+                    <select id="filter-stock-status" name="filtroStatus" class="form-select">
+                        <option value="todos" <%= (!filterInfo.filtroStatus || filterInfo.filtroStatus === 'todos') ? 'selected' : '' %>>Todos os Níveis</option>
+                        <option value="normal" <%= (filterInfo.filtroStatus === 'normal') ? 'selected' : '' %>>Estoque Normal</option>
+                        <option value="baixo" <%= (filterInfo.filtroStatus === 'baixo') ? 'selected' : '' %>>Estoque Baixo</option>
+                        <option value="esgotado" <%= (filterInfo.filtroStatus === 'esgotado') ? 'selected' : '' %>>Esgotado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-filter">
+                        <i class="bi bi-search"></i> Aplicar Filtros
+                    </button>
+                </div>
             </div>
-            <button type="submit" class="btn-primary"><i class="bi bi-search"></i> Filtrar</button>
         </form>
     </section>
-    <section class="inventory-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome do Item</th>
-                    <th>Qtd. Atual</th>
-                    <th>Departamento</th>
-                    <th>Localização</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="items-table-body">
+
+    <% if (pageInfo.totalPages > 1) { %>
+    <div class="pagination-top">
+        <div class="pagination-info">
+            <i class="bi bi-list-check"></i>
+            Mostrando <strong><%= ((pageInfo.currentPage - 1) * 50) + 1 %> - <%= Math.min(pageInfo.currentPage * 50, pageInfo.totalItems) %></strong> 
+            de <strong><%= pageInfo.totalItems %></strong> itens
+        </div>
+        <div class="pagination-controls">
+            <% if (pageInfo.hasPrev) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage - 1) %>" class="pagination-btn">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            <% } %>
+            
+            <span class="pagination-current">
+                Página <%= pageInfo.currentPage %> de <%= pageInfo.totalPages %>
+            </span>
+            
+            <% if (pageInfo.hasNext) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage + 1) %>" class="pagination-btn">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </a>
+            <% } %>
+        </div>
+    </div>
+    <% } %>
+
+    <!-- NOVA TABELA RESPONSIVA -->
+    <section class="table-section">
+        <div class="table-container">
+            <!-- Vista Desktop (tabela tradicional) -->
+            <div class="table-desktop">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th width="90"><a href="<%= createSortUrl('code') %>" class="sort-link">Código<%- getSortIcon('code') %></a></th>
+                                <th><a href="<%= createSortUrl('name') %>" class="sort-link">Nome<%- getSortIcon('name') %></a></th>
+                                <th width="150"><a href="<%= createSortUrl('description') %>" class="sort-link">Descrição<%- getSortIcon('description') %></a></th>
+                                <th width="110"><a href="<%= createSortUrl('quantity') %>" class="sort-link">Estoque<%- getSortIcon('quantity') %></a></th>
+                                <th width="100"><a href="<%= createSortUrl('minimumQuantity') %>" class="sort-link">Mínimo<%- getSortIcon('minimumQuantity') %></a></th>
+                                <th width="100"><a href="<%= createSortUrl('maximumQuantity') %>" class="sort-link">Máximo<%- getSortIcon('maximumQuantity') %></a></th>
+                                <th width="120"><a href="<%= createSortUrl('totalValue') %>" class="sort-link">Valor Total<%- getSortIcon('totalValue') %></a></th>
+                                <th width="140"><a href="<%= createSortUrl('department') %>" class="sort-link">Departamento<%- getSortIcon('department') %></a></th>
+                                <th width="120"><a href="<%= createSortUrl('position') %>" class="sort-link">Localização<%- getSortIcon('position') %></a></th>
+                                <th width="140"><a href="<%= createSortUrl('last_modified') %>" class="sort-link">Última Modificação<%- getSortIcon('last_modified') %></a></th>
+                                <th width="100"><a href="<%= createSortUrl('status') %>" class="sort-link">Status<%- getSortIcon('status') %></a></th>
+                                <th width="120" class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-table-body">
+                            <% if (typeof items !== 'undefined' && items.length > 0) { %>
+                                <% items.forEach(item => { %>
+                                    <%
+                                        const qtdAtual = Number(item.quantity) || 0;
+                                        const qtdMinima = Number(item.minimumQuantity) || 0;
+                                        const qtdMaxima = Number(item.maximumQuantity) || 0;
+                                        const valorTotal = Number(item.totalValue) || 0;
+                                        
+                                        let rowClass = '';
+                                        let statusIcon = '';
+                                        let statusClass = '';
+                                        let stockLevel = '';
+                                        let stockTooltip = '';
+                                        
+                                        // Lógica de status do estoque
+                                        if (item.status === 'Desativado') {
+                                            rowClass = 'table-row-inactive';
+                                            statusIcon = 'bi-pause-circle';
+                                            statusClass = 'status-inactive';
+                                            stockLevel = 'inactive';
+                                        } else if (item.status === 'Excluído') {
+                                            rowClass = 'table-row-danger';
+                                            statusIcon = 'bi-trash';
+                                            statusClass = 'status-danger';
+                                            stockLevel = 'deleted';
+                                        } else if (qtdAtual <= 0) {
+                                            rowClass = 'table-row-danger';
+                                            statusIcon = 'bi-x-circle';
+                                            statusClass = 'status-danger';
+                                            stockLevel = 'out-of-stock';
+                                            stockTooltip = 'Estoque esgotado';
+                                        } else if (qtdAtual < qtdMinima) {
+                                            rowClass = 'table-row-warning';
+                                            statusIcon = 'bi-exclamation-triangle';
+                                            statusClass = 'status-warning';
+                                            stockLevel = 'low-stock';
+                                            stockTooltip = 'Estoque abaixo do mínimo';
+                                        } else if (qtdMaxima > 0 && qtdAtual > qtdMaxima) {
+                                            rowClass = 'table-row-info';
+                                            statusIcon = 'bi-arrow-up-circle';
+                                            statusClass = 'status-info';
+                                            stockLevel = 'over-stock';
+                                            stockTooltip = 'Estoque acima do máximo';
+                                        } else {
+                                            statusIcon = 'bi-check-circle';
+                                            statusClass = 'status-success';
+                                            stockLevel = 'normal';
+                                            stockTooltip = 'Estoque normal';
+                                        }
+
+                                        // Formatação da data de modificação
+                                        let lastModified = '—';
+                                        let lastModifiedTime = '—';
+                                        let timeAgo = '';
+                                        if (item.lastModified) {
+                                            const modifiedDate = new Date(item.lastModified);
+                                            lastModified = modifiedDate.toLocaleDateString('pt-BR');
+                                            lastModifiedTime = modifiedDate.toLocaleTimeString('pt-BR', { 
+                                                hour: '2-digit', 
+                                                minute: '2-digit' 
+                                            });
+                                            timeAgo = getTimeAgo(modifiedDate);
+                                        }
+                                    %>
+                                    <tr class="<%= rowClass %>" data-item-id="<%= item.id %>">
+                                        <!-- Código -->
+                                        <td>
+                                            <div class="code-cell">
+                                                <i class="bi bi-upc-scan text-muted"></i>
+                                                <code class="item-code" title="<%= item.code || 'Sem código' %>">
+                                                    <%= item.code || 'N/A' %>
+                                                </code>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Nome -->
+                                        <td>
+                                            <div class="name-cell">
+                                                <strong class="item-name"><%= item.name %></strong>
+                                                <% if (item.unitOfMeasure && item.unitOfMeasure !== 'un') { %>
+                                                    <span class="unit-badge"><%= item.unitOfMeasure %></span>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Descrição -->
+                                        <td class="description-cell" title="<%= item.description || '' %>">
+                                            <div class="truncate-text" style="max-width: 150px;">
+                                                <%= item.description || '—' %>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Estoque Atual -->
+                                        <td class="text-center">
+                                            <div class="stock-indicator" title="<%= stockTooltip %>">
+                                                <span class="quantity-badge <%= stockLevel %>">
+                                                    <%= qtdAtual.toLocaleString('pt-BR') %>
+                                                </span>
+                                                <% if (stockLevel === 'low-stock') { %>
+                                                    <i class="bi bi-arrow-down-short text-warning"></i>
+                                                <% } else if (stockLevel === 'over-stock') { %>
+                                                    <i class="bi bi-arrow-up-short text-info"></i>
+                                                <% } else if (stockLevel === 'out-of-stock') { %>
+                                                    <i class="bi bi-dash-circle text-danger"></i>
+                                                <% } %>
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- Estoque Mínimo -->
+                                        <td class="text-center">
+                                            <span class="quantity-min <%= qtdAtual < qtdMinima ? 'text-warning fw-bold' : '' %>">
+                                                <%= qtdMinima.toLocaleString('pt-BR') %>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Estoque Máximo -->
+                                        <td class="text-center">
+                                            <span class="quantity-max <%= qtdMaxima > 0 && qtdAtual > qtdMaxima ? 'text-info fw-bold' : '' %>">
+                                                <%= qtdMaxima > 0 ? qtdMaxima.toLocaleString('pt-BR') : '—' %>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Valor Total -->
+                                        <td class="text-center">
+                                            <span class="value-total fw-semibold">
+                                                R$ <%= valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Departamento -->
+                                        <td>
+                                            <span class="department-tag">
+                                                <i class="bi bi-building"></i>
+                                                <%= item.department || '—' %>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Localização -->
+                                        <td>
+                                            <% if (item.position) { %>
+                                                <div class="location-cell">
+                                                    <i class="bi bi-geo-alt"></i>
+                                                    <code class="location-code"><%= item.position %></code>
+                                                </div>
+                                            <% } else { %>
+                                                <span class="text-muted">—</span>
+                                            <% } %>
+                                        </td>
+                                        
+                                        <!-- Última Modificação -->
+                                        <td>
+                                            <% if (item.lastModified) { %>
+                                                <div class="last-modified-cell" title="Modificado <%= timeAgo %>">
+                                                    <i class="bi bi-clock"></i>
+                                                    <span class="date-text"><%= lastModified %></span>
+                                                    <span class="time-text"><%= lastModifiedTime %></span>
+                                                    <small class="time-ago text-muted"><%= timeAgo %></small>
+                                                </div>
+                                            <% } else { %>
+                                                <span class="text-muted">—</span>
+                                            <% } %>
+                                        </td>
+                                        
+                                        <!-- Status -->
+                                        <td>
+                                            <span class="status-badge <%= statusClass %>">
+                                                <i class="bi <%= statusIcon %>"></i>
+                                                <%= item.status %>
+                                            </span>
+                                        </td>
+                                        
+                                        <!-- Ações -->
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button title="Editar Item" class="btn-action btn-edit" 
+                                                        data-item='<%- JSON.stringify(item).replace(/'/g, "&#39;") %>'>
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <form action="/itens/<%= item.id %>/deletar" method="POST" 
+                                                      onsubmit="return confirm('Tem certeza que deseja mover este item para a lixeira?');"
+                                                      class="action-form">
+                                                    <button type="submit" title="Excluir Item" class="btn-action btn-delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="12" class="text-center py-5">
+                                        <div class="empty-state">
+                                            <i class="bi bi-inbox"></i>
+                                            <h4>Nenhum item encontrado</h4>
+                                            <p>Tente ajustar os filtros ou adicionar novos itens.</p>
+                                            <button class="btn btn-primary" id="btn-show-add-modal-empty">
+                                                <i class="bi bi-plus-circle"></i> Adicionar Primeiro Item
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Vista Mobile (cards) -->
+            <div class="table-mobile">
                 <% if (typeof items !== 'undefined' && items.length > 0) { %>
                     <% items.forEach(item => { %>
                         <%
-                            let rowClass = '';
-                            if (item.quantidade_atual === 0) {
-                                rowClass = 'out-of-stock-row';
-                            } else if (item.quantidade_atual < item.quantidade_minima) {
-                                rowClass = 'low-stock-row';
+                            const qtdAtual = Number(item.quantity) || 0;
+                            const qtdMinima = Number(item.minimumQuantity) || 0;
+                            const qtdMaxima = Number(item.maximumQuantity) || 0;
+                            const valorTotal = Number(item.totalValue) || 0;
+                            
+                            let statusClass = '';
+                            let stockLevel = '';
+                            
+                            if (item.status === 'Desativado') {
+                                statusClass = 'status-inactive';
+                                stockLevel = 'inactive';
+                            } else if (item.status === 'Excluído') {
+                                statusClass = 'status-danger';
+                                stockLevel = 'deleted';
+                            } else if (qtdAtual <= 0) {
+                                statusClass = 'status-danger';
+                                stockLevel = 'out-of-stock';
+                            } else if (qtdAtual < qtdMinima) {
+                                statusClass = 'status-warning';
+                                stockLevel = 'low-stock';
+                            } else if (qtdMaxima > 0 && qtdAtual > qtdMaxima) {
+                                statusClass = 'status-info';
+                                stockLevel = 'over-stock';
+                            } else {
+                                statusClass = 'status-success';
+                                stockLevel = 'normal';
+                            }
+
+                            let lastModified = '—';
+                            let lastModifiedTime = '—';
+                            let timeAgo = '';
+                            if (item.lastModified) {
+                                const modifiedDate = new Date(item.lastModified);
+                                lastModified = modifiedDate.toLocaleDateString('pt-BR');
+                                lastModifiedTime = modifiedDate.toLocaleTimeString('pt-BR', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                });
+                                timeAgo = getTimeAgo(modifiedDate);
                             }
                         %>
-                        <tr class="<%= rowClass %>">
-                            <td><strong><%= item.nome %></strong></td>
-                            <td><%= item.quantidade_atual %></td>
-                            <td><%= item.departamento %></td>
-                            <td><%= `${item.loc_corredor}-${item.loc_prateleira}-${item.loc_posicao}` %></td>
-                            <td>
-                                <button title="Editar" class="action-btn btn-edit" data-item='<%= JSON.stringify(item) %>'><i class="bi bi-pencil-square"></i></button>
-                                <form action="/itens/excluir/<%= item.id_item %>" method="POST" style="display: inline;" onsubmit="return confirm('Você tem certeza que deseja excluir este item?');">
-                                    <button type="submit" title="Excluir" class="action-btn danger"><i class="bi bi-trash-fill"></i></button>
-                                </form>
-                            </td>
-                        </tr>
+                        <div class="item-card <%= stockLevel %>" data-item-id="<%= item.id %>">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <h4><%= item.name %></h4>
+                                    <% if (item.unitOfMeasure && item.unitOfMeasure !== 'un') { %>
+                                        <span class="unit-badge"><%= item.unitOfMeasure %></span>
+                                    <% } %>
+                                </div>
+                                <span class="status-badge <%= statusClass %>">
+                                    <%= item.status %>
+                                </span>
+                            </div>
+                            
+                            <div class="card-body">
+                                <div class="card-row">
+                                    <div class="card-col">
+                                        <label>Código:</label>
+                                        <span class="item-code"><%= item.code || 'N/A' %></span>
+                                    </div>
+                                    <div class="card-col">
+                                        <label>Departamento:</label>
+                                        <span class="department"><%= item.department || '—' %></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="card-row">
+                                    <div class="card-col">
+                                        <label>Estoque:</label>
+                                        <span class="quantity-badge <%= stockLevel %>">
+                                            <%= qtdAtual.toLocaleString('pt-BR') %>
+                                        </span>
+                                    </div>
+                                    <div class="card-col">
+                                        <label>Mínimo:</label>
+                                        <span><%= qtdMinima.toLocaleString('pt-BR') %></span>
+                                    </div>
+                                </div>
+                                
+                                <% if (item.description) { %>
+                                <div class="card-row">
+                                    <div class="card-col full-width">
+                                        <label>Descrição:</label>
+                                        <p class="description"><%= item.description %></p>
+                                    </div>
+                                </div>
+                                <% } %>
+                                
+                                <div class="card-row">
+                                    <div class="card-col">
+                                        <label>Valor Total:</label>
+                                        <span class="value-total">
+                                            R$ <%= valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                                        </span>
+                                    </div>
+                                    <div class="card-col">
+                                        <label>Localização:</label>
+                                        <span class="location"><%= item.position || '—' %></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="card-row">
+                                    <div class="card-col full-width">
+                                        <label>Última Modificação:</label>
+                                        <% if (item.lastModified) { %>
+                                            <div class="last-modified-mobile">
+                                                <span class="datetime"><%= lastModified %> <%= lastModifiedTime %></span>
+                                                <small class="time-ago"><%= timeAgo %></small>
+                                            </div>
+                                        <% } else { %>
+                                            <span class="text-muted">—</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card-footer">
+                                <div class="action-buttons">
+                                    <button title="Editar Item" class="btn-action btn-edit" 
+                                            data-item='<%- JSON.stringify(item).replace(/'/g, "&#39;") %>'>
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <form action="/itens/<%= item.id %>/deletar" method="POST" 
+                                          onsubmit="return confirm('Tem certeza que deseja mover este item para a lixeira?');"
+                                          class="action-form">
+                                        <button type="submit" title="Excluir Item" class="btn-action btn-delete">
+                                            <i class="bi bi-trash"></i> Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="5" style="text-align: center;">Nenhum item encontrado.</td></tr>
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h4>Nenhum item encontrado</h4>
+                        <p>Tente ajustar os filtros ou adicionar novos itens.</p>
+                        <button class="btn btn-primary" id="btn-show-add-modal-empty-mobile">
+                            <i class="bi bi-plus-circle"></i> Adicionar Primeiro Item
+                        </button>
+                    </div>
                 <% } %>
-            </tbody>
-        </table>
+            </div>
+        </div>
+    </section>
+
+    <% if (pageInfo.totalPages > 1) { %>
+    <div class="pagination-bottom">
+        <div class="pagination-controls">
+            <% if (pageInfo.hasPrev) { %>
+                <a href="<%= createPageUrl(1) %>" class="pagination-btn" title="Primeira página">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+                <a href="<%= createPageUrl(pageInfo.currentPage - 1) %>" class="pagination-btn">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            <% } %>
+            
+            <div class="pagination-numbers">
+                <% 
+                let startPage = Math.max(1, pageInfo.currentPage - 2);
+                let endPage = Math.min(pageInfo.totalPages, startPage + 4);
+                startPage = Math.max(1, endPage - 4);
+                
+                for (let i = startPage; i <= endPage; i++) { 
+                %>
+                    <a href="<%= createPageUrl(i) %>" 
+                       class="pagination-number <%= i === pageInfo.currentPage ? 'active' : '' %>">
+                        <%= i %>
+                    </a>
+                <% } %>
+            </div>
+            
+            <% if (pageInfo.hasNext) { %>
+                <a href="<%= createPageUrl(pageInfo.currentPage + 1) %>" class="pagination-btn">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="<%= createPageUrl(pageInfo.totalPages) %>" class="pagination-btn" title="Última página">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            <% } %>
+        </div>
+    </div>
+    <% } %>
+
+    <div class="section-header">
+        <div class="header-content">
+            <h2><i class="bi bi-trash"></i> Itens Excluídos</h2>
+            <p class="header-subtitle">Itens movidos para a lixeira</p>
+        </div>
+        <div class="action-buttons">
+            <button class="btn btn-outline" id="btn-toggle-excluded">
+                <i class="bi bi-eye-fill"></i> Mostrar Lixeira
+            </button>
+        </div>
+    </div>
+    
+    <section class="table-section" id="excluded-items-table" style="display: none;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nome do Item</th>
+                        <th>Código</th>
+                        <th>Departamento</th>
+                        <th width="120" class="text-center">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof excludedItems !== 'undefined' && excludedItems.length > 0) { %>
+                        <% excludedItems.forEach(item => { %>
+                            <tr class="table-row-inactive">
+                                <td>
+                                    <div class="name-cell">
+                                        <strong><%= item.name %></strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <code class="item-code"><%= item.code || 'N/A' %></code>
+                                </td>
+                                <td>
+                                    <span class="department-tag">
+                                        <i class="bi bi-building"></i>
+                                        <%= item.department || 'N/A' %>
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <form action="/itens/<%= item.id %>/restore" method="POST" 
+                                          onsubmit="return confirm('Restaurar este item?');"
+                                          class="action-form">
+                                        <button type="submit" title="Restaurar Item" class="btn-action btn-restore">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Restaurar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <div class="empty-state">
+                                    <i class="bi bi-trash"></i>
+                                    <p>Lixeira vazia</p>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
     </section>
     <div >
     <button style="margin-top: 15px;" class="btn-primary" class="btn-entrada" id="btn-show-add-modal"><i class="bi bi-plus-circle-fill"></i> Importar Dados</button>
     </div>
 </main>
 
+<!-- Modal Adicionar Item -->
 <div class="modal-overlay" id="add-item-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Adicionar Novo Item ao Estoque</h3><button class="close-button" id="btn-close-add-modal">&times;</button></div>
-        <form action="/itens/novo" method="POST"><div class="modal-body"><div class="form-grid"><div class="form-group"><label for="nome">Nome do Item</label><input type="text" id="nome" name="nome" required></div><div class="form-group"><label for="codigo_barras">Código de Barras</label><input type="text" id="codigo_barras" name="codigo_barras"></div><div class="form-group"><label for="quantidade_atual">Quantidade Inicial</label><input type="number" id="quantidade_atual" name="quantidade_atual" value="0" min="0" required></div><div class="form-group"><label for="quantidade_minima">Quantidade Mínima</label><input type="number" id="quantidade_minima" name="quantidade_minima" value="0" min="0" required></div><div class="form-group"><label for="preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="preco_unitario" name="preco_unitario" value="0.00" required></div><div class="form-group"><label for="categoria">Categoria</label><input type="text" id="categoria" name="categoria" placeholder="Ex: Hardware" required></div><div class="form-group"><label for="unidade_medida">Unidade de Medida</label><select id="unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div><div class="form-group"><label for="descricao">Descrição (Opcional)</label><input type="text" id="descricao" name="descricao"></div></div><hr style="margin: 20px 0;"><h4>Finalidade e Localização</h4><div class="form-grid"><div class="form-group"><label for="departamento">Departamento</label><select id="departamento" name="departamento"><% if(typeof departamentos !== 'undefined') { %><% departamentos.forEach(dpto => { %><option value="<%= dpto.nome %>"><%= dpto.nome %></option><% }); %><% } %></select></div><div class="form-group"><label for="loc_corredor">Corredor</label><input type="text" id="loc_corredor" name="loc_corredor" placeholder="Ex: A"></div><div class="form-group"><label for="loc_prateleira">Prateleira</label><input type="text" id="loc_prateleira" name="loc_prateleira" placeholder="Ex: 04"></div><div class="form-group"><label for="loc_posicao">Posição</label><input type="text" id="loc_posicao" name="loc_posicao" placeholder="Ex: 15"></div></div><hr style="margin: 20px 0;"><h4>Informações da Entrada</h4><div class="form-grid"><div class="form-group"><label for="nota_fiscal_codigo">Código da Nota Fiscal</label><input type="text" id="nota_fiscal_codigo" name="nota_fiscal_codigo"></div><div class="form-group"><label for="nota_fiscal_link">Link do PDF da Nota (Drive)</label><input type="url" id="nota_fiscal_link" name="nota_fiscal_link" placeholder="https://drive.google.com/..."></div></div></div><div class="modal-footer"><button type="submit" class="btn-primary">Salvar Item</button></div></form>
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3><i class="bi bi-plus-circle"></i> Adicionar Novo Item</h3>
+            <button class="close-button" id="btn-close-add-modal">&times;</button>
+        </div>
+        <form action="/itens" method="POST" id="add-item-form" class="modal-form">
+            <div class="modal-body">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Informações Básicas
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nome" class="form-label required">Nome do Item</label>
+                            <input type="text" id="nome" name="nome" class="form-input" required 
+                                   placeholder="Ex: Parafuso sextavado 5mm">
+                            <div class="form-hint">Nome descritivo do item</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="codigo_barras" class="form-label">Código de Barras</label>
+                            <input type="text" id="codigo_barras" name="codigo_barras" class="form-input" 
+                                   placeholder="Código único do item">
+                            <div class="form-hint">Opcional - código único</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_stock" class="form-label required">Departamento</label>
+                            <select id="id_stock" name="id_stock" class="form-select" required>
+                                <option value="">Selecione um departamento...</option>
+                                <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                                    <% stocks.forEach(stock => { %>
+                                        <option value="<%= stock.id %>"><%= stock.name %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="unidade_medida" class="form-label">Unidade de Medida</label>
+                            <select id="unidade_medida" name="unidade_medida" class="form-select">
+                                <option value="un">Unidade (un)</option>
+                                <option value="cx">Caixa (cx)</option>
+                                <option value="kg">Quilograma (kg)</option>
+                                <option value="g">Grama (g)</option>
+                                <option value="l">Litro (l)</option>
+                                <option value="ml">Mililitro (ml)</option>
+                                <option value="m">Metro (m)</option>
+                                <option value="cm">Centímetro (cm)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quantidade_minima" class="form-label">Quantidade Mínima</label>
+                            <input type="number" id="quantidade_minima" name="quantidade_minima" 
+                                   class="form-input" value="0" min="0" step="1">
+                            <div class="form-hint">Alerta de estoque baixo</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="maximumQuantity" class="form-label">Quantidade Máxima</label>
+                            <input type="number" id="maximumQuantity" name="maximumQuantity" 
+                                   class="form-input" min="0" step="1" placeholder="Opcional">
+                            <div class="form-hint">Capacidade máxima de armazenamento</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-card-text"></i> Descrição
+                    </h4>
+                    <div class="form-group full-width">
+                        <textarea id="descricao" name="descricao" class="form-textarea" rows="3" 
+                                  placeholder="Descrição detalhada do item..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-geo-alt"></i> Localização no Estoque
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="loc_corredor" class="form-label">Corredor</label>
+                            <input type="text" id="loc_corredor" name="loc_corredor" class="form-input" 
+                                   placeholder="Ex: A" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="loc_prateleira" class="form-label">Prateleira</label>
+                            <input type="text" id="loc_prateleira" name="loc_prateleira" class="form-input" 
+                                   placeholder="Ex: 04" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="loc_posicao" class="form-label">Posição</label>
+                            <input type="text" id="loc_posicao" name="loc_posicao" class="form-input" 
+                                   placeholder="Ex: 15" maxlength="5">
+                        </div>
+                    </div>
+                    <div class="form-hint">
+                        <i class="bi bi-info-circle"></i>
+                        A localização será salva no formato: Corredor-Prateleira-Posição
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-add">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Salvar Item
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
+<!-- Modal Editar Item -->
 <div class="modal-overlay" id="edit-item-modal">
-    <div class="modal">
-        <div class="modal-header"><h3>Editar Item</h3><button class="close-button" id="btn-close-edit-modal">&times;</button></div>
-        <form id="edit-form" method="POST"><div class="modal-body"><div class="form-grid"><div class="form-group"><label for="edit-nome">Nome do Item</label><input type="text" id="edit-nome" name="nome" required></div><div class="form-group"><label for="edit-codigo_barras">Código de Barras</label><input type="text" id="edit-codigo_barras" name="codigo_barras"></div><div class="form-group"><label for="edit-quantidade_atual">Quantidade Atual</label><input type="number" id="edit-quantidade_atual" name="quantidade_atual" min="0" required></div><div class="form-group"><label for="edit-quantidade_minima">Quantidade Mínima</label><input type="number" id="edit-quantidade_minima" name="quantidade_minima" min="0" required></div><div class="form-group"><label for="edit-preco_unitario">Preço Unitário (R$)</label><input type="number" step="0.01" min="0" id="edit-preco_unitario" name="preco_unitario" required></div><div class="form-group"><label for="edit-categoria">Categoria</label><input type="text" id="edit-categoria" name="categoria" required></div><div class="form-group"><label for="edit-unidade_medida">Unidade de Medida</label><select id="edit-unidade_medida" name="unidade_medida"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="kg">Kg</option></select></div><div class="form-group"><label for="edit-descricao">Descrição</label><input type="text" id="edit-descricao" name="descricao"></div></div><hr style="margin: 20px 0;"><h4>Finalidade e Localização</h4><div class="form-grid"><div class="form-group"><label for="edit-departamento">Departamento</label><select id="edit-departamento" name="departamento"><% if(typeof departamentos !== 'undefined') { %><% departamentos.forEach(dpto => { %><option value="<%= dpto.nome %>"><%= dpto.nome %></option><% }); %><% } %></select></div><div class="form-group"><label for="edit-loc_corredor">Corredor</label><input type="text" id="edit-loc_corredor" name="loc_corredor"></div><div class="form-group"><label for="edit-loc_prateleira">Prateleira</label><input type="text" id="edit-loc_prateleira" name="loc_prateleira"></div><div class="form-group"><label for="edit-loc_posicao">Posição</label><input type="text" id="edit-loc_posicao" name="loc_posicao"></div></div></div><div class="modal-footer"><button type="submit" class="btn-primary">Salvar Alterações</button></div></form>
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3><i class="bi bi-pencil-square"></i> Editar Item</h3>
+            <button class="close-button" id="btn-close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-form" method="POST" class="modal-form">
+            <div class="modal-body">
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-info-circle"></i> Informações Básicas
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="edit-nome" class="form-label required">Nome do Item</label>
+                            <input type="text" id="edit-nome" name="nome" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-codigo_barras" class="form-label">Código de Barras</label>
+                            <input type="text" id="edit-codigo_barras" name="codigo_barras" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-id_stock" class="form-label required">Departamento</label>
+                            <select id="edit-id_stock" name="id_stock" class="form-select" required>
+                                <option value="">Selecione um departamento...</option>
+                                <% if (typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                                    <% stocks.forEach(stock => { %>
+                                        <option value="<%= stock.id %>"><%= stock.name %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-unidade_medida" class="form-label">Unidade de Medida</label>
+                            <select id="edit-unidade_medida" name="unidade_medida" class="form-select">
+                                <option value="un">Unidade (un)</option>
+                                <option value="cx">Caixa (cx)</option>
+                                <option value="kg">Quilograma (kg)</option>
+                                <option value="g">Grama (g)</option>
+                                <option value="l">Litro (l)</option>
+                                <option value="ml">Mililitro (ml)</option>
+                                <option value="m">Metro (m)</option>
+                                <option value="cm">Centímetro (cm)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-quantidade_minima" class="form-label">Quantidade Mínima</label>
+                            <input type="number" id="edit-quantidade_minima" name="quantidade_minima" 
+                                   class="form-input" min="0" step="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-maximumQuantity" class="form-label">Quantidade Máxima</label>
+                            <input type="number" id="edit-maximumQuantity" name="maximumQuantity" 
+                                   class="form-input" min="0" step="1" placeholder="Opcional">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-status" class="form-label">Status</label>
+                            <select id="edit-status" name="status" class="form-select" required>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Desativado">Desativado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-card-text"></i> Descrição
+                    </h4>
+                    <div class="form-group full-width">
+                        <textarea id="edit-descricao" name="descricao" class="form-textarea" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">
+                        <i class="bi bi-geo-alt"></i> Localização no Estoque
+                    </h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="edit-loc_corredor" class="form-label">Corredor</label>
+                            <input type="text" id="edit-loc_corredor" name="loc_corredor" class="form-input" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-loc_prateleira" class="form-label">Prateleira</label>
+                            <input type="text" id="edit-loc_prateleira" name="loc_prateleira" class="form-input" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-loc_posicao" class="form-label">Posição</label>
+                            <input type="text" id="edit-loc_posicao" name="loc_posicao" class="form-input" maxlength="5">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-edit">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Salvar Alterações
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
+<!-- Modal Departamentos -->
 <div class="modal-overlay" id="dpto-modal">
-    <div class="modal" style="max-width: 500px;">
-        <div class="modal-header"><h3>Gerenciar Departamentos</h3><button class="close-button" id="btn-close-dpto-modal">&times;</button></div>
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="bi bi-building"></i> Gerenciar Departamentos</h3>
+            <button class="close-button" id="btn-close-dpto-modal">&times;</button>
+        </div>
         <div class="modal-body">
-            <h4>Departamentos Atuais</h4>
-            <ul style="margin-bottom: 20px;"><% if(typeof departamentos !== 'undefined') { %><% departamentos.forEach(dpto => { %><li><%= dpto.nome %></li><% }); %><% } %></ul><hr>
-            <h4 style="margin-top: 20px;">Adicionar Novo Departamento</h4>
-            <form action="/departamentos/novo" method="POST" class="filter-form" style="margin-top: 10px;"><div class="form-group"><label for="dpto-nome">Nome do Departamento</label><input type="text" id="dpto-nome" name="nome" required></div><button type="submit" class="btn-primary">Adicionar</button></form>
+            <div class="departments-list">
+                <h4>Departamentos Atuais</h4>
+                <% if(typeof stocks !== 'undefined' && stocks.length > 0) { %>
+                    <div class="list-items">
+                        <% stocks.forEach(stock => { %>
+                            <div class="list-item">
+                                <span class="item-name"><%= stock.name %></span>
+                                <form action="/stocks/<%= stock.id %>/delete" method="POST" 
+                                      onsubmit="return confirm('Tem certeza? Itens associados não serão excluídos.');">
+                                    <button type="submit" class="btn-action btn-delete" title="Excluir Departamento">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="empty-state small">
+                        <i class="bi bi-building"></i>
+                        <p>Nenhum departamento cadastrado</p>
+                    </div>
+                <% } %>
+            </div>
+            
+            <div class="form-section">
+                <h4>Adicionar Novo Departamento</h4>
+                <form action="/stocks" method="POST" class="department-form">
+                    <div class="form-group">
+                        <label for="stock-name" class="form-label">Nome do Departamento</label>
+                        <input type="text" id="stock-name" name="name" class="form-input" required 
+                               placeholder="Ex: Elétrica, Hidráulica...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Adicionar Departamento
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <%- include('partials/footer') %>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Lógica para o modal de ADICIONAR
-    const addModal = document.getElementById('add-item-modal');
-    const btnShowAddModal = document.getElementById('btn-show-add-modal');
-    const btnCloseAddModal = document.getElementById('btn-close-add-modal');
-    if(btnShowAddModal) btnShowAddModal.addEventListener('click', () => addModal.style.display = 'flex');
-    if(btnCloseAddModal) btnCloseAddModal.addEventListener('click', () => addModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === addModal) addModal.style.display = 'none'; });
+<style>
 
-    // Lógica para o modal de EDITAR
-    const editModal = document.getElementById('edit-item-modal');
-    const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
-    const editForm = document.getElementById('edit-form');
-    const btnsEdit = document.querySelectorAll('.btn-edit');
-    btnsEdit.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const item = JSON.parse(btn.dataset.item);
-            editForm.action = `/itens/editar/${item.id_item}`;
-            document.getElementById('edit-nome').value = item.nome;
-            document.getElementById('edit-codigo_barras').value = item.codigo_barras;
-            document.getElementById('edit-quantidade_atual').value = item.quantidade_atual;
-            document.getElementById('edit-quantidade_minima').value = item.quantidade_minima;
-            document.getElementById('edit-unidade_medida').value = item.unidade_medida;
-            document.getElementById('edit-descricao').value = item.descricao;
-            document.getElementById('edit-preco_unitario').value = item.preco_unitario;
-            document.getElementById('edit-categoria').value = item.categoria;
-            document.getElementById('edit-departamento').value = item.departamento;
-            document.getElementById('edit-loc_corredor').value = item.loc_corredor;
-            document.getElementById('edit-loc_prateleira').value = item.loc_prateleira;
-            document.getElementById('edit-loc_posicao').value = item.loc_posicao;
-            editModal.style.display = 'flex';
-        });
-    });
-    if(btnCloseEditModal) btnCloseEditModal.addEventListener('click', () => editModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === editModal) editModal.style.display = 'none'; });
+    .last-modified-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 120px;
+}
+
+.last-modified-cell .date-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.last-modified-cell .time-ago {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+/* Indicadores de estoque melhorados */
+.stock-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.quantity-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.quantity-badge.normal {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.quantity-badge.low-stock {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.quantity-badge.over-stock {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.quantity-badge.out-of-stock {
+    background-color: #fecaca;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.quantity-badge.inactive {
+    background-color: #e5e7eb;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.quantity-badge.deleted {
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
+    text-decoration: line-through;
+}
+
+/* Status info para estoque acima do máximo */
+.status-info {
+    background: #cff4fc;
+    color: #055160;
+    border: 1px solid #9eeaf9;
+}
+
+.table-row-info {
+    background: #f8f9fa !important;
+    border-left: 4px solid #0dcaf0;
+}
+
+/* Melhorias na descrição */
+.truncate-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.description-cell:hover .truncate-text {
+    white-space: normal;
+    overflow: visible;
+    position: absolute;
+    background: white;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 10;
+    max-width: 300px;
+}
+
+/* ===== VARIÁVEIS E RESET ===== */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --primary-light: #eef2ff;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
+    --dark: #343a40;
+    --light: #f8f9fa;
+    --white: #ffffff;
+    --border: #e9ecef;
+    --text-dark: #2d3748;
+    --text-light: #718096;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+    --radius: 8px;
+    --radius-lg: 12px;
+}
+
+/* ===== RESET COMPLETO ===== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100%;
+    overflow-x: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f7fa;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* ===== LAYOUT PRINCIPAL CORRIGIDO ===== */
+.main-container {
+    width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+
+/* Quando sidebar está expandido */
+body.sidebar-expanded .main-content {
+    width: calc(100vw - 250px);
+    margin-left: 250px;
+}
+
+/* Quando sidebar está minimizado */
+body:not(.sidebar-expanded) .main-content {
+    width: 100vw;
+    margin-left: 0;
+}
+
+/* ===== HEADER ===== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    background: var(--light);
+}
+
+.avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* ===== DASHBOARD DE MÉTRICAS ===== */
+.metrics-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 100%;
+}
+
+.metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: inherit;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.metric-icon.success { background: linear-gradient(135deg, var(--success), #20c997); }
+.metric-icon.warning { background: linear-gradient(135deg, var(--warning), #fd7e14); }
+.metric-icon.danger { background: linear-gradient(135deg, var(--danger), #e83e8c); }
+.metric-icon.info { background: linear-gradient(135deg, var(--info), #6f42c1); }
+
+.metric-info {
+    flex: 1;
+}
+
+.metric-value {
+    display: block;
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== CABEÇALHO PRINCIPAL ===== */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.header-content h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.header-subtitle {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* ===== BOTÕES ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    border: 1px solid;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+    background: none;
+    font-family: inherit;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    color: var(--white);
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+.btn-outline {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dark);
+}
+
+.btn-outline:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+    transform: translateY(-1px);
+}
+
+.btn-link {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    text-decoration: underline;
+    padding: 0.5rem;
+    height: auto;
+}
+
+.btn-link:hover {
+    color: var(--primary-dark);
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ===== SEÇÃO DE FILTROS CORRIGIDA - ALINHAMENTO PERFEITO ===== */
+/* .filter-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+} */
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.filter-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.filter-form {
+    padding: 2rem;
+    width: 100%;
+}
+
+/* CORREÇÃO CRÍTICA - ALINHAMENTO HORIZONTAL DOS FILTROS */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: end;
+    width: 100%;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    min-height: 20px;
+    height: 20px;
+}
+
+.form-label.required::after {
+    content: "*";
+    color: var(--danger);
+    margin-left: 0.25rem;
+}
+
+.form-input, .form-select, .form-textarea {
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    background: var(--white);
+    font-family: inherit;
+    width: 100%;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-textarea {
+    height: auto;
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Estilo consistente para selects */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Botão de filtro perfeitamente alinhado */
+.btn-filter {
+    align-self: end;
+    height: 48px;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== PAGINAÇÃO ===== */
+.pagination-top, .pagination-bottom {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.pagination-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pagination-bottom {
+    display: flex;
+    justify-content: center;
+}
+
+.pagination-info {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.pagination-btn:hover {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.pagination-current {
+    padding: 0 1rem;
+    color: var(--text-light);
+    font-size: 0.875rem;
+}
+
+.pagination-numbers {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.pagination-number {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    min-width: 44px;
+    text-align: center;
+    transition: all 0.2s ease;
+    height: auto;
+}
+
+.pagination-number:hover {
+    background: var(--light);
+    border-color: var(--secondary);
+}
+
+.pagination-number.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+/* ===== TABELAS ===== */
+.table-section {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.data-table th {
+    background: var(--light);
+    padding: 1.25rem 1rem;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dark);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.data-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.data-table tr {
+    transition: all 0.2s ease;
+}
+
+.data-table tr:hover {
+    background: var(--primary-light);
+}
+
+/* Estados das linhas */
+/* .table-row-danger {
+    background: #fff5f5 !important;
+    border-left: 4px solid var(--danger);
+}
+
+.table-row-warning {
+    background: #fffbf0 !important;
+    border-left: 4px solid var(--warning);
+} */
+
+.table-row-inactive {
+    background: var(--light) !important;
+    border-left: 4px solid var(--secondary);
+}
+
+.data-table tr.table-row-danger:hover,
+.data-table tr.table-row-warning:hover,
+.data-table tr.table-row-inactive:hover {
+    background: var(--light) !important;
+}
+
+/* Células especiais */
+.sort-link {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease;
+}
+
+.sort-link:hover {
+    color: var(--primary);
+}
+
+.code-cell, .name-cell, .location-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.unit-badge {
+    background: var(--light);
+    color: var(--secondary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.quantity-badge {
+    padding: 0.5rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.badge-success { background: #d4edda; color: #155724; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+
+.value-total {
+    font-weight: 700;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    display: inline-block;
+    border: 1px solid #c8e6c9;
+    min-width: 100px;
+}
+
+.department-tag {
+    background: #e7f1ff;
+    color: #004085;
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.625rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 100px;
+    justify-content: center;
+}
+
+.status-success { background: #d4edda; color: #155724; }
+.status-warning { background: #fff3cd; color: #856404; }
+.status-danger { background: #f8d7da; color: #721c24; }
+.status-inactive { background: #e9ecef; color: #6c757d; }
+
+/* Ações */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-action {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    background: none;
+}
+
+.btn-edit {
+    background: #e7f1ff;
+    color: var(--primary);
+}
+
+.btn-edit:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(67, 97, 238, 0.3);
+}
+
+.btn-delete {
+    background: #f8d7da;
+    color: var(--danger);
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-restore {
+    background: #d4edda;
+    color: var(--success);
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: auto;
+}
+
+.btn-restore:hover {
+    background: var(--success);
+    color: var(--white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.action-form {
+    margin: 0;
+    display: inline;
+}
+
+/* ===== ESTADO VAZIO ===== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-light);
+    width: 100%;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.3;
+}
+
+.empty-state h4 {
+    margin: 0.5rem 0;
+    color: var(--text-dark);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-state.small {
+    padding: 2rem;
+}
+
+.empty-state.small i {
+    font-size: 2.5rem;
+}
+
+/* ===== MODAIS ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: auto;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-lg {
+    width: 800px;
+    max-width: 90%;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--light);
+    width: 100%;
+}
+
+.modal-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+.modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+    width: 100%;
+}
+
+.modal-footer {
+    padding: 1.75rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    background: var(--light);
+    width: 100%;
+}
+
+/* Formulários nos modais */
+.modal-form {
+    overflow-y:auto ;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.form-section {
+    margin-bottom: 2.5rem;
+    width: 100%;
+}
+
+.form-section-title {
+    font-size: 1.25rem;
+    margin: 0 0 1.5rem 0;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    width: 100%;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ===== NOTIFICAÇÕES ===== */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 1100;
+    animation: notificationSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 300px;
+    border-left: 4px solid;
+    max-width: 90vw;
+}
+
+.notification-success {
+    border-left-color: var(--success);
+}
+
+.notification-error {
+    border-left-color: var(--danger);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.25rem;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+    background: var(--border);
+    color: var(--text-dark);
+}
+
+@keyframes notificationSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== CORREÇÕES ESPECÍFICAS PARA ESPAÇO EM BRANCO ===== */
+
+/* Garantir que todos os elementos section ocupem 100% */
+section, div[class*="section"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Prevenir qualquer overflow horizontal */
+body, html {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Container principal com controle rigoroso */
+.main-content > * {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Correção para quando sidebar está expandido */
+@media (min-width: 1201px) {
+    body.sidebar-expanded .main-content {
+        width: calc(100vw - 250px) !important;
+        margin-left: 250px !important;
+    }
     
-    // Lógica para o modal de DEPARTAMENTOS
-    const dptoModal = document.getElementById('dpto-modal');
-    const btnShowDptoModal = document.getElementById('btn-show-dpto-modal');
-    const btnCloseDptoModal = document.getElementById('btn-close-dpto-modal');
-    if(btnShowDptoModal) btnShowDptoModal.addEventListener('click', () => dptoModal.style.display = 'flex');
-    if(btnCloseDptoModal) btnCloseDptoModal.addEventListener('click', () => dptoModal.style.display = 'none');
-    window.addEventListener('click', (event) => { if (event.target === dptoModal) dptoModal.style.display = 'none'; });
+    body.sidebar-expanded .metrics-dashboard,
+    body.sidebar-expanded .filter-section,
+    body.sidebar-expanded .table-section,
+    body.sidebar-expanded .main-header {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Forçar correção em casos extremos */
+.force-full-width {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.no-scroll-x {
+    overflow-x: hidden !important;
+}
+
+/* ===== RESPONSIVIDADE CORRIGIDA ===== */
+@media (max-width: 1200px) {
+    .main-content {
+        padding: 1.5rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    body.sidebar-expanded .main-content {
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .metrics-dashboard {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+        width: 100vw !important;
+        margin-left: 0 !important;
+    }
+    
+    .main-header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+        padding: 1.5rem;
+    }
+    
+    .header-content {
+        text-align: center;
+    }
+    
+    .action-buttons {
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 140px;
+    }
+    
+    .filter-form {
+        padding: 1.5rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .btn-filter {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .metrics-dashboard {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .metric-card {
+        padding: 1.5rem;
+    }
+    
+    .pagination-top {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pagination-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .modal {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 0.75rem;
+    }
+    
+    .metric-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.25rem;
+    }
+    
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    .pagination-numbers {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .data-table {
+        font-size: 0.8rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.875rem 0.5rem;
+    }
+    
+    .status-badge,
+    .value-total,
+    .department-tag {
+        min-width: auto;
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ===== NOVOS ESTILOS PARA TABELA RESPONSIVA ===== */
+.table-container {
+    width: 100%;
+}
+
+/* Vista Desktop - mostra tabela tradicional */
+.table-desktop {
+    display: block;
+}
+
+.table-mobile {
+    display: none;
+}
+
+/* Vista Mobile - mostra cards */
+@media (max-width: 1024px) {
+    .table-desktop {
+        display: none;
+    }
+    
+    .table-mobile {
+        display: block;
+    }
+    
+    .item-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .item-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+    
+    .item-card.normal {
+        border-left: 4px solid var(--success);
+    }
+    
+    .item-card.low-stock {
+        border-left: 4px solid var(--warning);
+    }
+    
+    .item-card.out-of-stock {
+        border-left: 4px solid var(--danger);
+    }
+    
+    .item-card.over-stock {
+        border-left: 4px solid var(--info);
+    }
+    
+    .item-card.inactive {
+        border-left: 4px solid var(--secondary);
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--light);
+    }
+    
+    .card-title {
+        flex: 1;
+    }
+    
+    .card-title h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--text-dark);
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .card-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        align-items: flex-start;
+    }
+    
+    .card-col {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card-col.full-width {
+        flex: 0 0 100%;
+    }
+    
+    .card-col label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .card-col span,
+    .card-col p {
+        font-size: 0.9rem;
+        color: var(--text-dark);
+        word-break: break-word;
+    }
+    
+    .description {
+        margin: 0;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .last-modified-mobile {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .last-modified-mobile .datetime {
+        font-weight: 500;
+        color: var(--text-dark);
+    }
+    
+    .last-modified-mobile .time-ago {
+        font-size: 0.75rem;
+        color: var(--text-light);
+        font-style: italic;
+    }
+    
+    .card-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border);
+        background: var(--light);
+    }
+    
+    .card-footer .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+    
+    .card-footer .btn-action {
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius);
+        font-size: 0.8rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        height: auto;
+        min-width: 100px;
+        justify-content: center;
+    }
+}
+
+/* Ajustes para telas muito pequenas */
+@media (max-width: 480px) {
+    .card-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .card-row {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .card-col {
+        flex: 0 0 100%;
+    }
+    
+    .card-footer .action-buttons {
+        flex-direction: column;
+    }
+    
+    .card-footer .btn-action {
+        width: 100%;
+    }
+}
+
+/* Melhorias na tabela desktop para telas menores */
+@media (max-width: 1200px) {
+    .data-table th,
+    .data-table td {
+        padding: 1rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .quantity-badge {
+        font-size: 0.75rem;
+        min-width: 50px;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        min-width: 80px;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .last-modified-cell {
+        min-width: 100px;
+    }
+    
+    .last-modified-cell .date-text {
+        font-size: 0.8rem;
+    }
+    
+    .last-modified-cell .time-text {
+        font-size: 0.75rem;
+    }
+    
+    .last-modified-cell .time-ago {
+        font-size: 0.7rem;
+    }
+}
+
+/* Indicadores visuais para cards mobile */
+.item-card .quantity-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.item-card .quantity-badge.normal {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.item-card .quantity-badge.low-stock {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.item-card .quantity-badge.over-stock {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.item-card .quantity-badge.out-of-stock {
+    background-color: #fecaca;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.item-card .quantity-badge.inactive {
+    background-color: #e5e7eb;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+/* Resto do CSS permanece igual... */
+</style>
+
+<script>
+// Adicione esta função ao seu script existente
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'agora';
+    if (diffMins < 60) return `há ${diffMins} min`;
+    if (diffHours < 24) return `há ${diffHours} h`;
+    if (diffDays < 7) return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
+    if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} semana${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+    
+    return `há ${Math.floor(diffDays / 30)} mês${Math.floor(diffDays / 30) > 1 ? 'es' : ''}`;
+}
+
+// Adicione este evento para o botão de adicionar mobile
+document.addEventListener('DOMContentLoaded', function() {
+    const btnShowAddMobile = document.getElementById('btn-show-add-modal-empty-mobile');
+    const btnShowAdd = document.getElementById('btn-show-add-modal');
+    
+    if (btnShowAddMobile) {
+        btnShowAddMobile.addEventListener('click', function() {
+            if (btnShowAdd) {
+                btnShowAdd.click();
+            }
+        });
+    }
+    
+    // Resto do seu script JavaScript permanece igual...
 });
+
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'agora';
+    if (diffMins < 60) return `há ${diffMins} min`;
+    if (diffHours < 24) return `há ${diffHours} h`;
+    if (diffDays < 7) return `há ${diffDays} dia${diffDays > 1 ? 's' : ''}`;
+    if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} semana${Math.floor(diffDays / 7) > 1 ? 's' : ''}`;
+    
+    return `há ${Math.floor(diffDays / 30)} mês${Math.floor(diffDays / 30) > 1 ? 'es' : ''}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ===== CONTROLE DO ESPAÇO EM BRANCO =====
+    function fixWhiteSpace() {
+        const mainContent = document.querySelector('.main-content');
+        const body = document.body;
+        const html = document.documentElement;
+        
+        if (!mainContent) return;
+        
+        // Diagnosticar o problema
+        const contentWidth = mainContent.offsetWidth;
+        const viewportWidth = window.innerWidth;
+        const scrollWidth = document.documentElement.scrollWidth;
+        
+        console.log('🔍 Diagnóstico de Layout:', {
+            contentWidth,
+            viewportWidth,
+            scrollWidth,
+            hasHorizontalScroll: scrollWidth > viewportWidth,
+            sidebarExpanded: body.classList.contains('sidebar-expanded')
+        });
+        
+        // Correções imediatas
+        body.style.overflowX = 'hidden';
+        html.style.overflowX = 'hidden';
+        mainContent.style.overflowX = 'hidden';
+        
+        // Aplicar largura total a elementos críticos
+        const criticalSelectors = [
+            '.main-content',
+            '.metrics-dashboard',
+            '.main-header',
+            '.filter-section',
+            '.table-section',
+            '.pagination-top',
+            '.pagination-bottom',
+            '.section-header'
+        ];
+        
+        criticalSelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                if (el) {
+                    el.style.width = '100%';
+                    el.style.maxWidth = '100%';
+                    el.style.boxSizing = 'border-box';
+                }
+            });
+        });
+        
+        // Correção específica para tabelas
+        const tables = document.querySelectorAll('.table-responsive');
+        tables.forEach(table => {
+            table.style.width = '100%';
+            table.style.overflowX = 'auto';
+        });
+        
+        // Verificar se ainda há espaço em branco
+        setTimeout(() => {
+            const newScrollWidth = document.documentElement.scrollWidth;
+            if (newScrollWidth > viewportWidth) {
+                console.warn('⚠️ Ainda há overflow horizontal. Aplicando correções extras...');
+                applyEmergencyFixes();
+            } else {
+                console.log('✅ Layout corrigido com sucesso!');
+            }
+        }, 100);
+    }
+    
+    function applyEmergencyFixes() {
+        // Correções de emergência para problemas persistentes
+        document.body.style.minWidth = '0';
+        document.documentElement.style.minWidth = '0';
+        
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            const style = window.getComputedStyle(el);
+            if (parseInt(style.minWidth) > 1000) {
+                el.style.minWidth = '0';
+            }
+        });
+        
+        // Forçar redimensionamento
+        window.dispatchEvent(new Event('resize'));
+    }
+    
+    // ===== CONTROLE DO SIDEBAR =====
+    function setupSidebarControl() {
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (!sidebar || !mainContent) return;
+        
+        function updateSidebarLayout() {
+            const isSidebarVisible = window.getComputedStyle(sidebar).display !== 'none';
+            const sidebarWidth = sidebar.offsetWidth;
+            const isExpanded = sidebarWidth > 100;
+            const isLargeScreen = window.innerWidth > 1200;
+            
+                document.body.classList.remove('sidebar-expanded');
+                mainContent.style.width = '100%';
+                mainContent.style.marginLeft = '0';
+            
+            // Corrigir possíveis problemas de layout
+            setTimeout(fixWhiteSpace, 150);
+        }
+        
+        // Observar mudanças no sidebar
+        const observer = new MutationObserver(function(mutations) {
+            let shouldUpdate = false;
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && 
+                   (mutation.attributeName === 'class' || mutation.attributeName === 'style')) {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(updateSidebarLayout, 50);
+            }
+        });
+        
+        if (sidebar) {
+            observer.observe(sidebar, { 
+                attributes: true, 
+                attributeFilter: ['class', 'style'] 
+            });
+        }
+        
+        // Eventos de redimensionamento com debounce
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(updateSidebarLayout, 200);
+        });
+        
+        // Atualizar inicialmente
+        updateSidebarLayout();
+    }
+    
+    // ===== SISTEMA DE MODAIS =====
+    function setupModals() {
+        const addModal = document.getElementById('add-item-modal');
+        const editModal = document.getElementById('edit-item-modal');
+        const dptoModal = document.getElementById('dpto-modal');
+        const excludedTable = document.getElementById('excluded-items-table');
+        
+        function openModal(modal) {
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                const firstInput = modal.querySelector('input, select, textarea');
+                if (firstInput) setTimeout(() => firstInput.focus(), 100);
+            }
+        }
+        
+        function closeModal(modal) {
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        function closeAllModals() {
+            [addModal, editModal, dptoModal].forEach(modal => closeModal(modal));
+        }
+        
+        // Modal de Adicionar
+        const btnShowAdd = document.getElementById('btn-show-add-modal');
+        const btnShowAddEmpty = document.getElementById('btn-show-add-modal-empty');
+        const btnCloseAdd = document.getElementById('btn-close-add-modal');
+        const btnCancelAdd = document.getElementById('btn-cancel-add');
+        
+        if (btnShowAdd) btnShowAdd.addEventListener('click', () => openModal(addModal));
+        if (btnShowAddEmpty) btnShowAddEmpty.addEventListener('click', () => openModal(addModal));
+        if (btnCloseAdd) btnCloseAdd.addEventListener('click', () => closeModal(addModal));
+        if (btnCancelAdd) btnCancelAdd.addEventListener('click', () => closeModal(addModal));
+        
+        // Modal de Editar
+        const btnCloseEdit = document.getElementById('btn-close-edit-modal');
+        const btnCancelEdit = document.getElementById('btn-cancel-edit');
+        const editForm = document.getElementById('edit-form');
+        
+        if (btnCloseEdit) btnCloseEdit.addEventListener('click', () => closeModal(editModal));
+        if (btnCancelEdit) btnCancelEdit.addEventListener('click', () => closeModal(editModal));
+        
+        // Botões de edição na tabela
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                try {
+                    const item = JSON.parse(this.dataset.item);
+                    if (editForm) {
+                        editForm.action = `/itens/${item.id}/atualizar`;
+                        
+                        // Preencher campos do formulário
+                        document.getElementById('edit-nome').value = item.name || '';
+                        document.getElementById('edit-codigo_barras').value = item.code || '';
+                        document.getElementById('edit-quantidade_minima').value = item.minimumQuantity || 0;
+                        document.getElementById('edit-maximumQuantity').value = item.maximumQuantity || '';
+                        document.getElementById('edit-unidade_medida').value = item.unitOfMeasure || 'un';
+                        document.getElementById('edit-status').value = item.status || 'Ativo';
+                        document.getElementById('edit-descricao').value = item.description || '';
+                        document.getElementById('edit-id_stock').value = item.stockId || '';
+                        
+                        // Preencher localização
+                        const positionString = item.position || '';
+                        const [corredor = '', prateleira = '', posicao = ''] = positionString.split('-');
+                        document.getElementById('edit-loc_corredor').value = corredor;
+                        document.getElementById('edit-loc_prateleira').value = prateleira;
+                        document.getElementById('edit-loc_posicao').value = posicao;
+                        
+                        openModal(editModal);
+                    }
+                } catch (e) {
+                    console.error("Erro ao carregar dados:", e);
+                    showNotification("Erro ao carregar dados do item para edição.", 'error');
+                }
+            });
+        });
+        
+        // Modal de Departamentos
+        const btnShowDpto = document.getElementById('btn-show-dpto-modal');
+        const btnCloseDpto = document.getElementById('btn-close-dpto-modal');
+        
+        if (btnShowDpto) btnShowDpto.addEventListener('click', () => openModal(dptoModal));
+        if (btnCloseDpto) btnCloseDpto.addEventListener('click', () => closeModal(dptoModal));
+        
+        // Lixeira
+        const btnToggleExcluded = document.getElementById('btn-toggle-excluded');
+        if (btnToggleExcluded && excludedTable) {
+            btnToggleExcluded.addEventListener('click', function() {
+                const isHidden = excludedTable.style.display === 'none';
+                excludedTable.style.display = isHidden ? 'block' : 'none';
+                this.innerHTML = isHidden ? 
+                    '<i class="bi bi-eye-slash"></i> Ocultar Lixeira' : 
+                    '<i class="bi bi-eye-fill"></i> Mostrar Lixeira';
+                this.classList.toggle('btn-primary', isHidden);
+                this.classList.toggle('btn-outline', !isHidden);
+            });
+        }
+        
+        // Fechar modais clicando fora ou com ESC
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeAllModals();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeAllModals();
+        });
+    }
+    
+    // ===== SISTEMA DE NOTIFICAÇÕES =====
+    function setupNotifications() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+        const error = urlParams.get('error');
+        
+        if (success) {
+            showNotification(getSuccessMessage(success), 'success');
+            cleanUrlParams(['success', 'error']);
+        }
+        
+        if (error) {
+            showNotification(getErrorMessage(error), 'error');
+            cleanUrlParams(['success', 'error']);
+        }
+    }
+    
+    function getSuccessMessage(type) {
+        const messages = {
+            'item_created': 'Item criado com sucesso!',
+            'item_updated': 'Item atualizado com sucesso!',
+            'item_deleted': 'Item movido para lixeira!',
+            'item_restored': 'Item restaurado com sucesso!',
+            'stock_created': 'Departamento criado com sucesso!',
+            'stock_deleted': 'Departamento excluído com sucesso!'
+        };
+        return messages[type] || 'Ação realizada com sucesso!';
+    }
+    
+    function getErrorMessage(type) {
+        const messages = {
+            'item_not_found': 'Item não encontrado!',
+            'delete_failed': 'Erro ao excluir item!',
+            'restore_failed': 'Erro ao restaurar item!',
+            'validation_error': 'Erro de validação. Verifique os dados.',
+            'server_error': 'Erro no servidor. Tente novamente.'
+        };
+        return messages[type] || 'Ocorreu um erro!';
+    }
+    
+    function showNotification(message, type) {
+        // Remover notificações existentes
+        document.querySelectorAll('.notification').forEach(notification => {
+            notification.remove();
+        });
+        
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+            <button class="notification-close">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Adicionar evento para fechar
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', function() {
+            notification.remove();
+        });
+        
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+    
+    function cleanUrlParams(paramsToRemove) {
+        const url = new URL(window.location.href);
+        paramsToRemove.forEach(param => url.searchParams.delete(param));
+        window.history.replaceState({}, '', url);
+    }
+    
+    // ===== FUNCIONALIDADES EXTRAS =====
+    function setupAdditionalFeatures() {
+        // Limpar Filtros
+        const btnClearFilters = document.getElementById('btn-clear-filters');
+        if (btnClearFilters) {
+            btnClearFilters.addEventListener('click', function() {
+                window.location.href = '/itens';
+            });
+        }
+        
+        // Exportar Itens
+        const btnExport = document.getElementById('btn-export-items');
+        if (btnExport) {
+            btnExport.addEventListener('click', function() {
+                if (confirm('Exportar lista de itens para CSV?')) {
+                    const currentUrl = new URL(window.location.href);
+                    const searchParams = new URLSearchParams(currentUrl.search);
+                    searchParams.delete('page');
+                    const exportUrl = `/itens/export?format=csv&${searchParams.toString()}`;
+                    window.open(exportUrl, '_blank');
+                }
+            });
+        }
+        
+        // Auto-foco no campo de busca
+        const filterBusca = document.getElementById('filter-busca');
+        if (filterBusca && !filterBusca.value) {
+            setTimeout(() => filterBusca.focus(), 100);
+        }
+        
+        // Submit do formulário de filtro com Enter
+        const filterForm = document.getElementById('filter-form');
+        if (filterForm) {
+            filterForm.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.submit();
+                }
+            });
+        }
+        
+        // Confirmações para exclusões
+        document.querySelectorAll('form[action*="deletar"]').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!confirm('Tem certeza que deseja mover este item para a lixeira?')) {
+                    e.preventDefault();
+                }
+            });
+        });
+        
+        document.querySelectorAll('form[action*="delete"]').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!confirm('Tem certeza que deseja excluir este departamento?')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+    
+    // ===== INICIALIZAÇÃO COMPLETA =====
+    function init() {
+        console.log('🚀 Inicializando sistema de gestão de itens...');
+        
+        // 1. Correções de layout imediatas
+        fixWhiteSpace();
+        
+        // 2. Configurar controle do sidebar
+        setupSidebarControl();
+        
+        // 3. Configurar modais
+        setupModals();
+        
+        // 4. Configurar notificações
+        setupNotifications();
+        
+        // 5. Configurar funcionalidades extras
+        setupAdditionalFeatures();
+        
+        // 6. Aplicar correções finais após carregamento completo
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                fixWhiteSpace();
+                console.log('✅ Sistema completamente carregado e otimizado');
+            }, 500);
+        });
+        
+        // 7. Monitorar continuamente por problemas de layout
+        setInterval(fixWhiteSpace, 5000);
+    }
+    
+    // Inicializar o sistema
+    init();
+});
+
+// ===== FUNÇÕES GLOBAIS PARA DEPURAÇÃO =====
+window.debugLayout = function() {
+    const mainContent = document.querySelector('.main-content');
+    const body = document.body;
+    
+    console.log('🔧 Debug de Layout:');
+    console.log('- Viewport width:', window.innerWidth);
+    console.log('- Body width:', body.offsetWidth);
+    console.log('- Main content width:', mainContent?.offsetWidth);
+    console.log('- Scroll width:', document.documentElement.scrollWidth);
+    console.log('- Sidebar expanded:', body.classList.contains('sidebar-expanded'));
+    
+    // Highlight elementos com problemas
+    const wideElements = document.querySelectorAll('*');
+    wideElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > window.innerWidth) {
+            console.warn('Elemento muito largo:', el);
+            el.style.outline = '2px solid red';
+        }
+    });
+};
+
+window.fixLayoutNow = function() {
+    const event = new Event('resize');
+    window.dispatchEvent(event);
+    console.log('🛠️ Layout forçado a atualizar');
+};
+
 </script>
+

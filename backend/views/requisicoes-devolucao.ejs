@@ -1,0 +1,570 @@
+
+<%- include('partials/header', { title: 'Devolução de Itens', paginaAtiva: 'requisicoes' }) %>
+
+<%
+// Funções helper para EJS
+const formatQuantity = (quantity, unitOfMeasure) => {
+    if (!quantity) return '0';
+    const qty = parseFloat(quantity);
+    if (['kg', 'g', 'ton', 'l', 'ml'].includes(unitOfMeasure)) {
+        return qty.toFixed(2);
+    } else if (['un', 'pc', 'cx'].includes(unitOfMeasure)) {
+        return qty % 1 === 0 ? qty.toString() : qty.toFixed(2);
+    } else {
+        return qty.toFixed(2);
+    }
+};
+
+const getUnitLabel = (unitOfMeasure) => {
+    const unitMap = {
+        'un': 'un',
+        'kg': 'kg',
+        'g': 'g',
+        'ton': 'ton',
+        'pc': 'pc',
+        'cx': 'cx',
+        'l': 'l',
+        'ml': 'ml'
+    };
+    return unitMap[unitOfMeasure] || 'un';
+};
+
+const getInputStep = (unitOfMeasure) => {
+    if (['kg', 'g', 'ton', 'l', 'ml'].includes(unitOfMeasure)) {
+        return '0.01';
+    } else if (['un', 'pc'].includes(unitOfMeasure)) {
+        return '1';
+    } else if (unitOfMeasure === 'cx') {
+        return '0.5';
+    } else {
+        return '0.01';
+    }
+};
+
+const getInputMin = (unitOfMeasure) => {
+    return ['un', 'pc'].includes(unitOfMeasure) ? '1' : '0.01';
+};
+%>
+
+
+
+<header class="header">
+    <h1 class="header-title">Devolução de Itens</h1>
+    <div class="header-right">
+        <div class="user-profile">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <span>Bem-vindo, <%= user.name %></span>
+                <div class="user-avatar">
+    <% if (typeof user !== 'undefined' && user.photo && user.photo !== null) { %>
+        <img src="<%= user.photo %>" alt="Avatar de <%= user.name %>" 
+             onerror="this.src='../usuario.jpg'">
+    <% } else { %>
+        <img src="../usuario.jpg" alt="Avatar">
+    <% } %>
+</div>
+            <% } %>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div id="alert-container">
+        <% if (query.error) { %>
+            <div class="alert alert-danger">
+                <strong>Erro:</strong> <%= query.error %>
+            </div>
+        <% } %>
+        <% if (query.success) { %>
+            <div class="alert alert-success">
+                <strong>Sucesso:</strong> 
+                <% if (query.success === 'devolucao_processada') { %>
+                    Devolução processada com sucesso!
+                <% } else if (query.success === 'devolucao_completa') { %>
+                    Devolução completa processada com sucesso!
+                <% } %>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="main-header">
+        <div class="page-title-section">
+            <h2>Devolver Itens - Requisição #<%= request.id %></h2>
+            <p class="page-subtitle">
+                Solicitante: <%= request.requester.name %> | 
+                Data: <%= new Date(request.created_at).toLocaleDateString('pt-BR') %> |
+                Status: <span class="status-badge status-completed">Finalizado</span>
+            </p>
+        </div>
+        <div class="action-buttons">
+            <a href="/requisicoes" class="btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="return-section" style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h3 style="color: #059669; margin-top: 0;">
+                <i class="bi bi-arrow-return-left"></i> Devolução Completa
+            </h3>
+            <p>Devolver todos os itens restantes desta requisição de uma vez:</p>
+            <form action="/requisicoes/<%= request.id %>/devolver-tudo" method="POST" 
+                  onsubmit="return confirm('Deseja devolver TODOS os itens desta requisição?')">
+                <button type="submit" class="btn-success">
+                    <i class="bi bi-check-all"></i> Devolver Todos os Itens
+                </button>
+            </form>
+        </div>
+
+        <hr style="margin: 30px 0;">
+        <div class="return-section">
+            <h3>Devolução Parcial</h3>
+            <p class="section-description">Selecione os itens e quantidades que deseja devolver individualmente:</p>
+
+            <div class="items-grid">
+                <% 
+                request.items.forEach(item => { 
+                    const disponivel = item.quantityRequested - (item.quantityReturned || 0);
+                    const jaDevolvido = item.quantityReturned || 0;
+                    const unitLabel = getUnitLabel(item.item.unitOfMeasure);
+                    const stepValue = getInputStep(item.item.unitOfMeasure);
+                    const minValue = getInputMin(item.item.unitOfMeasure);
+                %>
+                    <% if (disponivel > 0) { %>
+                        <div class="return-item-card">
+                            <div class="item-header">
+                                <div>
+                                    <h4><%= item.item.name %></h4>
+                                    <div class="item-meta">
+                                        <span class="item-code">Cód: <%= item.item.code %></span>
+                                        <span class="unit-badge unit-<%= item.item.unitOfMeasure || 'un' %>">
+                                            <%= unitLabel %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="item-stats">
+                                <div class="stat">
+                                    <span class="stat-label">Quantidade Original:</span>
+                                    <span class="stat-value">
+                                        <%= formatQuantity(item.quantityRequested, item.item.unitOfMeasure) %> <%= unitLabel %>
+                                    </span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-label">Já Devolvido:</span>
+                                    <span class="stat-value <%= jaDevolvido > 0 ? 'text-success' : '' %>">
+                                        <%= formatQuantity(jaDevolvido, item.item.unitOfMeasure) %> <%= unitLabel %>
+                                    </span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-label">Disponível para Devolução:</span>
+                                    <span class="stat-value text-primary">
+                                        <strong><%= formatQuantity(disponivel, item.item.unitOfMeasure) %> <%= unitLabel %></strong>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <form action="/requisicoes/<%= request.id %>/devolver" method="POST" class="return-form">
+                                <input type="hidden" name="itemId" value="<%= item.item.id %>">
+                                
+                                <div class="return-controls">
+                                    <label for="quantity-<%= item.item.id %>">
+                                        Quantidade a Devolver (<%= unitLabel %>):
+                                    </label>
+                                    <div class="quantity-input-group">
+                                        <input 
+                                            type="number" 
+                                            id="quantity-<%= item.item.id %>" 
+                                            name="quantity"
+                                            min="<%= minValue %>" 
+                                            max="<%= disponivel %>"
+                                            step="<%= stepValue %>"
+                                            value="<%= formatQuantity(disponivel, item.item.unitOfMeasure) %>"
+                                            class="quantity-input"
+                                            required
+                                        >
+                                        <button type="submit" class="btn-primary btn-devolver">
+                                            <i class="bi bi-arrow-return-left"></i> Devolver
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    <% } else { %>
+                        <div class="return-item-card" style="opacity: 0.6; background: #f8f9fa;">
+                            <div class="item-header">
+                                <div>
+                                    <h4><%= item.item.name %></h4>
+                                    <div class="item-meta">
+                                        <span class="item-code">Cód: <%= item.item.code %></span>
+                                        <span class="unit-badge unit-<%= item.item.unitOfMeasure || 'un' %>">
+                                            <%= unitLabel %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: center; padding: 20px;">
+                                <span class="status-badge status-completed" style="font-size: 14px;">
+                                    <i class="bi bi-check-circle"></i> Totalmente Devolvido
+                                </span>
+                                <p style="margin: 10px 0 0 0; color: #64748b; font-size: 0.9rem;">
+                                    <%= formatQuantity(item.quantityRequested, item.item.unitOfMeasure) %> <%= unitLabel %> devolvidos
+                                </p>
+                            </div>
+                        </div>
+                    <% } %>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+</main>
+
+<%- include('partials/footer') %>
+
+<style>
+    .header-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+    .return-section {
+        margin-bottom: 2rem;
+    }
+    .main-content {
+    padding: 2rem;
+    width: 100%;
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background: #f5f7fa;
+    margin-left: 0;
+    position: relative;
+    left: 0;
+}
+
+    .section-description {
+        color: #64748b;
+        margin-bottom: 1.5rem;
+        font-size: 1rem;
+    }
+
+    .items-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .return-item-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .item-header h4 {
+        margin: 0;
+        color: #1e293b;
+        font-size: 1.1rem;
+    }
+
+    .item-meta {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .item-code {
+        color: #64748b;
+        font-size: 0.875rem;
+        background: #f8fafc;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+
+    .unit-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .unit-un, .unit-pc {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+    }
+
+    .unit-kg, .unit-g, .unit-ton {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    .unit-cx {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .unit-l, .unit-ml {
+        background-color: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #a5b4fc;
+    }
+
+    .item-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 6px;
+    }
+
+    .stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #374151;
+        font-size: 1rem;
+    }
+
+    .text-success {
+        color: #10b981;
+    }
+
+    .text-primary {
+        color: #3b82f6;
+    }
+
+    .return-form {
+        margin-top: 1rem;
+    }
+
+    .return-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .return-controls label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 200px;
+    }
+
+    .quantity-input-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .quantity-input {
+        width: 120px;
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .quantity-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-primary, .btn-success, .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #2563eb;
+    }
+
+    .btn-success {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #059669;
+    }
+
+    .btn-secondary {
+        background-color: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #4b5563;
+    }
+
+    .btn-devolver {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-completed {
+        background-color: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-success {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .alert-danger {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    @media (max-width: 768px) {
+        .return-controls {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .return-controls label {
+            min-width: auto;
+        }
+
+        .quantity-input-group {
+            width: 100%;
+        }
+
+        .quantity-input {
+            flex: 1;
+        }
+
+        .item-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .item-meta {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<script>
+// Funções para formatação no frontend
+function formatQuantity(quantity, unitOfMeasure) {
+    if (!quantity) return '0';
+    const qty = parseFloat(quantity);
+    if (['kg', 'g', 'ton', 'l', 'ml'].includes(unitOfMeasure)) {
+        return qty.toFixed(2);
+    } else if (['un', 'pc', 'cx'].includes(unitOfMeasure)) {
+        return qty % 1 === 0 ? qty.toString() : qty.toFixed(2);
+    } else {
+        return qty.toFixed(2);
+    }
+}
+
+function getUnitLabel(unitOfMeasure) {
+    const unitMap = {
+        'un': 'un',
+        'kg': 'kg',
+        'g': 'g',
+        'ton': 'ton',
+        'pc': 'pc',
+        'cx': 'cx',
+        'l': 'l',
+        'ml': 'ml'
+    };
+    return unitMap[unitOfMeasure] || 'un';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Página de devolução carregada');
+    
+    // Adicionar confirmação para todos os formulários de devolução
+    document.querySelectorAll('.return-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const quantity = this.querySelector('input[name="quantity"]').value;
+            const itemName = this.closest('.return-item-card').querySelector('h4').textContent;
+            const unitLabel = this.querySelector('label').textContent.match(/\(([^)]+)\)/)[1];
+            
+            if (!confirm(`Deseja devolver ${quantity} ${unitLabel} do item "${itemName.trim()}"?`)) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // Auto-focus no primeiro input disponível
+    const firstInput = document.querySelector('.quantity-input');
+    if (firstInput) {
+        firstInput.focus();
+        firstInput.select();
+    }
+
+    // Validação de quantidade máxima
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            const max = parseFloat(this.max);
+            const value = parseFloat(this.value);
+            
+            if (value > max) {
+                this.value = max;
+                alert(`Quantidade máxima permitida: ${max}`);
+            }
+        });
+    });
+});
+</script>
